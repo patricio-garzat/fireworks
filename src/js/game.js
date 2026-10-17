@@ -225,24 +225,142 @@ const Game = (() => {
     Save.sparks -= n; UI.sparks(); persist(); return true;
   }
 
-  /* ---------- Gran Final ---------- */
+  /* ---------- Gran Final ----------
+     Cada final se arma al azar con piezas: una apertura, dos movimientos, un clímax y un cierre, con un tema de color.
+     Nunca repite la apertura ni el cierre de la anterior: siempre es una sorpresa. Cada pieza agenda sus cohetes
+     desde el segundo t con L(segundo, x, y, tipo, potencia) (x, y en fracción de pantalla) y regresa cuánto dura. */
+  const ALL_TYPES = ["crackle", "comet", "spiral", "classic", "ring", "palm", "strobe", "crossette", "saturn", "chrysanthemum", "dahlia", "horsetail", "swarm", "whirl"];
+  const FIN = {
+    open: {
+      // pares simétricos
+      pairs(L, t) {
+        const [a, b] = pick([["classic", "ring"], ["palm", "ring"], ["chrysanthemum", "dahlia"], ["saturn", "classic"]]);
+        for (let i = 0; i < 6; i++) { const y = rand(0.24, 0.4), ty = i % 2 ? b : a; L(t + 0.3 + i * 0.75, 0.26, y, ty, 0.85); L(t + 0.36 + i * 0.75, 0.74, y, ty, 0.85); }
+        return 5;
+      },
+      // escalera: de izquierda a derecha subiendo, y de regreso
+      stairs(L, t) {
+        const ty = pick(["classic", "chrysanthemum", "ring", "strobe"]), back = ty === "ring" ? "classic" : "ring";
+        for (let i = 0; i < 7; i++) L(t + 0.3 + i * 0.32, 0.12 + i * 0.127, 0.44 - i * 0.035, ty, 0.75);
+        for (let i = 0; i < 7; i++) L(t + 2.9 + i * 0.32, 0.88 - i * 0.127, 0.44 - i * 0.035, back, 0.75);
+        return 5.4;
+      },
+      // protagonista: pocas carcasas grandes, lentas y majestuosas
+      hero(L, t) {
+        const ty = pick(["dahlia", "saturn", "chrysanthemum"]);
+        L(t + 0.4, 0.5, 0.3, ty, 1.5); L(t + 2.0, 0.28, 0.34, ty, 1.1); L(t + 2.1, 0.72, 0.34, ty, 1.1);
+        L(t + 3.8, 0.5, 0.24, pick(["star", "heart"]), 1.4);
+        return 5.6;
+      },
+      // obertura de silbidos en espiral
+      whistles(L, t) {
+        for (let i = 0; i < 5; i++) L(t + 0.3 + i * 0.55, 0.2 + 0.15 * i, rand(0.26, 0.36), "whirl", 0.9);
+        L(t + 3.6, 0.5, 0.26, "willow", 1.3);
+        return 5.4;
+      },
+    },
+    mid: {
+      fans(L, t) {
+        const pair = pick([["willow", "double"], ["palm", "crackle"], ["horsetail", "chrysanthemum"]]);
+        for (let v = 0; v < 4; v++) for (let j = 0; j < 5; j++) L(t + v * 0.95 + j * 0.07, 0.14 + 0.18 * j, 0.3 + 0.07 * Math.abs(j - 2), pair[v % 2], 0.66);
+        return 4.2;
+      },
+      // olas que cruzan el cielo, ida y vuelta
+      waves(L, t) {
+        for (let w = 0; w < 2; w++) for (let k = 0; k < 12; k++) {
+          const x = w % 2 ? 0.92 - k * 0.075 : 0.08 + k * 0.075;
+          L(t + w * 1.9 + k * 0.13, x, 0.32 + Math.sin(k * 0.75) * 0.1, w ? "strobe" : "classic", 0.55);
+        }
+        return 4.3;
+      },
+      // cascadas en espejo que se juntan al centro
+      mirror(L, t) {
+        const ty = pick(["willow", "horsetail", "palm"]);
+        for (let k = 0; k < 4; k++) { L(t + k * 0.6, 0.1 + k * 0.1, 0.3 + 0.03 * k, ty, 0.9); L(t + k * 0.6 + 0.04, 0.9 - k * 0.1, 0.3 + 0.03 * k, ty, 0.9); }
+        L(t + 2.6, 0.5, 0.28, "whirl", 1.1);
+        return 4.4;
+      },
+      // desfile de formas
+      shapes(L, t) {
+        const sh = ["heart", "star", "saturn", "ring", "star", "heart"].sort(() => Math.random() - 0.5);
+        for (let k = 0; k < 6; k++) L(t + k * 0.6, 0.2 + (k % 3) * 0.3, k < 3 ? 0.28 : 0.4, sh[k], 0.9);
+        return 4.4;
+      },
+      // fuego cruzado: crucetas y estrobos en X
+      crossfire(L, t) {
+        for (let k = 0; k < 8; k++) { const f = k / 7; L(t + k * 0.22, 0.1 + 0.8 * f, 0.22 + 0.22 * f, "crossette", 0.7); L(t + k * 0.22 + 0.11, 0.9 - 0.8 * f, 0.22 + 0.22 * f, "strobe", 0.6); }
+        return 3.2;
+      },
+      // cometas y palmeras desde los lados
+      comets(L, t) {
+        for (let k = 0; k < 6; k++) L(t + k * 0.35, k % 2 ? 0.85 : 0.15, rand(0.24, 0.38), k % 2 ? "comet" : "palm", 0.85);
+        L(t + 2.3, 0.5, 0.3, "swarm", 1);
+        return 4;
+      },
+      // baile de espirales
+      spirals(L, t) {
+        for (let k = 0; k < 6; k++) L(t + k * 0.4, rand(0.15, 0.85), rand(0.22, 0.4), k % 2 ? "spiral" : "whirl", 0.85);
+        return 3.6;
+      },
+    },
+    climax: {
+      // crescendo que se acelera, con todas las formas
+      crescendo(L, t) {
+        let at = t;
+        for (let k = 0; k < 26; k++) { L(at, rand(0.12, 0.88), rand(0.16, 0.46), pick(ALL_TYPES), rand(0.7, 1.1)); at += lerp(0.32, 0.1, k / 25); }
+        L(at + 0.3, 0.5, 0.3, pick(["heart", "star", "triple"]), 1.3);
+        return at - t + 1.6;
+      },
+      wall(L, t) {
+        for (let k = 0; k < 32; k++) L(t + k * 0.09, 0.1 + 0.8 * ((k * 0.381) % 1), rand(0.2, 0.44), pick(["classic", "crackle", "ring"]), 0.55);
+        return 4.2;
+      },
+      // muro doble: una fila arriba y otra abajo, en sentidos contrarios
+      doubleWall(L, t) {
+        for (let k = 0; k < 18; k++) { L(t + k * 0.13, 0.08 + (0.84 * k) / 17, 0.22, "crackle", 0.5); L(t + k * 0.13 + 0.06, 0.92 - (0.84 * k) / 17, 0.42, "classic", 0.5); }
+        return 3.8;
+      },
+      // pirámide que crece hacia abajo
+      pyramid(L, t) {
+        const rows = [[0.5], [0.38, 0.62], [0.26, 0.5, 0.74], [0.14, 0.38, 0.62, 0.86]];
+        rows.forEach((r, i) => r.forEach((x, j) => L(t + i * 0.55 + j * 0.05, x, 0.2 + i * 0.07, pick(["dahlia", "chrysanthemum", "classic"]), 0.8)));
+        return 3.6;
+      },
+    },
+    close: {
+      grand(L, t) { L(t, 0.5, 0.26, "grand", 2.4); L(t + 0.06, 0.2, 0.34, "willow", 1.5); L(t + 0.12, 0.8, 0.34, "willow", 1.5); return 0.12; },
+      // tres grandes, una tras otra
+      triple(L, t) { L(t, 0.25, 0.3, "grand", 1.7); L(t + 0.5, 0.75, 0.3, "grand", 1.7); L(t + 1.1, 0.5, 0.24, "grand", 2.4); return 1.1; },
+      // cortina dorada de lado a lado y la grande al final
+      curtain(L, t) { for (let k = 0; k < 9; k++) L(t + k * 0.04, 0.06 + (0.88 * k) / 8, 0.3 + 0.04 * Math.sin(k), k % 2 ? "willow" : "whirl", 1.1); L(t + 0.9, 0.5, 0.24, "grand", 2.2); return 0.9; },
+      hearts(L, t) { L(t, 0.5, 0.26, "grand", 2.3); L(t + 0.35, 0.22, 0.38, "heart", 1.1); L(t + 0.45, 0.78, 0.38, "heart", 1.1); return 0.45; },
+      // un silencio más largo… y una sola, enorme
+      hush(L, t) { L(t + 0.9, 0.5, 0.25, "grand", 2.8); return 0.9; },
+    },
+  };
+  const THEMES = [
+    () => ({ colors: [...new Set([...PALETTES.classic.colors, ...palette().colors])], metal: C.gold, heart: palette().heart }), // todos los colores
+    () => { const p = palette(); return { colors: [...p.colors], metal: p.metal, heart: p.heart }; },                     // la paleta elegida
+    () => ({ colors: [C.gold, C.warm, C.amber, C.copper], metal: C.gold, heart: C.coral }),                                 // todo oro
+    () => { const p = PALETTES[pick(PALETTE_ORDER)]; return { colors: [...p.colors], metal: p.metal, heart: p.heart }; }, // una paleta al azar
+  ];
   function startFinale() {
     if (mode !== "free" || finale || Save.finale < 1) return false;
-    Save.finale = 0; persist();
-    const pal = { colors: [...new Set([...PALETTES.classic.colors, ...palette().colors])], metal: C.gold, heart: palette().heart };
+    Save.finale = 0;
     const ev = [], L = (at, x, y, type, power = 1) => ev.push({ at, x: x * VW, y: y * VH, type, power });
-    // 1. Apertura: pares simétricos
-    for (let i = 0; i < 6; i++) { const y = rand(0.24, 0.4), ty = i % 2 ? "ring" : "classic"; L(0.3 + i * 0.75, 0.26, y, ty, 0.85); L(0.36 + i * 0.75, 0.74, y, ty, 0.85); }
-    // 2. Abanicos de cinco
-    for (let v = 0; v < 5; v++) for (let j = 0; j < 5; j++) L(5.4 + v * 0.95 + j * 0.07, 0.14 + 0.18 * j, 0.3 + 0.07 * Math.abs(j - 2), v % 2 ? "willow" : "double", 0.66);
-    // 3. Crescendo: todas las formas y colores
-    for (let k = 0; k < 26; k++) L(10.3 + k * 0.21, rand(0.12, 0.88), rand(0.16, 0.46), pick(["crackle", "comet", "spiral", "classic", "ring", "palm", "strobe", "crossette", "saturn", "chrysanthemum", "dahlia", "horsetail", "swarm"]), rand(0.7, 1.1));
-    L(13.2, 0.5, 0.3, "heart", 1.3);
-    // 4. Muro: ráfaga rápida de explosiones pequeñas
-    for (let k = 0; k < 30; k++) L(16 + k * 0.1, 0.1 + 0.8 * ((k * 0.381) % 1), rand(0.2, 0.44), pick(["classic", "crackle", "ring"]), 0.55);
-    // 5. Un respiro… y el gran cierre
-    L(19.9, 0.5, 0.26, "grand", 2.4); L(19.96, 0.2, 0.34, "willow", 1.5); L(20.02, 0.8, 0.34, "willow", 1.5);
-    finale = { t: 0, ev: ev.sort((a, b) => a.at - b.at), i: 0, pal, end: 27.5 };
+    const last = Save.lastFinale || {};
+    const other = (obj, not) => pick(Object.keys(obj).filter((k) => k !== not));
+    const o = other(FIN.open, last.o), c = other(FIN.close, last.c), cl = pick(Object.keys(FIN.climax));
+    const mids = Object.keys(FIN.mid).sort(() => Math.random() - 0.5).slice(0, 2);
+    Save.lastFinale = { o, c };
+    persist();
+    let t = FIN.open[o](L, 0);
+    for (const m of mids) t += FIN.mid[m](L, t) + 0.3;
+    t += FIN.climax[cl](L, t);
+    t += rand(0.9, 1.6);                       // un respiro antes del cierre
+    t += FIN.close[c](L, t);
+    const pal = pick(THEMES)();
+    finale = { t: 0, ev: ev.sort((a, b) => a.at - b.at), i: 0, pal, end: t + 7.5, plan: [o, ...mids, cl, c] };
     combo = 0; UI.combo(0, 1);
     UI.finaleState(true);
     Sound.melody([50, 57, 62], 0.2, 0.22);
