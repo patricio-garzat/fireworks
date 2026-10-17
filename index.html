@@ -84,10 +84,10 @@ a { color: inherit; text-decoration: none; -webkit-touch-callout: none; }
 .pill:active, .ib:active, .chip:active, .mode:active, .hf:active, .sbtn:active, .card-btn:active, .seg button:active, .finale.ready:active, .row.danger:active, .dialog .btns button:active, .x:active, .slot:active { transform: scale(0.955); transition-duration: 0.1s; }
 
 /* ---------- HUD ---------- */
-#hud { position: fixed; inset: 0; pointer-events: none; transition: opacity 1.4s ease; }
+#hud { position: fixed; inset: 0; pointer-events: none; --fade: 1.4s; }
 #hud > * { pointer-events: auto; }
-#hud.off { opacity: 0; visibility: hidden; transition: opacity 0.5s ease, visibility 0s 0.5s; }
-body.idle #hud { opacity: 0; transition: opacity 1.8s ease; }
+#hud.off { visibility: hidden; transition: visibility 0s 0.5s; --fade: 0.5s; }
+body.idle #hud { --fade: 1.8s; }
 body.idle #hud > * { pointer-events: none; }
 
 .top {
@@ -183,16 +183,16 @@ body.idle #hud > * { pointer-events: none; }
 .toast span { display: block; font-size: 14px; margin-top: 2px; }
 
 /* ---------- Inicio ---------- */
-#home { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; padding: calc(var(--sat) + 13dvh) 22px calc(var(--sab) + 22px); pointer-events: none; transition: opacity 0.7s ease; }
-#home.hide { opacity: 0; visibility: hidden; transition: opacity 0.6s ease, visibility 0s 0.6s; }
+#home { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; padding: calc(var(--sat) + 13dvh) 22px calc(var(--sab) + 22px); pointer-events: none; --fade: 0.9s; }
+#home.hide { visibility: hidden; transition: visibility 0s 0.6s; --fade: 0.6s; }
 #home .brand { text-align: center; }
 #title { margin: 0; font-family: var(--display); font-weight: 200; font-size: clamp(30px, 10.4vw, 60px); letter-spacing: 0.36em; margin-right: -0.36em; line-height: 1; color: #fff; text-shadow: 0 0 24px rgba(255, 220, 170, 0.35), 0 0 2px rgba(255, 255, 255, 0.6); white-space: nowrap; }
 #title span { display: inline-block; opacity: 0; filter: blur(10px); transform: translateY(6px); transition: opacity 1.1s ease, filter 1.3s ease, transform 1.3s var(--ease); }
 #title.in span { opacity: 1; filter: blur(0); transform: none; }
 .tag { margin: 18px 0 0; font-size: 12px; letter-spacing: 0.32em; margin-right: -0.32em; text-transform: uppercase; color: var(--ink-2); opacity: 0; transition: opacity 1.4s ease 0.6s; }
 #title.in + .tag { opacity: 1; }
-#home .menu { margin-top: auto; width: min(380px, 100%); display: flex; flex-direction: column; align-items: center; gap: 14px; pointer-events: auto; transition: opacity 0.9s ease, transform 0.9s var(--ease); }
-#home.intro .menu { opacity: 0; transform: translateY(14px); pointer-events: none; }
+#home .menu { margin-top: auto; width: min(380px, 100%); display: flex; flex-direction: column; align-items: center; gap: 14px; pointer-events: auto; transition: transform 0.9s var(--ease); }
+#home.intro .menu { transform: translateY(14px); pointer-events: none; }
 .home-sparks { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .home-sparks svg { width: 14px; height: 14px; color: var(--gold); }
 .modes { width: 100%; display: flex; flex-direction: column; gap: 10px; }
@@ -331,7 +331,7 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
   .grid { grid-template-columns: repeat(3, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sheet, #scrim, .toast, .combo, #title span, .tag, #home .menu { transition-duration: 0.01s !important; }
+  .sheet, #scrim, .toast, .combo, #title span, .tag, #home .menu, #home .menu *, #hud * { transition-duration: 0.01s !important; }
   #title span { filter: none !important; transform: none !important; }
   .finale.ready, .combo.step, #s-rec.on svg, .pick-pop { animation: none !important; }
 }
@@ -363,6 +363,23 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
 .ph-grip svg { width: 16px; height: 16px; }
 .ph-hz.drag .ph-grip { background: var(--gold-2); }
 @media (prefers-reduced-motion: reduce) { .ph-top, .ph-panel { transition: none; } }
+
+/* ---------- Aparecer y desaparecer el vidrio sin "saltos" ----------
+   En WebKit (Safari y la app), si un contenedor está semitransparente, el vidrio de adentro (backdrop-filter) no puede
+   difuminar lo de atrás: se ve transparente durante el fundido y el desenfoque "aparece de golpe" al terminar.
+   Por eso aquí ningún contenedor del Inicio ni del HUD baja su opacidad: cada vidrio anima su propio fondo y su
+   desenfoque desde cero, y solo su contenido (texto e íconos) usa opacidad. */
+#home .mode, #hud .glass {
+  transition: transform 0.28s var(--ease), color 0.3s var(--ease), background-color var(--fade) ease, border-color var(--fade) ease,
+    box-shadow var(--fade) ease, -webkit-backdrop-filter var(--fade) ease, backdrop-filter var(--fade) ease;
+}
+#home .mode > *, #hud .glass > *, #home .brand, #home .home-sparks, #home .home-foot, #hud .mid { transition: opacity var(--fade) ease; }
+#home.intro .mode, #home.hide .mode, #hud.off .glass, body.idle #hud .glass {
+  background-color: transparent; border-color: transparent; box-shadow: none;
+  -webkit-backdrop-filter: blur(0px) saturate(100%); backdrop-filter: blur(0px) saturate(100%);
+}
+#home.intro .mode > *, #home.hide .mode > *, #home.intro .home-sparks, #home.hide .home-sparks, #home.intro .home-foot, #home.hide .home-foot,
+#home.hide .brand, #hud.off .glass > *, body.idle #hud .glass > *, #hud.off .mid, body.idle #hud .mid { opacity: 0; }
 </style>
 </head>
 <body>
