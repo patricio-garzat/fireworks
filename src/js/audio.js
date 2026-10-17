@@ -178,34 +178,72 @@ const Sound = (() => {
     o.connect(og); og.connect(out); o.start(t); o.stop(t + 0.2);
   }
 
-  // Ascenso: un "fffh" de aire café, cálido, y según el tipo un silbido suave (ruido con filtro estrecho: aireado, no agudo)
-  function rise(dur, pan0, pan1, style) {
+  // Ascenso: cada subida es distinta. Cuatro "personalidades" que nunca se repiten dos veces seguidas, tono y curva
+  // al azar, turbulencia irregular (el volumen y el filtro los mueve un ruido café lento), el chisporroteo de la mecha
+  // al despegar, y distancia real: al subir baja el volumen, se pierden los agudos y crece la reverb.
+  // Los silbidos bajan un poquito de tono al final (Doppler). Cargado: más largo y con más cuerpo; cadena: ligero.
+  const MOODS = [
+    { src: "brown", type: "bandpass", f0: 520, k: 1.8, q: 0.6, lvl: 0.85, fuse: 0.6 }, // suave
+    { src: "pink", type: "bandpass", f0: 700, k: 1.6, q: 0.9, lvl: 0.68, fuse: 0.45 }, // aireado
+    { src: "brown", type: "lowpass", f0: 520, k: 1.9, q: 0.5, lvl: 0.65, fuse: 0.35 }, // afelpado
+    { src: "brown", type: "bandpass", f0: 560, k: 1.6, q: 0.7, lvl: 0.8, fuse: 1.5 },  // chisporroteante
+  ];
+  let lastMood = -1;
+  function rise(dur, pan0, pan1, style, o = {}) {
     if (!ok()) return null;
-    const t = now() + 0.01, end = t + dur;
-    const out = panner(pan0 * 0.8); out.connect(sfxBus);
+    const t = now() + 0.01, end = t + dur, nodes = [];
+    let mi = randi(0, MOODS.length - 1);
+    if (mi === lastMood) mi = (mi + randi(1, MOODS.length - 1)) % MOODS.length;
+    lastMood = mi;
+    const M = MOODS[mi], big = (o.power || 1) > 1.4, chain = !!o.chain;
+    const lvl = style.air * M.lvl * (big ? 1.3 : 1) * (chain ? 0.55 : 1) * rand(0.85, 1.15);
+    // salida: paneo que sigue al cohete, paso bajo que se cierra (se aleja) y reverb que crece
+    const out = panner(pan0 * 0.8);
     if (out.pan) { out.pan.setValueAtTime(clamp(pan0 * 0.8, -1, 1), t); out.pan.linearRampToValueAtTime(clamp(pan1 * 0.8, -1, 1), end); }
-    const nodes = [];
-    const n = noiseSrc(true, brown); n.start(t, rand(0, 2)); nodes.push(n);
-    // aire: sube despacio y se va abriendo un poco (sin "sss" agudo)
-    const lp = ac.createBiquadFilter(); lp.type = "bandpass"; lp.Q.value = 0.6;
-    lp.frequency.setValueAtTime(520, t); lp.frequency.linearRampToValueAtTime(1000, end);
-    const air = style.air, ga = ac.createGain();
-    ga.gain.setValueAtTime(0.0001, t); ga.gain.exponentialRampToValueAtTime(air, t + 0.22);
-    ga.gain.setValueAtTime(air, end - 0.15); ga.gain.exponentialRampToValueAtTime(0.0001, end);
-    n.connect(lp); lp.connect(ga); ga.connect(out);
-    // silbido
+    const far = ac.createBiquadFilter(); far.type = "lowpass"; far.Q.value = 0.5;
+    far.frequency.setValueAtTime(3200, t); far.frequency.exponentialRampToValueAtTime(1100, end);
+    far.connect(out); out.connect(sfxBus);
+    const wet = ac.createGain(); wet.gain.setValueAtTime(0.08, t); wet.gain.linearRampToValueAtTime(0.5, end); out.connect(wet); wet.connect(revIn);
+    // turbulencia
+    const turb = ac.createGain(); turb.gain.value = 1; turb.connect(far);
+    const tm = noiseSrc(true, brown), tg = ac.createGain();
+    tm.playbackRate.value = rand(0.04, 0.07); tg.gain.value = 0.35;
+    tm.connect(tg); tg.connect(turb.gain); tm.start(t, rand(0, 2)); nodes.push(tm);
+    // aire
+    const n = noiseSrc(true, M.src === "pink" ? pink : brown); n.start(t, rand(0, 2)); nodes.push(n);
+    const f = ac.createBiquadFilter(); f.type = M.type; f.Q.value = M.q;
+    const f0 = M.f0 * rand(0.85, 1.15) * (big ? 0.85 : 1), top = t + dur * rand(0.35, 0.6);
+    f.frequency.setValueAtTime(f0, t); f.frequency.linearRampToValueAtTime(f0 * M.k, top); f.frequency.linearRampToValueAtTime(f0 * M.k * 0.9, end);
+    const fm = ac.createGain(); fm.gain.value = f0 * 0.25; tm.connect(fm); fm.connect(f.frequency);
+    const ga = ac.createGain(), atk = chain ? 0.05 : rand(0.08, 0.16);
+    ga.gain.setValueAtTime(0.0001, t); ga.gain.exponentialRampToValueAtTime(lvl, t + atk);
+    ga.gain.setValueAtTime(lvl, t + atk + dur * 0.15);
+    ga.gain.exponentialRampToValueAtTime(lvl * 0.4, end - 0.05); ga.gain.exponentialRampToValueAtTime(0.0001, end + 0.03);
+    n.connect(f); f.connect(ga); ga.connect(turb);
+    // chisporroteo de la mecha: el crackling de siempre, más lento y oscuro; fuerte al despegar y se apaga al subir
+    if (!chain && crackles.length) {
+      const sp = ac.createBufferSource(); sp.buffer = pick(crackles); sp.playbackRate.value = rand(0.5, 0.7);
+      const sl = ac.createBiquadFilter(); sl.type = "lowpass"; sl.frequency.value = 2200;
+      const sg = ac.createGain(), fv = 0.05 * M.fuse * (big ? 1.3 : 1);
+      sg.gain.setValueAtTime(0.0001, t); sg.gain.exponentialRampToValueAtTime(fv, t + 0.02);
+      sg.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(dur * 0.6, 0.9));
+      sp.connect(sl); sl.connect(sg); sg.connect(turb); sp.start(t, rand(0, 0.3)); nodes.push(sp);
+    }
+    // silbido (según el tipo): tonal, estable, y baja un poquito de tono al final
     if (style.whistle > 0) {
       const w = noiseSrc(true, pink); w.start(t, rand(0, 2)); nodes.push(w);
       const bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 16;
-      bp.frequency.setValueAtTime(style.f0 * 0.85, t); bp.frequency.exponentialRampToValueAtTime(style.f1 * 0.85, end);
+      const w0 = style.f0 * 0.85 * rand(0.92, 1.08), w1 = style.f1 * 0.85 * rand(0.92, 1.08);
+      bp.frequency.setValueAtTime(w0, t); bp.frequency.exponentialRampToValueAtTime(w1, end - dur * 0.25);
+      bp.frequency.exponentialRampToValueAtTime(w1 * 0.93, end);
       if (style.wobble) {
         const lfo = ac.createOscillator(), lg = ac.createGain();
-        lfo.frequency.value = 7; lg.gain.value = 40; lfo.connect(lg); lg.connect(bp.frequency); lfo.start(t); lfo.stop(end + 0.05); nodes.push(lfo);
+        lfo.frequency.value = rand(6, 8); lg.gain.value = 40; lfo.connect(lg); lg.connect(bp.frequency); lfo.start(t); nodes.push(lfo);
       }
-      const wv = style.whistle * 1.1, gw = ac.createGain();
+      const wv = style.whistle * 1.1 * (chain ? 0.6 : 1), gw = ac.createGain();
       gw.gain.setValueAtTime(0.0001, t); gw.gain.exponentialRampToValueAtTime(wv, t + 0.35);
       gw.gain.setValueAtTime(wv, end - 0.15); gw.gain.exponentialRampToValueAtTime(0.0001, end + 0.02);
-      w.connect(bp); bp.connect(gw); gw.connect(out);
+      w.connect(bp); bp.connect(gw); gw.connect(far);
     }
     nodes.forEach((x) => x.stop(end + 0.1));
     return { stop() { try { nodes.forEach((x) => x.stop()); } catch (e) {} } };

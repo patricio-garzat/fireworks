@@ -36,7 +36,7 @@ const Game = (() => {
     const T = TYPES[type];
     const r = {
       x0, y0: ly, tx, ty, x: x0, y: ly, t: 0, dur, type, power, opts, acc: 0, smoke: 0, seed: rand(100),
-      pal: opts.pal || palette(), whistle: Sound.rise(dur, panOf(x0), panOf(tx), T.rise),
+      pal: opts.pal || palette(), whistle: Sound.rise(dur, panOf(x0), panOf(tx), T.rise, { power, chain: !!opts.chain }),
     };
     rockets.push(r);
     // Ignición: un destello pequeño abajo
@@ -194,7 +194,7 @@ const Game = (() => {
     // 2. Abanicos de cinco
     for (let v = 0; v < 5; v++) for (let j = 0; j < 5; j++) L(5.4 + v * 0.95 + j * 0.07, 0.14 + 0.18 * j, 0.3 + 0.07 * Math.abs(j - 2), v % 2 ? "willow" : "double", 0.66);
     // 3. Crescendo: todas las formas y colores
-    for (let k = 0; k < 26; k++) L(10.3 + k * 0.21, rand(0.12, 0.88), rand(0.16, 0.46), pick(["crackle", "comet", "spiral", "classic", "ring"]), rand(0.7, 1.1));
+    for (let k = 0; k < 26; k++) L(10.3 + k * 0.21, rand(0.12, 0.88), rand(0.16, 0.46), pick(["crackle", "comet", "spiral", "classic", "ring", "palm", "strobe", "crossette", "saturn"]), rand(0.7, 1.1));
     L(13.2, 0.5, 0.3, "heart", 1.3);
     // 4. Muro: ráfaga rápida de explosiones pequeñas
     for (let k = 0; k < 30; k++) L(16 + k * 0.1, 0.1 + 0.8 * ((k * 0.381) % 1), rand(0.2, 0.44), pick(["classic", "crackle", "ring"]), 0.55);

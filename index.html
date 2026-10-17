@@ -986,34 +986,72 @@ const Sound = (() => {
     o.connect(og); og.connect(out); o.start(t); o.stop(t + 0.2);
   }
 
-  // Ascenso: un "fffh" de aire café, cálido, y según el tipo un silbido suave (ruido con filtro estrecho: aireado, no agudo)
-  function rise(dur, pan0, pan1, style) {
+  // Ascenso: cada subida es distinta. Cuatro "personalidades" que nunca se repiten dos veces seguidas, tono y curva
+  // al azar, turbulencia irregular (el volumen y el filtro los mueve un ruido café lento), el chisporroteo de la mecha
+  // al despegar, y distancia real: al subir baja el volumen, se pierden los agudos y crece la reverb.
+  // Los silbidos bajan un poquito de tono al final (Doppler). Cargado: más largo y con más cuerpo; cadena: ligero.
+  const MOODS = [
+    { src: "brown", type: "bandpass", f0: 520, k: 1.8, q: 0.6, lvl: 0.85, fuse: 0.6 }, // suave
+    { src: "pink", type: "bandpass", f0: 700, k: 1.6, q: 0.9, lvl: 0.68, fuse: 0.45 }, // aireado
+    { src: "brown", type: "lowpass", f0: 520, k: 1.9, q: 0.5, lvl: 0.65, fuse: 0.35 }, // afelpado
+    { src: "brown", type: "bandpass", f0: 560, k: 1.6, q: 0.7, lvl: 0.8, fuse: 1.5 },  // chisporroteante
+  ];
+  let lastMood = -1;
+  function rise(dur, pan0, pan1, style, o = {}) {
     if (!ok()) return null;
-    const t = now() + 0.01, end = t + dur;
-    const out = panner(pan0 * 0.8); out.connect(sfxBus);
+    const t = now() + 0.01, end = t + dur, nodes = [];
+    let mi = randi(0, MOODS.length - 1);
+    if (mi === lastMood) mi = (mi + randi(1, MOODS.length - 1)) % MOODS.length;
+    lastMood = mi;
+    const M = MOODS[mi], big = (o.power || 1) > 1.4, chain = !!o.chain;
+    const lvl = style.air * M.lvl * (big ? 1.3 : 1) * (chain ? 0.55 : 1) * rand(0.85, 1.15);
+    // salida: paneo que sigue al cohete, paso bajo que se cierra (se aleja) y reverb que crece
+    const out = panner(pan0 * 0.8);
     if (out.pan) { out.pan.setValueAtTime(clamp(pan0 * 0.8, -1, 1), t); out.pan.linearRampToValueAtTime(clamp(pan1 * 0.8, -1, 1), end); }
-    const nodes = [];
-    const n = noiseSrc(true, brown); n.start(t, rand(0, 2)); nodes.push(n);
-    // aire: sube despacio y se va abriendo un poco (sin "sss" agudo)
-    const lp = ac.createBiquadFilter(); lp.type = "bandpass"; lp.Q.value = 0.6;
-    lp.frequency.setValueAtTime(520, t); lp.frequency.linearRampToValueAtTime(1000, end);
-    const air = style.air, ga = ac.createGain();
-    ga.gain.setValueAtTime(0.0001, t); ga.gain.exponentialRampToValueAtTime(air, t + 0.22);
-    ga.gain.setValueAtTime(air, end - 0.15); ga.gain.exponentialRampToValueAtTime(0.0001, end);
-    n.connect(lp); lp.connect(ga); ga.connect(out);
-    // silbido
+    const far = ac.createBiquadFilter(); far.type = "lowpass"; far.Q.value = 0.5;
+    far.frequency.setValueAtTime(3200, t); far.frequency.exponentialRampToValueAtTime(1100, end);
+    far.connect(out); out.connect(sfxBus);
+    const wet = ac.createGain(); wet.gain.setValueAtTime(0.08, t); wet.gain.linearRampToValueAtTime(0.5, end); out.connect(wet); wet.connect(revIn);
+    // turbulencia
+    const turb = ac.createGain(); turb.gain.value = 1; turb.connect(far);
+    const tm = noiseSrc(true, brown), tg = ac.createGain();
+    tm.playbackRate.value = rand(0.04, 0.07); tg.gain.value = 0.35;
+    tm.connect(tg); tg.connect(turb.gain); tm.start(t, rand(0, 2)); nodes.push(tm);
+    // aire
+    const n = noiseSrc(true, M.src === "pink" ? pink : brown); n.start(t, rand(0, 2)); nodes.push(n);
+    const f = ac.createBiquadFilter(); f.type = M.type; f.Q.value = M.q;
+    const f0 = M.f0 * rand(0.85, 1.15) * (big ? 0.85 : 1), top = t + dur * rand(0.35, 0.6);
+    f.frequency.setValueAtTime(f0, t); f.frequency.linearRampToValueAtTime(f0 * M.k, top); f.frequency.linearRampToValueAtTime(f0 * M.k * 0.9, end);
+    const fm = ac.createGain(); fm.gain.value = f0 * 0.25; tm.connect(fm); fm.connect(f.frequency);
+    const ga = ac.createGain(), atk = chain ? 0.05 : rand(0.08, 0.16);
+    ga.gain.setValueAtTime(0.0001, t); ga.gain.exponentialRampToValueAtTime(lvl, t + atk);
+    ga.gain.setValueAtTime(lvl, t + atk + dur * 0.15);
+    ga.gain.exponentialRampToValueAtTime(lvl * 0.4, end - 0.05); ga.gain.exponentialRampToValueAtTime(0.0001, end + 0.03);
+    n.connect(f); f.connect(ga); ga.connect(turb);
+    // chisporroteo de la mecha: el crackling de siempre, más lento y oscuro; fuerte al despegar y se apaga al subir
+    if (!chain && crackles.length) {
+      const sp = ac.createBufferSource(); sp.buffer = pick(crackles); sp.playbackRate.value = rand(0.5, 0.7);
+      const sl = ac.createBiquadFilter(); sl.type = "lowpass"; sl.frequency.value = 2200;
+      const sg = ac.createGain(), fv = 0.05 * M.fuse * (big ? 1.3 : 1);
+      sg.gain.setValueAtTime(0.0001, t); sg.gain.exponentialRampToValueAtTime(fv, t + 0.02);
+      sg.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(dur * 0.6, 0.9));
+      sp.connect(sl); sl.connect(sg); sg.connect(turb); sp.start(t, rand(0, 0.3)); nodes.push(sp);
+    }
+    // silbido (según el tipo): tonal, estable, y baja un poquito de tono al final
     if (style.whistle > 0) {
       const w = noiseSrc(true, pink); w.start(t, rand(0, 2)); nodes.push(w);
       const bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 16;
-      bp.frequency.setValueAtTime(style.f0 * 0.85, t); bp.frequency.exponentialRampToValueAtTime(style.f1 * 0.85, end);
+      const w0 = style.f0 * 0.85 * rand(0.92, 1.08), w1 = style.f1 * 0.85 * rand(0.92, 1.08);
+      bp.frequency.setValueAtTime(w0, t); bp.frequency.exponentialRampToValueAtTime(w1, end - dur * 0.25);
+      bp.frequency.exponentialRampToValueAtTime(w1 * 0.93, end);
       if (style.wobble) {
         const lfo = ac.createOscillator(), lg = ac.createGain();
-        lfo.frequency.value = 7; lg.gain.value = 40; lfo.connect(lg); lg.connect(bp.frequency); lfo.start(t); lfo.stop(end + 0.05); nodes.push(lfo);
+        lfo.frequency.value = rand(6, 8); lg.gain.value = 40; lfo.connect(lg); lg.connect(bp.frequency); lfo.start(t); nodes.push(lfo);
       }
-      const wv = style.whistle * 1.1, gw = ac.createGain();
+      const wv = style.whistle * 1.1 * (chain ? 0.6 : 1), gw = ac.createGain();
       gw.gain.setValueAtTime(0.0001, t); gw.gain.exponentialRampToValueAtTime(wv, t + 0.35);
       gw.gain.setValueAtTime(wv, end - 0.15); gw.gain.exponentialRampToValueAtTime(0.0001, end + 0.02);
-      w.connect(bp); bp.connect(gw); gw.connect(out);
+      w.connect(bp); bp.connect(gw); gw.connect(far);
     }
     nodes.forEach((x) => x.stop(end + 0.1));
     return { stop() { try { nodes.forEach((x) => x.stop()); } catch (e) {} } };
@@ -1963,8 +2001,20 @@ const SCENES = {
     cost: 2000, name: ["City Lights", "Luces de la ciudad"],
     sky: ["#04050f", "#0b0e26", "#1a1838", "#3a2a40"], launch: 1.02, water: 0,
   },
+  desert: {
+    cost: 1500, name: ["Desert Dunes", "Dunas del desierto"],
+    sky: ["#05040e", "#100c27", "#25193b", "#4a2d46"], launch: 1.02, water: 0,
+  },
+  bay: {
+    cost: 2600, name: ["Moonlit Bay", "Bahía de luna"],
+    sky: ["#02040c", "#07112a", "#11244b", "#2b4068"], launch: 0.74, water: 0.74,
+  },
+  snow: {
+    cost: 3200, name: ["Snowy Village", "Pueblo nevado"],
+    sky: ["#03050d", "#0a1428", "#16264a", "#2c3f62"], launch: 1.02, water: 0,
+  },
 };
-const SCENE_ORDER = ["alpine", "lake", "city"];
+const SCENE_ORDER = ["alpine", "lake", "desert", "city", "bay", "snow"];
 
 const Scene = (() => {
   let id = "alpine";
@@ -2155,13 +2205,193 @@ const Scene = (() => {
     }
   }
 
-  const PAINT = { alpine: paintAlpine, lake: paintLake, city: paintCity };
+  // Dunas: suma de ondas suaves (curvas largas, nada de picos)
+  function dunes(rng, w, n, base, amp) {
+    const p1 = rng() * TAU, p2 = rng() * TAU, p3 = rng() * TAU;
+    const f1 = ((1.1 + rng()) * TAU) / w, f2 = ((2.6 + rng() * 1.5) * TAU) / w, f3 = ((6 + rng() * 3) * TAU) / w;
+    return Array.from({ length: n + 1 }, (_, i) => {
+      const x = (i / n) * w;
+      return [x, base - amp * (0.6 * Math.sin(x * f1 + p1) + 0.3 * Math.sin(x * f2 + p2) + 0.1 * Math.sin(x * f3 + p3))];
+    });
+  }
+  // Una línea de luz muy tenue sobre una cresta (la luna rozando la arena o la nieve)
+  function crest(g, pts, s, col) {
+    g.strokeStyle = col; g.lineWidth = 1.2 * s; g.beginPath();
+    pts.forEach(([x, y], i) => (i ? g.lineTo(x, y + 0.6 * s) : g.moveTo(x, y + 0.6 * s)));
+    g.stroke();
+  }
+  // Nieve en las cumbres: un degradado claro recortado a la forma de la montaña
+  function snowcap(g, pts, base, depth, alpha) {
+    const top = Math.min(...pts.map((p) => p[1]));
+    g.save();
+    g.beginPath(); g.moveTo(0, base + 2); pts.forEach(([x, y]) => g.lineTo(x, y)); g.lineTo(pts[pts.length - 1][0], base + 2); g.closePath(); g.clip();
+    const gr = g.createLinearGradient(0, top, 0, top + depth);
+    gr.addColorStop(0, `rgba(200,215,240,${alpha})`); gr.addColorStop(1, "rgba(200,215,240,0)");
+    g.fillStyle = gr; g.fillRect(0, top, g.canvas.width, depth);
+    g.restore();
+  }
+  function cacti(g, m, rng, pts, s, color, count) {
+    for (let k = 0; k < count; k++) {
+      const [x, y] = pts[Math.floor((0.08 + 0.84 * rng()) * (pts.length - 1))];
+      const hgt = (16 + rng() * 14) * s, side = rng() < 0.5 ? -1 : 1;
+      for (const ctx of [g, m]) {
+        ctx.strokeStyle = ctx === g ? color : "rgb(255,0,0)"; ctx.lineWidth = 3.4 * s; ctx.lineCap = "round"; ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(x, y + 3 * s); ctx.lineTo(x, y - hgt);
+        ctx.moveTo(x, y - hgt * 0.42); ctx.lineTo(x + side * 6 * s, y - hgt * 0.42); ctx.lineTo(x + side * 6 * s, y - hgt * 0.72);
+        if (rng() < 0.7) { ctx.moveTo(x, y - hgt * 0.6); ctx.lineTo(x - side * 5 * s, y - hgt * 0.6); ctx.lineTo(x - side * 5 * s, y - hgt * 0.84); }
+        ctx.stroke();
+      }
+    }
+  }
+
+  function paintDesert(g, m, w, h, s, rng) {
+    const S = SCENES.desert;
+    sky(g, w, h, S.sky);
+    milkyWay(g, w, h, rng, s);
+    // mesetas lejanas: crestas con la cima aplanada
+    const mesa = ridge(rng, w, 64, h * 0.775, h * 0.11, 0.42).map(([x, y]) => [x, Math.max(y, h * 0.715)]);
+    haze(g, h * 0.76, h * 0.1, w, "130,80,120", 0.12);
+    fillRidge(g, m, mesa, h, "#1b1530", 0.3);
+    haze(g, h * 0.8, h * 0.07, w, "100,60,100", 0.12);
+    const d1 = dunes(rng, w, 120, h * 0.81, h * 0.03);
+    fillRidge(g, m, d1, h, "#141024", 0.55); crest(g, d1, s, "rgba(210,175,210,0.10)");
+    const d2 = dunes(rng, w, 120, h * 0.885, h * 0.035);
+    fillRidge(g, m, d2, h, "#0b0816", 0.8); crest(g, d2, s, "rgba(220,180,200,0.08)");
+    const d3 = dunes(rng, w, 120, h * 0.955, h * 0.028);
+    fillRidge(g, m, d3, h, "#05040b", 1);
+    cacti(g, m, rng, d3, s, "#05040b", 3);
+  }
+
+  function paintBay(g, m, w, h, s, rng) {
+    const S = SCENES.bay, wy = h * S.water;
+    sky(g, w, wy + 2, S.sky);
+    milkyWay(g, w, wy, rng, s);
+    // luna llena baja, con su halo
+    const mx = w * 0.78, my = h * 0.2, mr = 11 * s;
+    const halo = g.createRadialGradient(mx, my, 0, mx, my, mr * 9);
+    halo.addColorStop(0, "rgba(215,228,255,0.16)"); halo.addColorStop(1, "rgba(215,228,255,0)");
+    g.fillStyle = halo; g.fillRect(mx - mr * 9, my - mr * 9, mr * 18, mr * 18);
+    g.fillStyle = "rgba(236,240,252,0.92)"; g.beginPath(); g.arc(mx, my, mr, 0, TAU); g.fill();
+    g.fillStyle = "rgba(170,180,205,0.25)";
+    for (const [ox, oy, rr] of [[-0.3, -0.2, 0.32], [0.25, 0.1, 0.25], [-0.05, 0.35, 0.18]]) { g.beginPath(); g.arc(mx + ox * mr, my + oy * mr, rr * mr, 0, TAU); g.fill(); }
+    // colinas al otro lado de la bahía
+    const far = ridge(rng, w, 64, wy - h * 0.022, h * 0.018, 0.5);
+    haze(g, wy - h * 0.01, h * 0.06, w, "80,110,160", 0.12);
+    fillRidge(g, m, far, wy, "#0c1630", 0.35);
+    // acantilado a la izquierda
+    const cw = w * 0.42, cliff = [];
+    for (let i = 0; i <= 48; i++) {
+      const t = i / 48;
+      cliff.push([t * cw, wy - h * (0.15 * (1 - smooth(0.5, 1, t)) + 0.012) + (rng() - 0.5) * h * 0.006 * (1 - t)]);
+    }
+    cliff.push([cw + 6 * s, wy + 1]);
+    fillRidge(g, m, cliff, wy, "#060b18", 1);
+    // faro en la orilla del acantilado, con su luz cálida y un haz muy suave
+    const [lx, ly0] = cliff[14], ly = ly0 + 1 * s, th = 26 * s;
+    for (const ctx of [g, m]) {
+      ctx.fillStyle = ctx === g ? "#1c2438" : "rgb(255,0,0)";
+      ctx.beginPath(); ctx.moveTo(lx - 3.4 * s, ly); ctx.lineTo(lx - 2.2 * s, ly - th); ctx.lineTo(lx + 2.2 * s, ly - th); ctx.lineTo(lx + 3.4 * s, ly); ctx.closePath(); ctx.fill();
+      ctx.fillRect(lx - 3 * s, ly - th - 4.5 * s, 6 * s, 1.4 * s);
+    }
+    g.fillStyle = "rgba(44,54,78,0.9)"; g.fillRect(lx - 2.6 * s, ly - th * 0.55, 5.2 * s, 2.4 * s);
+    const ly2 = ly - th - 2.4 * s;
+    const beam = g.createLinearGradient(lx, 0, lx + w * 0.5, 0);
+    beam.addColorStop(0, "rgba(255,225,160,0.10)"); beam.addColorStop(1, "rgba(255,225,160,0)");
+    g.fillStyle = beam; g.beginPath(); g.moveTo(lx, ly2); g.lineTo(lx + w * 0.5, ly2 - h * 0.05); g.lineTo(lx + w * 0.5, ly2 + h * 0.03); g.closePath(); g.fill();
+    const lamp = g.createRadialGradient(lx, ly2, 0, lx, ly2, 26 * s);
+    lamp.addColorStop(0, "rgba(255,226,165,0.55)"); lamp.addColorStop(1, "rgba(255,226,165,0)");
+    g.fillStyle = lamp; g.fillRect(lx - 26 * s, ly2 - 26 * s, 52 * s, 52 * s);
+    g.fillStyle = "rgba(255,236,190,0.95)"; g.fillRect(lx - 1.6 * s, ly2 - 1.2 * s, 3.2 * s, 2.4 * s);
+    // el mar
+    const wg = g.createLinearGradient(0, wy, 0, h);
+    wg.addColorStop(0, "#0b1a34"); wg.addColorStop(0.3, "#061024"); wg.addColorStop(1, "#02050c");
+    g.fillStyle = wg; g.fillRect(0, wy, w, h - wy);
+    m.fillStyle = "rgb(0,255,0)"; m.fillRect(0, wy, w, h - wy);
+    g.save();
+    g.beginPath(); g.rect(0, wy, w, h - wy); g.clip();
+    g.globalAlpha = 0.6;
+    for (const [pts, col] of [[far, "#0a1429"], [cliff, "#03070f"]]) {
+      g.beginPath(); g.moveTo(0, wy);
+      pts.forEach(([x, y]) => g.lineTo(x, wy + (wy - y) * 0.9));
+      g.lineTo(pts[pts.length - 1][0], wy); g.closePath(); g.fillStyle = col; g.fill();
+    }
+    g.globalAlpha = 1;
+    // el camino de la luna sobre el agua: rayitas que se abren hacia abajo
+    for (let i = 0; i < 160; i++) {
+      const f = Math.pow(rng(), 0.8), y = wy + 2 * s + f * (h - wy) * 0.9, spread = (6 + f * 60) * s;
+      const x = mx + gauss() * spread, l = (4 + rng() * 18) * s * (0.5 + f);
+      g.fillStyle = `rgba(220,230,255,${(0.05 + rng() * 0.14 * (1 - f * 0.6)).toFixed(3)})`;
+      g.fillRect(x - l / 2, y, l, Math.max(1, 0.7 * s));
+    }
+    // y el del faro, cálido y corto
+    for (let i = 0; i < 26; i++) {
+      const f = rng(), y = wy + 2 * s + f * h * 0.08, l = (3 + rng() * 9) * s;
+      g.fillStyle = `rgba(255,215,150,${(0.05 + rng() * 0.12 * (1 - f)).toFixed(3)})`;
+      g.fillRect(lx + gauss() * 4 * s - l / 2, y, l, Math.max(1, 0.6 * s));
+    }
+    for (let i = 0; i < 200; i++) {
+      const y = wy + Math.pow(rng(), 1.6) * (h - wy), x = rng() * w, l = (8 + rng() * 40) * s * (0.4 + (y - wy) / (h - wy));
+      g.fillStyle = `rgba(140,170,220,${(0.02 + rng() * 0.035).toFixed(3)})`;
+      g.fillRect(x, y, l, Math.max(1, 0.6 * s));
+    }
+    g.restore();
+    g.fillStyle = "rgba(120,150,200,0.12)"; g.fillRect(cw, wy - 0.5 * s, w - cw, 1 * s);
+  }
+
+  function houses(g, m, rng, pts, s, count) {
+    const used = [];
+    for (let k = 0; k < count; k++) {
+      let i = 0, tries = 0;
+      do { i = Math.floor((0.06 + 0.88 * rng()) * (pts.length - 1)); } while (used.some((u) => Math.abs(u - i) < 4) && ++tries < 12);
+      used.push(i);
+      const [x, y] = pts[i], bw = (13 + rng() * 9) * s, bh = (8 + rng() * 5) * s, rh = bw * 0.42, top = y - bh + 2 * s;
+      for (const ctx of [g, m]) {
+        ctx.fillStyle = ctx === g ? "#0a1020" : "rgb(255,0,0)";
+        ctx.fillRect(x - bw / 2, top, bw, bh + 4 * s);
+        ctx.beginPath(); ctx.moveTo(x - bw / 2 - 2 * s, top + 0.5 * s); ctx.lineTo(x, top - rh); ctx.lineTo(x + bw / 2 + 2 * s, top + 0.5 * s); ctx.closePath(); ctx.fill();
+        ctx.fillRect(x + bw * 0.18, top - rh * 0.95, 2.4 * s, rh * 0.6);
+      }
+      // nieve en el techo
+      g.strokeStyle = "rgba(205,220,245,0.55)"; g.lineWidth = 1.6 * s; g.lineCap = "round";
+      g.beginPath(); g.moveTo(x - bw / 2 - 2 * s, top); g.lineTo(x, top - rh - 0.6 * s); g.lineTo(x + bw / 2 + 2 * s, top); g.stroke();
+      // ventanas cálidas con un poquito de resplandor
+      const nw = rng() < 0.5 ? 1 : 2;
+      for (let j = 0; j < nw; j++) {
+        const wx = x - bw / 2 + bw * (nw === 1 ? 0.5 : 0.3 + 0.4 * j) - 1.6 * s, wy = top + bh * 0.3;
+        const gl = g.createRadialGradient(wx + 1.6 * s, wy + 1.6 * s, 0, wx + 1.6 * s, wy + 1.6 * s, 9 * s);
+        gl.addColorStop(0, "rgba(255,190,110,0.22)"); gl.addColorStop(1, "rgba(255,190,110,0)");
+        g.fillStyle = gl; g.fillRect(wx - 8 * s, wy - 8 * s, 19 * s, 19 * s);
+        g.fillStyle = "rgba(255,200,125,0.85)"; g.fillRect(wx, wy, 3.2 * s, 3.2 * s);
+      }
+    }
+  }
+
+  function paintSnow(g, m, w, h, s, rng) {
+    const S = SCENES.snow;
+    sky(g, w, h, S.sky);
+    milkyWay(g, w, h, rng, s);
+    const far = ridge(rng, w, 128, h * 0.69, h * 0.1, 0.55);
+    haze(g, h * 0.7, h * 0.12, w, "90,120,170", 0.14);
+    fillRidge(g, m, far, h, "#26365a", 0.3); snowcap(g, far, h, h * 0.06, 0.28);
+    haze(g, h * 0.78, h * 0.08, w, "70,100,150", 0.16);
+    const mid = ridge(rng, w, 96, h * 0.8, h * 0.04, 0.5);
+    fillRidge(g, m, mid, h, "#1a2742", 0.6); snowcap(g, mid, h, h * 0.035, 0.2);
+    pines(g, m, rng, mid, s * 0.7, "#0d1528", Math.round(w / s / 8));
+    haze(g, h * 0.88, h * 0.05, w, "60,85,130", 0.14);
+    const near = ridge(rng, w, 64, h * 0.905, h * 0.018, 0.45);
+    fillRidge(g, m, near, h, "#16223a", 1); snowcap(g, near, h, h * 0.04, 0.22); crest(g, near, s, "rgba(210,225,250,0.16)");
+    houses(g, m, rng, near, s, Math.max(4, Math.round(w / s / 70)));
+    pines(g, m, rng, near, s * 0.9, "#070c18", Math.round(w / s / 30));
+  }
+
+  const PAINT = { alpine: paintAlpine, lake: paintLake, city: paintCity, desert: paintDesert, bay: paintBay, snow: paintSnow };
 
   function paint(sceneId, w, h, s, cColor, cMask) {
     cColor.width = cMask.width = w; cColor.height = cMask.height = h;
     const g = cColor.getContext("2d"), m = cMask.getContext("2d");
     m.fillStyle = "#000"; m.fillRect(0, 0, w, h);
-    const seed = { alpine: 7, lake: 21, city: 33 }[sceneId] || 7;
+    const seed = { alpine: 7, lake: 21, city: 33, desert: 45, bay: 58, snow: 64 }[sceneId] || 7;
     PAINT[sceneId](g, m, w, h, s, mulberry(seed * 977 + 13));
   }
 
@@ -2201,6 +2431,7 @@ const C = {
   purple: [0.7, 0.36, 1.0], orange: [1.0, 0.46, 0.12], cyan: [0.28, 0.9, 1.0], pink: [1.0, 0.4, 0.66], amber: [1.0, 0.56, 0.16],
   warm: [1.0, 0.86, 0.66], copper: [0.95, 0.42, 0.22], teal: [0.18, 0.95, 0.72], violet: [0.6, 0.4, 1.0], ice: [0.58, 0.8, 1.0],
   white: [1, 1, 1], coral: [1.0, 0.48, 0.38], lilac: [0.84, 0.58, 1.0], rosegold: [1.0, 0.66, 0.52], magenta: [0.95, 0.28, 0.82],
+  mint: [0.45, 1.0, 0.68], lime: [0.72, 1.0, 0.32], yellow: [1.0, 0.86, 0.3], pearl: [1.0, 0.95, 0.88],
 };
 
 const PALETTES = {
@@ -2210,8 +2441,12 @@ const PALETTES = {
   glacier: { cost: 900, name: ["Glacier", "Glaciar"], colors: [C.ice, C.white, C.silver, C.cyan, C.blue], metal: C.silver, heart: C.ice },
   rose: { cost: 1100, name: ["Rose", "Rosa"], colors: [C.pink, C.coral, C.lilac, C.white, C.rosegold], metal: C.gold, heart: C.pink },
   royal: { cost: 1500, name: ["Royal", "Real"], colors: [C.purple, C.gold, C.blue, C.magenta], metal: C.gold, heart: C.magenta },
+  sunset: { cost: 350, name: ["Sunset", "Atardecer"], colors: [C.orange, C.coral, C.pink, C.magenta, C.amber], metal: C.gold, heart: C.coral },
+  jade: { cost: 750, name: ["Jade", "Jade"], colors: [C.teal, C.mint, C.green, C.gold, C.cyan], metal: C.gold, heart: C.mint },
+  citrus: { cost: 1300, name: ["Citrus", "Cítricos"], colors: [C.lime, C.yellow, C.orange, C.gold, C.mint], metal: C.gold, heart: C.yellow },
+  moonlight: { cost: 1800, name: ["Moonlight", "Luz de luna"], colors: [C.white, C.silver, C.ice, C.pearl, C.lilac], metal: C.silver, heart: C.pearl },
 };
-const PALETTE_ORDER = ["classic", "ember", "aurora", "glacier", "rose", "royal"];
+const PALETTE_ORDER = ["classic", "ember", "sunset", "aurora", "jade", "glacier", "rose", "citrus", "royal", "moonlight"];
 
 /* ---------- Ayudantes de receta ---------- */
 // Una estrella: la unidad básica de una explosión
@@ -2373,6 +2608,49 @@ const TYPES = {
     sound(p, pan) { Sound.boom(p, pan, { crack: 0.8 }); Sound.crackle(1.2 + p * 0.4, pan, 0.78); },
   },
 
+  // Palmera: pocas hojas gruesas y doradas que salen en abanico hacia arriba y se curvan al caer
+  palm: {
+    cost: 400, name: ["Palm", "Palmera"], desc: ["Thick golden fronds that arc and fall.", "Hojas doradas que se arquean y caen."],
+    rise: { air: 0.07, whistle: 0 },
+    burst(x, y, o) {
+      const c = chance(0.6) ? o.pal.metal : pick(o.pal.colors), R = radius(o) * 1.05, m = Math.round(7 + 2 * o.power), drag = 1.5;
+      const rot = rand(-0.2, 0.2);
+      for (let k = 0; k < m; k++) {
+        const th = -Math.PI / 2 + rot + ((k + 0.5) / m - 0.5) * 4.6 + rand(-0.08, 0.08), s = R * drag * rand(0.85, 1.05);
+        star(x, y, Math.cos(th) * s, Math.sin(th) * s - 25 * U, rand(1.6, 2.1), 4.2 * U, [c[0] * 1.1, c[1] * 1.05, c[2]],
+          { drag, grav: 110, heat: 1, trail: 70 * (Q.level === 0 ? 0.6 : 1), trailC: c, trailLife: 1.3, trailGrav: 18 });
+      }
+      glitterCrown(x, y, R * 0.3, Math.round(24 * P.room()), C.warm);
+      flair(x, y, R, o, c);
+      return { light: c, R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { low: 82, body: 1250, crack: 0.9 }); Sound.sizzle(2.4, pan, 0.6, 0.25); },
+  },
+
+  // Estrobo: un estallido corto de color y una nube de destellos que parpadean mientras caen despacio
+  strobe: {
+    cost: 650, name: ["Strobe", "Estrobo"], desc: ["A cloud of blinking flashes.", "Una nube de destellos que parpadean."],
+    rise: { air: 0.05, whistle: 0 },
+    burst(x, y, o) {
+      const [a] = o.colors || two(o.pal), R = radius(o) * 0.9, n = count(60, o), drag = 2.2;
+      for (let k = 0; k < n; k++) {
+        const d = sphereDir(), s = R * drag * rand(0.9, 1.04);
+        star(x, y, d.x * s, d.y * s, rand(0.6, 0.85), 2.6 * U, a, { drag, trail: 4, trailLife: 0.35 });
+      }
+      const g = o.pal.metal === C.silver || chance(0.5) ? C.silver : C.warm;
+      const m = Math.round(150 * P.room() * (Q.level === 0 ? 0.6 : 1));
+      for (let k = 0; k < m; k++) {
+        const d = sphereDir(), s = R * drag * rand(0.55, 1.0);
+        const i = P.add(x, y, d.x * s, d.y * s, rand(2.4, 3.4), rand(1.6, 2.2) * U, g[0], g[1], g[2]);
+        if (i < 0) break;
+        P.kind[i] = K_GLITTER; P.drag[i] = drag * 1.05; P.grav[i] = 22 * U;
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, g), R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { crack: 0.7 }); Sound.sizzle(2.8, pan, 0.55, 0.4); },
+  },
+
   // Espiral: brazos que giran mientras se abren
   spiral: {
     cost: 500, name: ["Spiral", "Espiral"], desc: ["Stars that swirl as they open.", "Estrellas que giran al abrirse."],
@@ -2412,6 +2690,37 @@ const TYPES = {
     sound(p, pan) { Sound.boom(p, pan, { low: 84, body: 1200 }); Sound.crackle(0.5, pan, 0.5); Sound.sizzle(2.3, pan, 0.6, 0.15); },
   },
 
+  // Cruceta: estrellas que viajan y de pronto se parten en cruz, con un "crack" cada una
+  crossette: {
+    cost: 950, name: ["Crossette", "Cruceta"], desc: ["Stars that split into crosses.", "Estrellas que se parten en cruz."],
+    rise: { air: 0.06, whistle: 0 },
+    burst(x, y, o, pan) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 0.8, m = Math.round(10 + 3 * o.power), drag = 1.8, g = 50 * U;
+      const T0 = rand(0.5, 0.62), rot = rand(TAU), pts = [];
+      for (let k = 0; k < m; k++) {
+        const th = rot + (k / m) * TAU + rand(-0.15, 0.15), s = R * drag * rand(0.9, 1.05), vx = Math.cos(th) * s, vy = Math.sin(th) * s;
+        star(x, y, vx, vy, T0, 3.4 * U, a, { drag, grav: 50, trail: 14, trailC: avg(a, C.gold), trailLife: 0.45 });
+        // dónde estará al partirse (la misma física: frenado + gravedad)
+        const e = Math.exp(-drag * T0);
+        pts.push([x + (vx / drag) * (1 - e), y + ((vy - g / drag) / drag) * (1 - e) + (g * T0) / drag, Math.atan2(vy, vx)]);
+      }
+      Timers.after(T0, () => {
+        const s2 = 95 * U * Math.pow(o.power, 0.4);
+        for (const [px, py, ang] of pts) {
+          for (let q = 0; q < 4; q++) {
+            const th = ang + Math.PI / 4 + (q * Math.PI) / 2;
+            star(px, py, Math.cos(th) * s2, Math.sin(th) * s2, rand(0.7, 0.95), 2.4 * U, b,
+              { drag: 2.2, grav: 45, trail: 6, trailC: avg(b, C.gold), trailLife: 0.35, flags: F_FLICKER });
+          }
+        }
+        Sound.crackle(0.6, pan, 0);
+      });
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { body: 1400, crack: 1 }); },
+  },
+
   // Corazón: las estrellas salen con la forma, y como todas frenan igual, la forma se conserva
   heart: {
     cost: 1200, name: ["Heart", "Corazón"], desc: ["A burst shaped like a heart.", "Una explosión con forma de corazón."],
@@ -2436,6 +2745,58 @@ const TYPES = {
       return { light: c, R: R * 16 };
     },
     sound(p, pan) { Sound.boom(p, pan, { low: 86, body: 1200, crack: 0.5 }); Sound.sizzle(1.8, pan, 0.4, 0.7); },
+  },
+
+  // Saturno: un planeta compacto con su anillo ancho e inclinado, de otro color
+  saturn: {
+    cost: 1400, name: ["Saturn", "Saturno"], desc: ["A planet with its ring.", "Un planeta con su anillo."],
+    rise: { air: 0.05, whistle: 0.04, f0: 740, f1: 1180 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o), drag = 2.1;
+      const n = count(90, o);
+      for (let k = 0; k < n; k++) {
+        const d = sphereDir(), s = R * drag * 0.5 * rand(0.95, 1.03);
+        star(x, y, d.x * s, d.y * s, rand(1.5, 1.9), 2.6 * U, a, { drag, grav: 35, trail: 3, trailLife: 0.4, flags: F_FLICKER });
+      }
+      const tilt = rand(1.0, 1.25), roll = rand(-0.45, 0.45), cr = Math.cos(roll), sr = Math.sin(roll), ct = Math.cos(tilt);
+      const m = count(90, o);
+      for (let k = 0; k < m; k++) {
+        const th = (k / m) * TAU, lx = Math.cos(th), ly = Math.sin(th) * ct;
+        const dx = lx * cr - ly * sr, dy = lx * sr + ly * cr, s = R * drag * 1.1 * rand(0.985, 1.015);
+        star(x, y, dx * s, dy * s, rand(1.7, 2.0), 2.4 * U, b, { drag, grav: 35, trail: 4, trailC: avg(b, C.gold), trailLife: 0.45, to: o.flair >= 2 ? C.white : null, at: 0.7 });
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R: R * 1.1 };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { body: 1450, crack: 1 }); Sound.sizzle(1.6, pan, 0.35, 0.8); },
+  },
+
+  // Estrella: cinco picos, con una estrellita de brillos dentro (como el corazón, la forma se conserva al frenar)
+  star: {
+    cost: 1700, name: ["Star", "Estrella"], desc: ["A five-pointed star.", "Una estrella de cinco picos."],
+    rise: { air: 0.04, whistle: 0.045, f0: 700, f1: 1120 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.05, n = count(110, o), drag = 2.0;
+      const rot = -Math.PI / 2 + rand(-0.25, 0.25);
+      const at = (u) => {
+        const i = Math.floor(u) % 10, f = u - Math.floor(u), j = (i + 1) % 10;
+        const ri = i % 2 ? 0.42 : 1, rj = j % 2 ? 0.42 : 1, ai = rot + (i * Math.PI) / 5, aj = rot + (j * Math.PI) / 5;
+        return [lerp(Math.cos(ai) * ri, Math.cos(aj) * rj, f), lerp(Math.sin(ai) * ri, Math.sin(aj) * rj, f)];
+      };
+      for (let k = 0; k < n; k++) {
+        const [dx, dy] = at((k / n) * 10);
+        star(x, y, dx * R * drag, dy * R * drag, rand(1.9, 2.2), 2.8 * U, a, { drag, grav: 18, trail: 3, trailLife: 0.5, to: o.flair >= 2 ? C.white : null, at: 0.7 });
+      }
+      const m = count(36, o);
+      for (let k = 0; k < m; k++) {
+        const [dx, dy] = at((k / m) * 10);
+        const i = P.add(x, y, dx * R * drag * 0.45, dy * R * drag * 0.45, rand(1.8, 2.3), 1.6 * U, b[0] * 0.5 + 0.5, b[1] * 0.5 + 0.5, b[2] * 0.5 + 0.5);
+        if (i >= 0) { P.kind[i] = K_GLITTER; P.drag[i] = drag; P.grav[i] = 18 * U; }
+      }
+      flair(x, y, R, o, a);
+      return { light: a, R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { low: 86, body: 1250, crack: 0.6 }); Sound.sizzle(1.8, pan, 0.4, 0.7); },
   },
 
   // El gran cierre de la Gran Final (no se elige: es la recompensa)
@@ -2467,7 +2828,7 @@ const TYPES = {
     sound(p, pan) { Sound.boom(3, pan, { low: 70, body: 1000, gain: 1.15 }); Sound.boom(1.5, -0.4, { crack: 0 }); Sound.sizzle(5.5, pan, 1, 0.3); },
   },
 };
-const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "spiral", "comet", "heart"];
+const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "spiral", "strobe", "comet", "crossette", "heart", "saturn", "star"];
 
 // Íconos de línea (SVG, sin emojis), uno por tipo
 const ICON = {
@@ -2480,6 +2841,11 @@ const ICON = {
   spiral: '<path d="M12 12c0-1.2 1.6-1.6 2.4-.6 1.2 1.4.2 3.6-1.8 3.8-2.6.3-4.4-2.2-3.8-4.6.8-3.2 4.6-4.4 7.4-2.8 3.4 2 3.6 6.6 1 9.4"/>',
   comet: '<circle cx="17" cy="7" r="2.2" fill="currentColor"/><path d="M15.2 8.8C11 13 7 15.5 3.5 16.5M14.4 7.6C10.5 9.4 7 10.2 4 10.4M16 10.4c-2 4-4 7-6.5 9"/>',
   heart: '<path d="M12 19.5s-7.5-4.4-7.5-9.6A4 4 0 0 1 12 7.8a4 4 0 0 1 7.5 2.1c0 5.2-7.5 9.6-7.5 9.6z"/>',
+  palm: '<path d="M12 21v-9"/><path d="M12 12c-2-3.5-5-4.5-8-4M12 12c2-3.5 5-4.5 8-4M12 12c-.8-3.6-.4-6 0-8M12 12c-3-1.5-6-1-8 1.6M12 12c3-1.5 6-1 8 1.6"/>',
+  strobe: '<circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="7" cy="7.5" r="1" fill="currentColor"/><circle cx="17" cy="7" r="1" fill="currentColor"/><circle cx="6.5" cy="16" r="1" fill="currentColor"/><circle cx="17.5" cy="16.5" r="1" fill="currentColor"/><path d="M12 4v1.6M12 18.4V20M4 12h1.6M18.4 12H20"/>',
+  crossette: '<circle cx="12" cy="12" r="1.3" fill="currentColor"/><path d="M12 10V7M12 14v3M10 12H7M14 12h3"/><path d="M10.6 3.6l2.8 2.8M13.4 3.6l-2.8 2.8M10.6 17.6l2.8 2.8M13.4 17.6l-2.8 2.8M3.6 10.6l2.8 2.8M6.4 10.6l-2.8 2.8M17.6 10.6l2.8 2.8M20.4 10.6l-2.8 2.8"/>',
+  saturn: '<circle cx="12" cy="12" r="4.2"/><ellipse cx="12" cy="12" rx="9.5" ry="3" transform="rotate(-18 12 12)"/>',
+  star: '<path d="M12 3.8l2.4 5.1 5.5.6-4.1 3.8 1.1 5.5L12 16l-4.9 2.8 1.1-5.5-4.1-3.8 5.5-.6z"/>',
 };
 const iconSVG = (k, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ICON.classic}</svg>`;
 
@@ -2522,7 +2888,7 @@ const Game = (() => {
     const T = TYPES[type];
     const r = {
       x0, y0: ly, tx, ty, x: x0, y: ly, t: 0, dur, type, power, opts, acc: 0, smoke: 0, seed: rand(100),
-      pal: opts.pal || palette(), whistle: Sound.rise(dur, panOf(x0), panOf(tx), T.rise),
+      pal: opts.pal || palette(), whistle: Sound.rise(dur, panOf(x0), panOf(tx), T.rise, { power, chain: !!opts.chain }),
     };
     rockets.push(r);
     // Ignición: un destello pequeño abajo
@@ -2680,7 +3046,7 @@ const Game = (() => {
     // 2. Abanicos de cinco
     for (let v = 0; v < 5; v++) for (let j = 0; j < 5; j++) L(5.4 + v * 0.95 + j * 0.07, 0.14 + 0.18 * j, 0.3 + 0.07 * Math.abs(j - 2), v % 2 ? "willow" : "double", 0.66);
     // 3. Crescendo: todas las formas y colores
-    for (let k = 0; k < 26; k++) L(10.3 + k * 0.21, rand(0.12, 0.88), rand(0.16, 0.46), pick(["crackle", "comet", "spiral", "classic", "ring"]), rand(0.7, 1.1));
+    for (let k = 0; k < 26; k++) L(10.3 + k * 0.21, rand(0.12, 0.88), rand(0.16, 0.46), pick(["crackle", "comet", "spiral", "classic", "ring", "palm", "strobe", "crossette", "saturn"]), rand(0.7, 1.1));
     L(13.2, 0.5, 0.3, "heart", 1.3);
     // 4. Muro: ráfaga rápida de explosiones pequeñas
     for (let k = 0; k < 30; k++) L(16 + k * 0.1, 0.1 + 0.8 * ((k * 0.381) % 1), rand(0.2, 0.44), pick(["classic", "crackle", "ring"]), 0.55);

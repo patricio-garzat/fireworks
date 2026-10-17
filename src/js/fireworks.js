@@ -8,6 +8,7 @@ const C = {
   purple: [0.7, 0.36, 1.0], orange: [1.0, 0.46, 0.12], cyan: [0.28, 0.9, 1.0], pink: [1.0, 0.4, 0.66], amber: [1.0, 0.56, 0.16],
   warm: [1.0, 0.86, 0.66], copper: [0.95, 0.42, 0.22], teal: [0.18, 0.95, 0.72], violet: [0.6, 0.4, 1.0], ice: [0.58, 0.8, 1.0],
   white: [1, 1, 1], coral: [1.0, 0.48, 0.38], lilac: [0.84, 0.58, 1.0], rosegold: [1.0, 0.66, 0.52], magenta: [0.95, 0.28, 0.82],
+  mint: [0.45, 1.0, 0.68], lime: [0.72, 1.0, 0.32], yellow: [1.0, 0.86, 0.3], pearl: [1.0, 0.95, 0.88],
 };
 
 const PALETTES = {
@@ -17,8 +18,12 @@ const PALETTES = {
   glacier: { cost: 900, name: ["Glacier", "Glaciar"], colors: [C.ice, C.white, C.silver, C.cyan, C.blue], metal: C.silver, heart: C.ice },
   rose: { cost: 1100, name: ["Rose", "Rosa"], colors: [C.pink, C.coral, C.lilac, C.white, C.rosegold], metal: C.gold, heart: C.pink },
   royal: { cost: 1500, name: ["Royal", "Real"], colors: [C.purple, C.gold, C.blue, C.magenta], metal: C.gold, heart: C.magenta },
+  sunset: { cost: 350, name: ["Sunset", "Atardecer"], colors: [C.orange, C.coral, C.pink, C.magenta, C.amber], metal: C.gold, heart: C.coral },
+  jade: { cost: 750, name: ["Jade", "Jade"], colors: [C.teal, C.mint, C.green, C.gold, C.cyan], metal: C.gold, heart: C.mint },
+  citrus: { cost: 1300, name: ["Citrus", "Cítricos"], colors: [C.lime, C.yellow, C.orange, C.gold, C.mint], metal: C.gold, heart: C.yellow },
+  moonlight: { cost: 1800, name: ["Moonlight", "Luz de luna"], colors: [C.white, C.silver, C.ice, C.pearl, C.lilac], metal: C.silver, heart: C.pearl },
 };
-const PALETTE_ORDER = ["classic", "ember", "aurora", "glacier", "rose", "royal"];
+const PALETTE_ORDER = ["classic", "ember", "sunset", "aurora", "jade", "glacier", "rose", "citrus", "royal", "moonlight"];
 
 /* ---------- Ayudantes de receta ---------- */
 // Una estrella: la unidad básica de una explosión
@@ -180,6 +185,49 @@ const TYPES = {
     sound(p, pan) { Sound.boom(p, pan, { crack: 0.8 }); Sound.crackle(1.2 + p * 0.4, pan, 0.78); },
   },
 
+  // Palmera: pocas hojas gruesas y doradas que salen en abanico hacia arriba y se curvan al caer
+  palm: {
+    cost: 400, name: ["Palm", "Palmera"], desc: ["Thick golden fronds that arc and fall.", "Hojas doradas que se arquean y caen."],
+    rise: { air: 0.07, whistle: 0 },
+    burst(x, y, o) {
+      const c = chance(0.6) ? o.pal.metal : pick(o.pal.colors), R = radius(o) * 1.05, m = Math.round(7 + 2 * o.power), drag = 1.5;
+      const rot = rand(-0.2, 0.2);
+      for (let k = 0; k < m; k++) {
+        const th = -Math.PI / 2 + rot + ((k + 0.5) / m - 0.5) * 4.6 + rand(-0.08, 0.08), s = R * drag * rand(0.85, 1.05);
+        star(x, y, Math.cos(th) * s, Math.sin(th) * s - 25 * U, rand(1.6, 2.1), 4.2 * U, [c[0] * 1.1, c[1] * 1.05, c[2]],
+          { drag, grav: 110, heat: 1, trail: 70 * (Q.level === 0 ? 0.6 : 1), trailC: c, trailLife: 1.3, trailGrav: 18 });
+      }
+      glitterCrown(x, y, R * 0.3, Math.round(24 * P.room()), C.warm);
+      flair(x, y, R, o, c);
+      return { light: c, R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { low: 82, body: 1250, crack: 0.9 }); Sound.sizzle(2.4, pan, 0.6, 0.25); },
+  },
+
+  // Estrobo: un estallido corto de color y una nube de destellos que parpadean mientras caen despacio
+  strobe: {
+    cost: 650, name: ["Strobe", "Estrobo"], desc: ["A cloud of blinking flashes.", "Una nube de destellos que parpadean."],
+    rise: { air: 0.05, whistle: 0 },
+    burst(x, y, o) {
+      const [a] = o.colors || two(o.pal), R = radius(o) * 0.9, n = count(60, o), drag = 2.2;
+      for (let k = 0; k < n; k++) {
+        const d = sphereDir(), s = R * drag * rand(0.9, 1.04);
+        star(x, y, d.x * s, d.y * s, rand(0.6, 0.85), 2.6 * U, a, { drag, trail: 4, trailLife: 0.35 });
+      }
+      const g = o.pal.metal === C.silver || chance(0.5) ? C.silver : C.warm;
+      const m = Math.round(150 * P.room() * (Q.level === 0 ? 0.6 : 1));
+      for (let k = 0; k < m; k++) {
+        const d = sphereDir(), s = R * drag * rand(0.55, 1.0);
+        const i = P.add(x, y, d.x * s, d.y * s, rand(2.4, 3.4), rand(1.6, 2.2) * U, g[0], g[1], g[2]);
+        if (i < 0) break;
+        P.kind[i] = K_GLITTER; P.drag[i] = drag * 1.05; P.grav[i] = 22 * U;
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, g), R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { crack: 0.7 }); Sound.sizzle(2.8, pan, 0.55, 0.4); },
+  },
+
   // Espiral: brazos que giran mientras se abren
   spiral: {
     cost: 500, name: ["Spiral", "Espiral"], desc: ["Stars that swirl as they open.", "Estrellas que giran al abrirse."],
@@ -219,6 +267,37 @@ const TYPES = {
     sound(p, pan) { Sound.boom(p, pan, { low: 84, body: 1200 }); Sound.crackle(0.5, pan, 0.5); Sound.sizzle(2.3, pan, 0.6, 0.15); },
   },
 
+  // Cruceta: estrellas que viajan y de pronto se parten en cruz, con un "crack" cada una
+  crossette: {
+    cost: 950, name: ["Crossette", "Cruceta"], desc: ["Stars that split into crosses.", "Estrellas que se parten en cruz."],
+    rise: { air: 0.06, whistle: 0 },
+    burst(x, y, o, pan) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 0.8, m = Math.round(10 + 3 * o.power), drag = 1.8, g = 50 * U;
+      const T0 = rand(0.5, 0.62), rot = rand(TAU), pts = [];
+      for (let k = 0; k < m; k++) {
+        const th = rot + (k / m) * TAU + rand(-0.15, 0.15), s = R * drag * rand(0.9, 1.05), vx = Math.cos(th) * s, vy = Math.sin(th) * s;
+        star(x, y, vx, vy, T0, 3.4 * U, a, { drag, grav: 50, trail: 14, trailC: avg(a, C.gold), trailLife: 0.45 });
+        // dónde estará al partirse (la misma física: frenado + gravedad)
+        const e = Math.exp(-drag * T0);
+        pts.push([x + (vx / drag) * (1 - e), y + ((vy - g / drag) / drag) * (1 - e) + (g * T0) / drag, Math.atan2(vy, vx)]);
+      }
+      Timers.after(T0, () => {
+        const s2 = 95 * U * Math.pow(o.power, 0.4);
+        for (const [px, py, ang] of pts) {
+          for (let q = 0; q < 4; q++) {
+            const th = ang + Math.PI / 4 + (q * Math.PI) / 2;
+            star(px, py, Math.cos(th) * s2, Math.sin(th) * s2, rand(0.7, 0.95), 2.4 * U, b,
+              { drag: 2.2, grav: 45, trail: 6, trailC: avg(b, C.gold), trailLife: 0.35, flags: F_FLICKER });
+          }
+        }
+        Sound.crackle(0.6, pan, 0);
+      });
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { body: 1400, crack: 1 }); },
+  },
+
   // Corazón: las estrellas salen con la forma, y como todas frenan igual, la forma se conserva
   heart: {
     cost: 1200, name: ["Heart", "Corazón"], desc: ["A burst shaped like a heart.", "Una explosión con forma de corazón."],
@@ -243,6 +322,58 @@ const TYPES = {
       return { light: c, R: R * 16 };
     },
     sound(p, pan) { Sound.boom(p, pan, { low: 86, body: 1200, crack: 0.5 }); Sound.sizzle(1.8, pan, 0.4, 0.7); },
+  },
+
+  // Saturno: un planeta compacto con su anillo ancho e inclinado, de otro color
+  saturn: {
+    cost: 1400, name: ["Saturn", "Saturno"], desc: ["A planet with its ring.", "Un planeta con su anillo."],
+    rise: { air: 0.05, whistle: 0.04, f0: 740, f1: 1180 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o), drag = 2.1;
+      const n = count(90, o);
+      for (let k = 0; k < n; k++) {
+        const d = sphereDir(), s = R * drag * 0.5 * rand(0.95, 1.03);
+        star(x, y, d.x * s, d.y * s, rand(1.5, 1.9), 2.6 * U, a, { drag, grav: 35, trail: 3, trailLife: 0.4, flags: F_FLICKER });
+      }
+      const tilt = rand(1.0, 1.25), roll = rand(-0.45, 0.45), cr = Math.cos(roll), sr = Math.sin(roll), ct = Math.cos(tilt);
+      const m = count(90, o);
+      for (let k = 0; k < m; k++) {
+        const th = (k / m) * TAU, lx = Math.cos(th), ly = Math.sin(th) * ct;
+        const dx = lx * cr - ly * sr, dy = lx * sr + ly * cr, s = R * drag * 1.1 * rand(0.985, 1.015);
+        star(x, y, dx * s, dy * s, rand(1.7, 2.0), 2.4 * U, b, { drag, grav: 35, trail: 4, trailC: avg(b, C.gold), trailLife: 0.45, to: o.flair >= 2 ? C.white : null, at: 0.7 });
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R: R * 1.1 };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { body: 1450, crack: 1 }); Sound.sizzle(1.6, pan, 0.35, 0.8); },
+  },
+
+  // Estrella: cinco picos, con una estrellita de brillos dentro (como el corazón, la forma se conserva al frenar)
+  star: {
+    cost: 1700, name: ["Star", "Estrella"], desc: ["A five-pointed star.", "Una estrella de cinco picos."],
+    rise: { air: 0.04, whistle: 0.045, f0: 700, f1: 1120 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.05, n = count(110, o), drag = 2.0;
+      const rot = -Math.PI / 2 + rand(-0.25, 0.25);
+      const at = (u) => {
+        const i = Math.floor(u) % 10, f = u - Math.floor(u), j = (i + 1) % 10;
+        const ri = i % 2 ? 0.42 : 1, rj = j % 2 ? 0.42 : 1, ai = rot + (i * Math.PI) / 5, aj = rot + (j * Math.PI) / 5;
+        return [lerp(Math.cos(ai) * ri, Math.cos(aj) * rj, f), lerp(Math.sin(ai) * ri, Math.sin(aj) * rj, f)];
+      };
+      for (let k = 0; k < n; k++) {
+        const [dx, dy] = at((k / n) * 10);
+        star(x, y, dx * R * drag, dy * R * drag, rand(1.9, 2.2), 2.8 * U, a, { drag, grav: 18, trail: 3, trailLife: 0.5, to: o.flair >= 2 ? C.white : null, at: 0.7 });
+      }
+      const m = count(36, o);
+      for (let k = 0; k < m; k++) {
+        const [dx, dy] = at((k / m) * 10);
+        const i = P.add(x, y, dx * R * drag * 0.45, dy * R * drag * 0.45, rand(1.8, 2.3), 1.6 * U, b[0] * 0.5 + 0.5, b[1] * 0.5 + 0.5, b[2] * 0.5 + 0.5);
+        if (i >= 0) { P.kind[i] = K_GLITTER; P.drag[i] = drag; P.grav[i] = 18 * U; }
+      }
+      flair(x, y, R, o, a);
+      return { light: a, R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { low: 86, body: 1250, crack: 0.6 }); Sound.sizzle(1.8, pan, 0.4, 0.7); },
   },
 
   // El gran cierre de la Gran Final (no se elige: es la recompensa)
@@ -274,7 +405,7 @@ const TYPES = {
     sound(p, pan) { Sound.boom(3, pan, { low: 70, body: 1000, gain: 1.15 }); Sound.boom(1.5, -0.4, { crack: 0 }); Sound.sizzle(5.5, pan, 1, 0.3); },
   },
 };
-const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "spiral", "comet", "heart"];
+const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "spiral", "strobe", "comet", "crossette", "heart", "saturn", "star"];
 
 // Íconos de línea (SVG, sin emojis), uno por tipo
 const ICON = {
@@ -287,5 +418,10 @@ const ICON = {
   spiral: '<path d="M12 12c0-1.2 1.6-1.6 2.4-.6 1.2 1.4.2 3.6-1.8 3.8-2.6.3-4.4-2.2-3.8-4.6.8-3.2 4.6-4.4 7.4-2.8 3.4 2 3.6 6.6 1 9.4"/>',
   comet: '<circle cx="17" cy="7" r="2.2" fill="currentColor"/><path d="M15.2 8.8C11 13 7 15.5 3.5 16.5M14.4 7.6C10.5 9.4 7 10.2 4 10.4M16 10.4c-2 4-4 7-6.5 9"/>',
   heart: '<path d="M12 19.5s-7.5-4.4-7.5-9.6A4 4 0 0 1 12 7.8a4 4 0 0 1 7.5 2.1c0 5.2-7.5 9.6-7.5 9.6z"/>',
+  palm: '<path d="M12 21v-9"/><path d="M12 12c-2-3.5-5-4.5-8-4M12 12c2-3.5 5-4.5 8-4M12 12c-.8-3.6-.4-6 0-8M12 12c-3-1.5-6-1-8 1.6M12 12c3-1.5 6-1 8 1.6"/>',
+  strobe: '<circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="7" cy="7.5" r="1" fill="currentColor"/><circle cx="17" cy="7" r="1" fill="currentColor"/><circle cx="6.5" cy="16" r="1" fill="currentColor"/><circle cx="17.5" cy="16.5" r="1" fill="currentColor"/><path d="M12 4v1.6M12 18.4V20M4 12h1.6M18.4 12H20"/>',
+  crossette: '<circle cx="12" cy="12" r="1.3" fill="currentColor"/><path d="M12 10V7M12 14v3M10 12H7M14 12h3"/><path d="M10.6 3.6l2.8 2.8M13.4 3.6l-2.8 2.8M10.6 17.6l2.8 2.8M13.4 17.6l-2.8 2.8M3.6 10.6l2.8 2.8M6.4 10.6l-2.8 2.8M17.6 10.6l2.8 2.8M20.4 10.6l-2.8 2.8"/>',
+  saturn: '<circle cx="12" cy="12" r="4.2"/><ellipse cx="12" cy="12" rx="9.5" ry="3" transform="rotate(-18 12 12)"/>',
+  star: '<path d="M12 3.8l2.4 5.1 5.5.6-4.1 3.8 1.1 5.5L12 16l-4.9 2.8 1.1-5.5-4.1-3.8 5.5-.6z"/>',
 };
 const iconSVG = (k, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ICON.classic}</svg>`;
