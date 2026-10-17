@@ -17,6 +17,7 @@ Abre `http://localhost:8795/` (versión armada) o `http://localhost:8795/src/` (
 | `src/js/` | El código, en archivos separados (ver abajo) |
 | `tools/build.py` | Arma `index.html`: `python3 tools/build.py [versión]` |
 | `brand/` | Ícono |
+| `app/` | App de iOS (Capacitor 7): ver abajo |
 | `VERSION` | La versión que se ve en Ajustes |
 
 ### `src/js/`
@@ -32,6 +33,19 @@ Abre `http://localhost:8795/` (versión armada) o `http://localhost:8795/src/` (
 | `haptics.js` | Vibración: Capacitor Haptics en la app; en Safari web no existe y no se finge |
 | `input.js` | Gestos: tocar, mantener (carga), deslizar (cadena) y multitouch |
 | `ui.js`, `i18n.js`, `store.js`, `main.js` | Interfaz, textos EN/ES, guardado y arranque |
+
+## App de iOS
+```bash
+cd app && npm install && npm run build
+```
+`npm run build` arma el juego (`tools/build.py`), lo copia a `app/www/` sin zoom y con la versión de la app, y lo sincroniza con el proyecto de Xcode (`app/ios/App/App.xcodeproj`).
+
+| Archivo | Qué hace |
+|---|---|
+| `app/build-www.py` | Arma `www/` a partir de `index.html` y `brand/` |
+| `app/dev-install.sh` | Instala "Fireworks Dev" en el iPhone conectado (app aparte, ícono DEV) |
+| `app/release.sh [versión]` | Sube el número de build, hace el archive y lo sube a App Store Connect |
+| `app/tools/make-icons.py` | Genera los íconos de la app (normal y DEV) a partir de `brand/favicon.svg` |
 
 ## Enlaces
 - **Estudio:** https://blubergames.com

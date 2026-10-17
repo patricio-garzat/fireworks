@@ -1,0 +1,18 @@
+{
+  "name": "fireworks-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Fireworks para iOS (Capacitor) — BluBer Games",
+  "scripts": {
+    "build": "python3 build-www.py && npx cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/haptics": "^7.0.5",
+    "@capacitor/ios": "^7.6.9",
+    "@capacitor/status-bar": "^7.0.6"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.9"
+  }
+}

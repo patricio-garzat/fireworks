@@ -346,13 +346,14 @@ const Sound = (() => {
     }
   }
   function wake() {
-    if (!ac) { build(); if (!ac) return; setSession(); }
+    // La sesión de audio se pide antes de crear el AudioContext (en la app: "ambient" desde el primer sonido)
+    if (!ac) { setSession(); build(); if (!ac) return; }
     const p = performance.now(), ct = ac.currentTime;
     if (ac.state === "running" && lastPerf && p - lastPerf > 800 && ct - lastTime < 0.02) {
       // Se quedó colgado tras una interrupción (llamada, Siri…): se arma uno nuevo
       try { ac.close(); } catch (e) {}
       ac = null; musicOn = false; clearTimeout(musicTimer); windNode = null;
-      build(); setSession();
+      setSession(); build();
     } else if (ac.state !== "running") {
       ac.resume().catch(() => {});
     }

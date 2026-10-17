@@ -1,0 +1,14 @@
+{
+  "appId": "com.blubergames.fireworks",
+  "appName": "Fireworks",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "backgroundColor": "#FFFFFF",
+    "preferredContentMode": "mobile"
+  },
+  "plugins": {
+    "StatusBar": { "style": "LIGHT", "overlaysWebView": true }
+  }
+}
