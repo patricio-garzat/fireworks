@@ -28,7 +28,7 @@ const PALETTE_ORDER = ["classic", "ember", "sunset", "aurora", "jade", "glacier"
 /* ---------- Ayudantes de receta ---------- */
 // Una estrella: la unidad básica de una explosión
 function star(x, y, vx, vy, life, sz, c, o = {}) {
-  const i = P.add(x, y, vx, vy, life, sz, c[0], c[1], c[2]);
+  const i = P.addSure(x, y, vx, vy, life, sz, c[0], c[1], c[2]);
   if (i < 0) return -1;
   P.drag[i] = o.drag ?? 2.0;
   P.grav[i] = (o.grav ?? 55) * U;
@@ -43,18 +43,19 @@ function star(x, y, vx, vy, life, sz, c, o = {}) {
   return i;
 }
 function flash(x, y, c, power) {
-  const i = P.add(x, y, 0, 0, 0.4, 30 * U * Math.sqrt(power), c[0] * 0.5 + 0.5, c[1] * 0.5 + 0.5, c[2] * 0.5 + 0.5);
+  const i = P.addSure(x, y, 0, 0, 0.4, 30 * U * Math.sqrt(power), c[0] * 0.5 + 0.5, c[1] * 0.5 + 0.5, c[2] * 0.5 + 0.5);
   if (i >= 0) { P.kind[i] = K_FLASH; P.drag[i] = 0; P.grav[i] = 0; P.flags[i] = F_NOWIND; P.bright[i] = 0.85; }
 }
 function glitterCrown(x, y, R, n, c = C.silver) {
   for (let k = 0; k < n; k++) {
     const d = sphereDir(), s = R * rand(0.8, 1.15) * 1.6;
-    const i = P.add(x, y, d.x * s, d.y * s, rand(2.2, 3.2), rand(1.3, 1.9) * U, c[0], c[1], c[2]);
+    const i = P.addSure(x, y, d.x * s, d.y * s, rand(2.2, 3.2), rand(1.3, 1.9) * U, c[0], c[1], c[2]);
     if (i < 0) return;
     P.kind[i] = K_GLITTER; P.drag[i] = 1.6; P.grav[i] = 34 * U;
   }
 }
-function count(base, o) { return Math.max(8, Math.round(base * (0.72 + 0.28 * o.power) * P.room() * (Q.level === 0 ? 0.65 : 1))); }
+// shape: las formas (anillo, corazón, estrella, Saturno) necesitan casi todos sus puntos para leerse
+function count(base, o, shape) { return Math.max(8, Math.round(base * (0.72 + 0.28 * o.power) * P.room(shape ? 0.85 : 0.6) * (Q.level === 0 ? 0.65 : 1))); }
 function radius(o) { return 136 * U * Math.pow(o.power, 0.55); }
 function two(pal) { const a = pick(pal.colors); let b = pick(pal.colors), k = 0; while (b === a && k++ < 6) b = pick(pal.colors); return [a, b]; }
 function avg(a, b) { return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]; }
@@ -84,7 +85,7 @@ function flair(x, y, R, o, c) {
     const m = 46;
     for (let k = 0; k < m; k++) {
       const a = (k / m) * TAU, s = R * 2.6;
-      const i = P.add(x, y, Math.cos(a) * s, Math.sin(a) * s, rand(0.5, 0.7), 1.6 * U, 1.1, 1.0, 0.9);
+      const i = P.addSure(x, y, Math.cos(a) * s, Math.sin(a) * s, rand(0.5, 0.7), 1.6 * U, 1.1, 1.0, 0.9);
       if (i < 0) break;
       P.kind[i] = K_SPARK; P.drag[i] = 3.4; P.grav[i] = 20 * U;
     }
@@ -140,7 +141,7 @@ const TYPES = {
     burst(x, y, o) {
       const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.05, drag = 2.0;
       const tilt = rand(0, 1.1), roll = rand(TAU), cr = Math.cos(roll), sr = Math.sin(roll), ct = Math.cos(tilt);
-      const n = count(76, o), vr = variant(o, a, b, 1.8);
+      const n = count(76, o, true), vr = variant(o, a, b, 1.8);
       for (let k = 0; k < n; k++) {
         const th = (k / n) * TAU, lx = Math.cos(th), ly = Math.sin(th) * ct;
         const dx = lx * cr - ly * sr, dy = lx * sr + ly * cr, s = R * drag * rand(0.985, 1.015);
@@ -148,7 +149,7 @@ const TYPES = {
       }
       vr.sound(o.pan);
       // centro: un anillito interior del otro color
-      const m = count(30, o);
+      const m = count(30, o, true);
       for (let k = 0; k < m; k++) {
         const th = (k / m) * TAU, lx = Math.cos(th), ly = Math.sin(th) * ct;
         const dx = lx * cr - ly * sr, dy = lx * sr + ly * cr, s = R * drag * 0.38;
@@ -332,7 +333,7 @@ const TYPES = {
       const m = Math.round(150 * P.room() * (Q.level === 0 ? 0.6 : 1));
       for (let k = 0; k < m; k++) {
         const d = sphereDir(), s = R * drag * rand(0.55, 1.0);
-        const i = P.add(x, y, d.x * s, d.y * s, rand(2.4, 3.4), rand(1.6, 2.2) * U, g[0], g[1], g[2]);
+        const i = P.addSure(x, y, d.x * s, d.y * s, rand(2.4, 3.4), rand(1.6, 2.2) * U, g[0], g[1], g[2]);
         if (i < 0) break;
         P.kind[i] = K_GLITTER; P.drag[i] = drag * 1.05; P.grav[i] = 22 * U;
       }
@@ -366,7 +367,7 @@ const TYPES = {
         const e = Math.exp(-drag * T0), vt = g / drag;
         for (const [vx, vy] of sparkle) {
           const px = x + (vx / drag) * (1 - e), py = y + ((vy - vt) / drag) * (1 - e) + vt * T0;
-          const i = P.add(px, py, vx * e, vt + (vy - vt) * e, rand(1.4, 2.2), rand(1.5, 2.1) * U, gl[0], gl[1], gl[2]);
+          const i = P.addSure(px, py, vx * e, vt + (vy - vt) * e, rand(1.4, 2.2), rand(1.5, 2.1) * U, gl[0], gl[1], gl[2]);
           if (i < 0) break;
           P.kind[i] = K_GLITTER; P.drag[i] = drag; P.grav[i] = g;
         }
@@ -454,7 +455,7 @@ const TYPES = {
     cost: 1200, name: ["Heart", "Corazón"], desc: ["A burst shaped like a heart.", "Una explosión con forma de corazón."],
     rise: { air: 0.035, whistle: 0.045, f0: 720, f1: 1100 },
     burst(x, y, o) {
-      const c = o.pal.heart, R = radius(o) * 0.068, n = count(96, o), drag = 2.0;
+      const c = o.pal.heart, R = radius(o) * 0.068, n = count(96, o, true), drag = 2.0;
       const tilt = rand(-0.2, 0.2), ct = Math.cos(tilt), st = Math.sin(tilt);
       for (let k = 0; k < n; k++) {
         const th = (k / n) * TAU;
@@ -463,10 +464,10 @@ const TYPES = {
         star(x, y, dx * R * drag, dy * R * drag, rand(1.9, 2.2), 2.9 * U, c, { drag, grav: 18, trail: 3, trailLife: 0.5, to: o.flair >= 2 ? C.white : null, at: 0.7 });
       }
       // un corazón de brillos dentro
-      const m = count(30, o);
+      const m = count(30, o, true);
       for (let k = 0; k < m; k++) {
         const th = (k / m) * TAU, hx = 16 * Math.pow(Math.sin(th), 3), hy = -(13 * Math.cos(th) - 5 * Math.cos(2 * th) - 2 * Math.cos(3 * th) - Math.cos(4 * th));
-        const i = P.add(x, y, (hx * ct - hy * st) * R * drag * 0.5, (hx * st + hy * ct - 2.6) * R * drag * 0.5, rand(1.8, 2.3), 1.6 * U, 1, 0.9, 0.95);
+        const i = P.addSure(x, y, (hx * ct - hy * st) * R * drag * 0.5, (hx * st + hy * ct - 2.6) * R * drag * 0.5, rand(1.8, 2.3), 1.6 * U, 1, 0.9, 0.95);
         if (i >= 0) { P.kind[i] = K_GLITTER; P.drag[i] = drag; P.grav[i] = 18 * U; }
       }
       flair(x, y, R * 16, o, c);
@@ -487,7 +488,7 @@ const TYPES = {
         star(x, y, d.x * s, d.y * s, rand(1.5, 1.9), 2.6 * U, a, { drag, grav: 35, trail: 3, trailLife: 0.4, flags: F_FLICKER });
       }
       const tilt = rand(1.0, 1.25), roll = rand(-0.45, 0.45), cr = Math.cos(roll), sr = Math.sin(roll), ct = Math.cos(tilt);
-      const m = count(90, o);
+      const m = count(90, o, true);
       for (let k = 0; k < m; k++) {
         const th = (k / m) * TAU, lx = Math.cos(th), ly = Math.sin(th) * ct;
         const dx = lx * cr - ly * sr, dy = lx * sr + ly * cr, s = R * drag * 1.1 * rand(0.985, 1.015);
@@ -504,7 +505,7 @@ const TYPES = {
     cost: 1700, name: ["Star", "Estrella"], desc: ["A five-pointed star.", "Una estrella de cinco picos."],
     rise: { air: 0.04, whistle: 0.045, f0: 700, f1: 1120 },
     burst(x, y, o) {
-      const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.05, n = count(110, o), drag = 2.0;
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.05, n = count(110, o, true), drag = 2.0;
       const rot = -Math.PI / 2 + rand(-0.25, 0.25);
       const at = (u) => {
         const i = Math.floor(u) % 10, f = u - Math.floor(u), j = (i + 1) % 10;
@@ -515,10 +516,10 @@ const TYPES = {
         const [dx, dy] = at((k / n) * 10);
         star(x, y, dx * R * drag, dy * R * drag, rand(1.9, 2.2), 2.8 * U, a, { drag, grav: 18, trail: 3, trailLife: 0.5, to: o.flair >= 2 ? C.white : null, at: 0.7 });
       }
-      const m = count(36, o);
+      const m = count(36, o, true);
       for (let k = 0; k < m; k++) {
         const [dx, dy] = at((k / m) * 10);
-        const i = P.add(x, y, dx * R * drag * 0.45, dy * R * drag * 0.45, rand(1.8, 2.3), 1.6 * U, b[0] * 0.5 + 0.5, b[1] * 0.5 + 0.5, b[2] * 0.5 + 0.5);
+        const i = P.addSure(x, y, dx * R * drag * 0.45, dy * R * drag * 0.45, rand(1.8, 2.3), 1.6 * U, b[0] * 0.5 + 0.5, b[1] * 0.5 + 0.5, b[2] * 0.5 + 0.5);
         if (i >= 0) { P.kind[i] = K_GLITTER; P.drag[i] = drag; P.grav[i] = 18 * U; }
       }
       flair(x, y, R, o, a);

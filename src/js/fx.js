@@ -40,7 +40,32 @@ const P = (() => {
     if (i !== n) for (let k = 0; k < ALL.length; k++) { const a = ALL[k]; a[i] = a[n]; }
   }
   // Fracción libre del pool: las recetas reducen su cantidad cuando el cielo ya está lleno
-  const room = () => clamp((cap - n) / cap * 1.5, 0.22, 1);
+  // (con el reemplazo de abajo el total nunca pasa del tope, así que ya no hace falta bajar tanto: mínimo 60%)
+  const room = (floor = 0.6) => clamp((cap - n) / cap * 1.5, floor, 1);
+
+  /* Ninguna explosión se queda sin verse: si el pool está lleno (por ejemplo, de las estelas de dos sauces),
+     una estrella nueva reemplaza a la partícula prescindible más avanzada en su vida (estela, chispa, brillo, polvo).
+     Busca desde donde se quedó, en tramos cortos, para no recorrer todo el pool. */
+  let scan = 0;
+  function evict() {
+    if (!n) return false;
+    let best = -1, bestT = 0.2;
+    for (let k = 0, lim = Math.min(n, 600); k < lim; k++) {
+      scan = (scan + 1) % n;
+      const kd = kind[scan];
+      if (kd === K_STAR || kd === K_FLASH) continue;
+      const t = age[scan] / life[scan];
+      if (t > bestT) { best = scan; bestT = t; if (t > 0.6) break; }
+    }
+    if (best < 0) return false;
+    kill(best);
+    return true;
+  }
+  // add() que se asegura un lugar (para las estrellas de una explosión)
+  function addSure(px, py, pvx, pvy, plife, psize, cr, cg, cb) {
+    const i = add(px, py, pvx, pvy, plife, psize, cr, cg, cb);
+    return i >= 0 || !evict() ? i : add(px, py, pvx, pvy, plife, psize, cr, cg, cb);
+  }
 
   function setTrail(i, rate, cr, cg, cb, lifeSec, gEmb = 26) { emit[i] = rate; er[i] = cr; eg[i] = cg; eb[i] = cb; elife[i] = lifeSec; egrav[i] = gEmb * U; }
 
@@ -67,7 +92,7 @@ const P = (() => {
     const m = 2 + (Math.random() < 0.4 ? 1 : 0), sp = Math.hypot(vx[i], vy[i]) * 0.5 + 25 * U;
     for (let k = 0; k < m; k++) {
       const a = Math.atan2(vy[i], vx[i]) + (k - (m - 1) / 2) * 0.7 + rand(-0.2, 0.2);
-      const j = add(x[i], y[i], Math.cos(a) * sp, Math.sin(a) * sp, rand(0.7, 1.1), size[i] * 0.8, r2[i], g2[i], b2[i]);
+      const j = add(x[i], y[i], Math.cos(a) * sp, Math.sin(a) * sp, rand(0.7, 1.1), size[i] * 0.8, r2[i], g2[i], b2[i]);  // dentro de update(): sin desalojar (no mover índices a media vuelta)
       if (j < 0) return;
       drag[j] = 2.4; grav[j] = grav[i]; flags[j] = F_FLICKER; heat[j] = 0.6;
       if (emit[i] > 0) setTrail(j, emit[i] * 0.6, er[i], eg[i], eb[i], elife[i] * 0.8, egrav[i] / U);
@@ -75,7 +100,7 @@ const P = (() => {
   }
 
   function update(dt) {
-    const wind = WIND * dt;
+    const wind = WIND * dt, fill = n / cap, emitK = fill < 0.6 ? 1 : fill > 0.9 ? 0 : 1 - (fill - 0.6) / 0.3;
     for (let i = 0; i < n;) {
       const a = age[i] + dt;
       if (a >= life[i]) {
@@ -98,7 +123,7 @@ const P = (() => {
       if (emit[i] > 0) {
         const t = a / life[i];
         if (t < 0.92) {
-          acc[i] += emit[i] * dt * (t > 0.7 ? 1 - (t - 0.7) / 0.22 : 1);
+          acc[i] += emit[i] * dt * (t > 0.7 ? 1 - (t - 0.7) / 0.22 : 1) * emitK;
           while (acc[i] >= 1) { acc[i] -= 1; spawnEmber(i, 1 - t * 0.5); }
         }
       }
@@ -164,7 +189,7 @@ const P = (() => {
   function clear() { n = 0; xn = 0; }
 
   return {
-    add, room, setTrail, update, write, extra, clear,
+    add, addSure, evict, room, setTrail, update, write, extra, clear,
     x, y, vx, vy, drag, grav, size, r2, g2, b2, tchg, heat, bright, spin, kind, flags, ev, seed,
     get n() { return n; },
     get cap() { return cap; }, set cap(v) { cap = Math.min(MAX, v); },
