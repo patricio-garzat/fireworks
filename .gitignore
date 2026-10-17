@@ -1,0 +1,9 @@
+.DS_Store
+CLAUDE.md
+node_modules/
+app/www/
+app/ios/App/App/public/
+app/ios/DerivedData/
+app/build/
+xcuserdata/
+*.xcuserstate

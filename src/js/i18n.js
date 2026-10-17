@@ -1,0 +1,96 @@
+"use strict";
+/* i18n.js: textos en inglés (por defecto) y español */
+
+const STR = {
+  tagline: ["Paint the night sky", "Pinta el cielo de noche"],
+  by: ["by BluBer Games", "por BluBer Games"],
+  play: ["Free Play", "Juego libre"],
+  playSub: ["Launch, earn Sparks, unlock", "Lanza, gana Sparks, desbloquea"],
+  zen: ["Zen", "Zen"],
+  zenSub: ["Just the sky and you", "Solo tú y el cielo"],
+  show: ["Show Creator", "Crea tu show"],
+  showSub: ["Record a sequence and replay it", "Graba una secuencia y repítela"],
+  howto: ["How to play", "Cómo jugar"],
+  records: ["Records", "Récords"],
+  settings: ["Settings", "Ajustes"],
+  collection: ["Collection", "Colección"],
+  home: ["Home", "Inicio"],
+  close: ["Close", "Cerrar"],
+  mix: ["Mix", "Mezcla"],
+  fireworks: ["Fireworks", "Fuegos"],
+  colors: ["Colors", "Colores"],
+  scenes: ["Scenes", "Escenarios"],
+  goals: ["Goals", "Retos"],
+  unlock: ["Unlock", "Desbloquear"],
+  selected: ["Selected", "Elegido"],
+  use: ["Use", "Usar"],
+  launched: ["Launched", "Lanzados"],
+  locked: ["Locked", "Bloqueado"],
+  needMore: ["Need more Sparks", "Faltan Sparks"],
+  grandFinale: ["Grand Finale", "Gran Final"],
+  finaleReady: ["Grand Finale ready", "Gran Final lista"],
+  combo: ["combo", "combo"],
+  newFirework: ["New firework discovered", "Fuego nuevo descubierto"],
+  goalDone: ["Goal complete", "Reto cumplido"],
+  unlocked: ["Unlocked", "Desbloqueado"],
+  finaleDone: ["What a show", "Qué espectáculo"],
+  // Ajustes
+  sound: ["Sound effects", "Efectos de sonido"],
+  music: ["Ambient music", "Música ambiental"],
+  vibration: ["Vibration", "Vibración"],
+  vibrationNA: ["iPhone app only", "Solo en la app de iPhone"],
+  quality: ["Graphics", "Gráficos"],
+  qAuto: ["Auto", "Auto"], qHigh: ["High", "Alta"], qMed: ["Balanced", "Media"], qLow: ["Battery", "Batería"],
+  language: ["Language", "Idioma"],
+  reset: ["Erase progress", "Borrar progreso"],
+  resetQ: ["Erase all Sparks, unlocks, records and shows?", "¿Borrar todos los Sparks, desbloqueos, récords y shows?"],
+  resetYes: ["Erase", "Borrar"],
+  cancel: ["Cancel", "Cancelar"],
+  about: ["About", "Acerca de"],
+  version: ["Version", "Versión"],
+  website: ["Website", "Sitio web"],
+  support: ["Support", "Soporte"],
+  // Récords
+  rLaunches: ["Rockets launched", "Cohetes lanzados"],
+  rBestCombo: ["Best combo", "Mejor combo"],
+  rFinales: ["Grand Finales", "Grandes Finales"],
+  rSparks: ["Sparks earned", "Sparks ganados"],
+  rFavorite: ["Favorite firework", "Fuego favorito"],
+  rDiscovered: ["Fireworks discovered", "Fuegos descubiertos"],
+  rGoals: ["Goals completed", "Retos cumplidos"],
+  rCharged: ["Full-power rockets", "Cohetes a toda potencia"],
+  // Cómo jugar
+  hTap: ["Tap the sky", "Toca el cielo"],
+  hTapD: ["A rocket rises and bursts right where you tapped.", "Un cohete sube y explota justo donde tocaste."],
+  hHold: ["Hold to charge", "Mantén para cargar"],
+  hHoldD: ["Keep your finger down for a bigger, brighter burst.", "Deja el dedo para una explosión más grande y brillante."],
+  hSwipe: ["Swipe a path", "Desliza un camino"],
+  hSwipeD: ["Draw across the sky and a chain of bursts follows it.", "Dibuja en el cielo y una cadena de explosiones lo sigue."],
+  hMulti: ["Use many fingers", "Usa varios dedos"],
+  hMultiD: ["Every finger launches its own rocket.", "Cada dedo lanza su propio cohete."],
+  hCombo: ["Combos", "Combos"],
+  hComboD: ["Keep the sky lit and your Sparks multiply. No rush, ever.", "Mantén el cielo encendido y tus Sparks se multiplican. Sin prisa."],
+  hFinale: ["Grand Finale", "Gran Final"],
+  hFinaleD: ["Fill the bar at the top, then start the big show.", "Llena la barra de arriba y lanza el gran show."],
+  // Show Creator
+  record: ["Record", "Grabar"],
+  stop: ["Stop", "Detener"],
+  playShow: ["Play", "Reproducir"],
+  clear: ["Clear", "Borrar"],
+  recording: ["Recording", "Grabando"],
+  showEmpty: ["Empty", "Vacío"],
+  showHint: ["Tap Record, then launch your show", "Toca Grabar y lanza tu show"],
+  showSaved: ["Show saved", "Show guardado"],
+  launches: ["launches", "lanzamientos"],
+  slot: ["Show", "Show"],
+  zenMode: ["Zen", "Zen"],
+};
+
+let LANG = 0; // 0 = inglés, 1 = español
+const t = (k) => (STR[k] ? STR[k][LANG] : k);
+
+function applyI18n(root = document) {
+  document.documentElement.lang = LANG ? "es" : "en";
+  root.querySelectorAll("[data-i18n]").forEach((n) => { n.textContent = t(n.dataset.i18n); });
+  root.querySelectorAll("[data-i18n-aria]").forEach((n) => { n.setAttribute("aria-label", t(n.dataset.i18nAria)); });
+}
