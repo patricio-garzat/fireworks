@@ -33,6 +33,7 @@ const UI = (() => {
     document.addEventListener("keydown", (e) => { if (pickOpen && e.key === "Escape") togglePicker(false); });
     $("#finale").addEventListener("click", () => { if (Game.startFinale()) { Haptics.success(); finaleBar(); } });
     $("#scrim").addEventListener("click", close);
+    $$(".sheet").forEach(sheetDrag);
     $$("[data-close]").forEach((b) => b.addEventListener("click", () => { press(); close(); }));
     $$(".tabs button").forEach((b) => b.addEventListener("click", () => { press(); colTab = b.dataset.tab; renderCollection(); }));
     // Show Creator
@@ -214,6 +215,57 @@ const UI = (() => {
   }
 
   /* ---------- Hojas ---------- */
+  // Cerrar una ventanilla deslizando hacia abajo, como en iOS: desde la cabecera siempre, y desde el contenido
+  // cuando ya está hasta arriba (si no, el dedo hace scroll normal). Si se suelta antes de un tercio y sin impulso, regresa.
+  function sheetDrag(el) {
+    const scrim = $("#scrim");
+    let x0 = 0, y0 = 0, dy = 0, lastY = 0, lastT = 0, vel = 0, on = false, cand = false, body = null;
+    const start = (x, y, target) => {
+      body = target.closest(".sheet-body");
+      cand = !!sheet && !target.closest('input[type="range"]') && (!body || body.scrollTop <= 0);
+      x0 = x; y0 = lastY = y; lastT = performance.now(); dy = 0; vel = 0; on = false;
+    };
+    const move = (x, y, e) => {
+      if (!cand) return;
+      if (!on) {
+        const d = y - y0;
+        if (d > 8 && d > Math.abs(x - x0) * 1.2 && (!body || body.scrollTop <= 0)) {
+          on = true; y0 = y; el.style.transition = "none"; scrim.style.transition = "none";
+        } else if (d < -4 || Math.abs(x - x0) > 12) { cand = false; return; } else return;
+      }
+      if (e && e.cancelable) e.preventDefault();
+      dy = Math.max(0, y - y0);
+      el.style.transform = `translate(-50%, ${dy}px)`;
+      scrim.style.opacity = String(1 - Math.min(1, dy / (el.offsetHeight || 1)) * 0.9);
+      const now = performance.now();
+      vel = (y - lastY) / Math.max(1, now - lastT); lastY = y; lastT = now;
+    };
+    const end = () => {
+      const was = on;
+      on = cand = false;
+      if (!was) return;
+      const shut = dy > Math.min(140, el.offsetHeight * 0.33) || vel > 0.6;
+      el.style.transition = ""; el.style.transform = ""; scrim.style.transition = "";
+      if (shut) {
+        Haptics.tap();
+        scrim.style.opacity = "0";
+        close();
+        setTimeout(() => { scrim.style.opacity = ""; }, 450);
+      } else scrim.style.opacity = "";
+    };
+    el.addEventListener("touchstart", (e) => { if (e.touches.length === 1) start(e.touches[0].clientX, e.touches[0].clientY, e.target); else cand = on = false; }, { passive: true });
+    el.addEventListener("touchmove", (e) => { if (e.touches.length === 1) move(e.touches[0].clientX, e.touches[0].clientY, e); }, { passive: false });
+    el.addEventListener("touchend", end);
+    el.addEventListener("touchcancel", end);
+    // con ratón (la versión web en computadora)
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "mouse") return;
+      start(e.clientX, e.clientY, e.target);
+      const mm = (ev) => move(ev.clientX, ev.clientY, ev);
+      const up = () => { end(); window.removeEventListener("pointermove", mm); window.removeEventListener("pointerup", up); };
+      window.addEventListener("pointermove", mm); window.addEventListener("pointerup", up);
+    });
+  }
   function open(name) {
     if (pickOpen) togglePicker(false);
     close(true);

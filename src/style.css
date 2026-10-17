@@ -193,6 +193,8 @@ body.idle #hud > * { pointer-events: none; }
   padding-bottom: var(--sab);
 }
 .sheet.open { transform: translate(-50%, 0); visibility: visible; transition: transform 0.5s var(--ease); }
+/* barrita para arrastrar hacia abajo y cerrar (como en iOS) */
+.sheet::before { content: ""; position: absolute; top: 7px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: rgba(255, 255, 255, 0.22); }
 .sheet-head { display: flex; align-items: center; gap: 10px; padding: 18px 16px 10px 22px; }
 .sheet-head h2 { margin: 0; flex: 1; font-size: 20px; font-weight: 600; letter-spacing: 0.005em; }
 .sheet-sparks { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; padding: 6px 12px 6px 10px; border-radius: 15px; background: rgba(255, 255, 255, 0.06); }
