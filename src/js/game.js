@@ -32,14 +32,17 @@ const Game = (() => {
     tx = clamp(tx, 12, VW - 12);
     const x0 = clamp(tx + rand(-0.07, 0.07) * VW + (VW / 2 - tx) * 0.12, 16, VW - 16);
     const dist = (ly - ty) / VH;
-    const dur = (0.85 + 0.55 * dist) * (opts.chain ? 0.8 : 1) * (power > 1.4 ? 1.1 : 1);
-    const T = TYPES[type];
+    const T = TYPES[type], spiral = T.flight === "spiral";
+    // el de espiral sube un poco más despacio, para que se alcance a ver el giro
+    const dur = (0.85 + 0.55 * dist) * (opts.chain ? 0.8 : 1) * (power > 1.4 ? 1.1 : 1) * (spiral ? 1.25 : 1);
+    const turns = spiral ? rand(5.2, 6.4) * (opts.chain ? 0.6 : 1) : 0;
     // Cada cohete trae su propia cola, como los de verdad: chispas doradas, brillos plateados, crepitante o casi invisible
-    const tr = Math.random(), tail = opts.chain ? "gold" : tr < 0.5 ? "gold" : tr < 0.7 ? "glitter" : tr < 0.85 ? "crackle" : "dim";
+    const tr = Math.random(), tail = spiral ? "spiral" : opts.chain ? "gold" : tr < 0.5 ? "gold" : tr < 0.7 ? "glitter" : tr < 0.85 ? "crackle" : "dim";
     const r = {
       x0, y0: ly, tx, ty, x: x0, y: ly, t: 0, dur, type, power, opts, acc: 0, smoke: 0, seed: rand(100), tail, pop: 0,
-      arc: rand(-1, 1) * 12 * U * (opts.chain ? 0.3 : 1),
-      pal: opts.pal || palette(), whistle: Sound.rise(dur, panOf(x0), panOf(tx), T.rise, { power, chain: !!opts.chain }),
+      arc: spiral ? 0 : rand(-1, 1) * 12 * U * (opts.chain ? 0.3 : 1),
+      turns, sph: rand(TAU), sdir: chance(0.5) ? 1 : -1, srad: (opts.chain ? 9 : 17 + 4 * power) * U, z: 0,
+      pal: opts.pal || palette(), whistle: Sound.rise(dur, panOf(x0), panOf(tx), T.rise, { power, chain: !!opts.chain, spin: turns / dur }),
     };
     rockets.push(r);
     // Ignición: un destello pequeño abajo
@@ -94,15 +97,27 @@ const Game = (() => {
       const t = Math.min(1, r.t), u = 1 - (1 - t) * (1 - t);
       // subida balística (frena al llegar arriba), con un arco suave y un temblor que se calma
       r.x = lerp(r.x0, r.tx, u) + Math.sin(Math.PI * t) * r.arc + Math.sin(t * 17 + r.seed) * 1.3 * U * (1 - t);
+      // espiral (sacacorchos): gira a ritmo constante; z dice si la cabeza viene hacia ti (+1) o va por detrás (-1)
+      if (r.turns) {
+        const a = r.sph + r.sdir * TAU * r.turns * t, rad = r.srad * (0.55 + 0.6 * t) * (1 - 0.35 * t * t);
+        r.x += Math.sin(a) * rad;
+        r.z = Math.cos(a);
+      }
       r.y = lerp(r.y0, r.ty, u);
       const vx = (r.x - px) / Math.max(dt, 1e-3), vy = (r.y - py) / Math.max(dt, 1e-3);
       // Estela según su cola
-      const rate = { gold: 1, glitter: 0.55, crackle: 0.75, dim: 0.3 }[r.tail];
+      const rate = { gold: 1, glitter: 0.55, crackle: 0.75, dim: 0.3, spiral: 1.5 }[r.tail];
       r.acc += dt * (95 + 40 * r.power) * rate * (1 - 0.6 * t) * (Q.level === 0 ? 0.6 : 1);
       while (r.acc >= 1) {
         r.acc -= 1;
         const f = Math.random(), ex = lerp(px, r.x, f) + rand(-1, 1), ey = lerp(py, r.y, f);
-        if (r.tail === "glitter") {
+        if (r.tail === "spiral") {
+          // el rastro de la espiral: chispas que se quedan flotando un momento (más tenues cuando la cabeza va por detrás)
+          const k = 0.22 + 0.78 * Math.pow((r.z + 1) / 2, 1.3), silver = Math.random() < 0.35;
+          const i = P.add(ex, ey, -vx * 0.04 + rand(-5, 5) * U, -vy * 0.04 + rand(-3, 6) * U, rand(0.8, 1.4), rand(1.3, 1.9) * U * (0.85 + 0.3 * k),
+            (silver ? 0.95 : EMBER_C[0]) * k, (silver ? 0.95 : EMBER_C[1]) * k, (silver ? 1.0 : EMBER_C[2]) * k);
+          if (i >= 0) { P.kind[i] = K_EMBER; P.drag[i] = 4.5; P.grav[i] = 14 * U; }
+        } else if (r.tail === "glitter") {
           const i = P.add(ex, ey, -vx * 0.06 + rand(-10, 10) * U, -vy * 0.06 + rand(-4, 10) * U, rand(0.5, 0.95), rand(1.3, 1.8) * U, 0.95, 0.95, 1.0);
           if (i >= 0) { P.kind[i] = K_GLITTER; P.drag[i] = 3; P.grav[i] = 38 * U; }
         } else {
@@ -125,8 +140,9 @@ const Game = (() => {
       if (r.smoke > 0.07) { r.smoke = 0; Smoke.add(r.x, r.y, rand(-3, 3) * U, rand(-2, 2) * U, rand(2.2, 3.4), 5 * U, 9 * U, 0.05, 0.5, 0.35, 0.18); }
       // la cabeza del cohete titila (la pólvora no quema parejo)
       const fl = 0.8 + 0.25 * Math.sin(Timers.time * 41 + r.seed) * Math.sin(Timers.time * 23 + r.seed * 3) + rand(0, 0.12);
-      const hs = 3.2 * U * Math.pow(r.power, 0.3) * (r.tail === "dim" ? 0.75 : 1) * (0.9 + 0.2 * fl);
-      P.extra(r.x, r.y, vx * 0.02, vy * 0.02, hs, 1.5 * fl, 1.15 * fl, 0.8 * fl, 1);
+      const dz = r.turns ? 0.75 + 0.35 * r.z : 1;  // en la espiral: más grande y brillante cuando viene hacia ti
+      const hs = 3.2 * U * Math.pow(r.power, 0.3) * (r.tail === "dim" ? 0.75 : 1) * (0.9 + 0.2 * fl) * dz;
+      P.extra(r.x, r.y, vx * 0.02, vy * 0.02, hs, 1.5 * fl * dz, 1.15 * fl * dz, 0.8 * fl * dz, 1);
       if (r.t >= 1) { rockets.splice(k, 1); explode(r); }
     }
     // combo: se termina en silencio, sin castigo

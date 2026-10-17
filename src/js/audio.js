@@ -189,13 +189,13 @@ const Sound = (() => {
     { src: "brown", type: "bandpass", f0: 560, k: 1.6, q: 0.7, lvl: 0.8, fuse: 1.5 },  // chisporroteante
   ];
   let lastMood = -1;
-  function rise(dur, pan0, pan1, style, o = {}) {
+  function rise(dur, pan0, pan1, style, o2 = {}) {
     if (!ok()) return null;
     const t = now() + 0.01, end = t + dur, nodes = [];
     let mi = randi(0, MOODS.length - 1);
     if (mi === lastMood) mi = (mi + randi(1, MOODS.length - 1)) % MOODS.length;
     lastMood = mi;
-    const M = MOODS[mi], big = (o.power || 1) > 1.4, chain = !!o.chain;
+    const M = MOODS[mi], big = (o2.power || 1) > 1.4, chain = !!o2.chain;
     const lvl = style.air * M.lvl * (big ? 1.3 : 1) * (chain ? 0.55 : 1) * rand(0.85, 1.15);
     // salida: paneo que sigue al cohete, paso bajo que se cierra (se aleja) y reverb que crece
     const out = panner(pan0 * 0.8);
@@ -244,6 +244,24 @@ const Sound = (() => {
       gw.gain.setValueAtTime(0.0001, t); gw.gain.exponentialRampToValueAtTime(wv, t + 0.35);
       gw.gain.setValueAtTime(wv, end - 0.15); gw.gain.exponentialRampToValueAtTime(0.0001, end + 0.02);
       w.connect(bp); bp.connect(gw); gw.connect(far);
+      // silbido con tono (el de espiral): una nota suave que sube, más el aire de arriba
+      if (style.tone) {
+        const o = ac.createOscillator(), og = ac.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(w0, t); o.frequency.exponentialRampToValueAtTime(w1, end - dur * 0.25);
+        o.frequency.exponentialRampToValueAtTime(w1 * 0.93, end);
+        og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(wv * 0.24, t + 0.4);
+        og.gain.setValueAtTime(wv * 0.24, end - 0.18); og.gain.exponentialRampToValueAtTime(0.0001, end + 0.02);
+        o.connect(og); og.connect(far); o.start(t); nodes.push(o);
+        // al ritmo del giro: el tono se mece un poquito (Doppler) y el sonido va de un lado a otro
+        if (o2.spin > 0) {
+          const lfo = ac.createOscillator(), dep = ac.createGain(), dep2 = ac.createGain();
+          lfo.frequency.value = o2.spin;
+          dep.gain.value = w0 * 0.025; lfo.connect(dep); dep.connect(o.frequency); dep.connect(bp.frequency);
+          if (out.pan) { dep2.gain.value = 0.18; lfo.connect(dep2); dep2.connect(out.pan); }
+          lfo.start(t); nodes.push(lfo);
+        }
+      }
     }
     nodes.forEach((x) => x.stop(end + 0.1));
     return { stop() { try { nodes.forEach((x) => x.stop()); } catch (e) {} } };

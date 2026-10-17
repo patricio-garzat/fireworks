@@ -1070,13 +1070,13 @@ const Sound = (() => {
     { src: "brown", type: "bandpass", f0: 560, k: 1.6, q: 0.7, lvl: 0.8, fuse: 1.5 },  // chisporroteante
   ];
   let lastMood = -1;
-  function rise(dur, pan0, pan1, style, o = {}) {
+  function rise(dur, pan0, pan1, style, o2 = {}) {
     if (!ok()) return null;
     const t = now() + 0.01, end = t + dur, nodes = [];
     let mi = randi(0, MOODS.length - 1);
     if (mi === lastMood) mi = (mi + randi(1, MOODS.length - 1)) % MOODS.length;
     lastMood = mi;
-    const M = MOODS[mi], big = (o.power || 1) > 1.4, chain = !!o.chain;
+    const M = MOODS[mi], big = (o2.power || 1) > 1.4, chain = !!o2.chain;
     const lvl = style.air * M.lvl * (big ? 1.3 : 1) * (chain ? 0.55 : 1) * rand(0.85, 1.15);
     // salida: paneo que sigue al cohete, paso bajo que se cierra (se aleja) y reverb que crece
     const out = panner(pan0 * 0.8);
@@ -1125,6 +1125,24 @@ const Sound = (() => {
       gw.gain.setValueAtTime(0.0001, t); gw.gain.exponentialRampToValueAtTime(wv, t + 0.35);
       gw.gain.setValueAtTime(wv, end - 0.15); gw.gain.exponentialRampToValueAtTime(0.0001, end + 0.02);
       w.connect(bp); bp.connect(gw); gw.connect(far);
+      // silbido con tono (el de espiral): una nota suave que sube, más el aire de arriba
+      if (style.tone) {
+        const o = ac.createOscillator(), og = ac.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(w0, t); o.frequency.exponentialRampToValueAtTime(w1, end - dur * 0.25);
+        o.frequency.exponentialRampToValueAtTime(w1 * 0.93, end);
+        og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(wv * 0.24, t + 0.4);
+        og.gain.setValueAtTime(wv * 0.24, end - 0.18); og.gain.exponentialRampToValueAtTime(0.0001, end + 0.02);
+        o.connect(og); og.connect(far); o.start(t); nodes.push(o);
+        // al ritmo del giro: el tono se mece un poquito (Doppler) y el sonido va de un lado a otro
+        if (o2.spin > 0) {
+          const lfo = ac.createOscillator(), dep = ac.createGain(), dep2 = ac.createGain();
+          lfo.frequency.value = o2.spin;
+          dep.gain.value = w0 * 0.025; lfo.connect(dep); dep.connect(o.frequency); dep.connect(bp.frequency);
+          if (out.pan) { dep2.gain.value = 0.18; lfo.connect(dep2); dep2.connect(out.pan); }
+          lfo.start(t); nodes.push(lfo);
+        }
+      }
     }
     nodes.forEach((x) => x.stop(end + 0.1));
     return { stop() { try { nodes.forEach((x) => x.stop()); } catch (e) {} } };
@@ -3439,6 +3457,24 @@ const TYPES = {
     sound(p, pan) { Sound.boom(p, pan, { crack: 0.7 }); Sound.sizzle(2.8, pan, 0.55, 0.4); },
   },
 
+  // Silbido en espiral: sube girando como sacacorchos y silbando bajito; al abrirse, las estrellas también giran
+  whirl: {
+    cost: 450, name: ["Whistling Spiral", "Silbido en espiral"], desc: ["Spins and whistles on the way up.", "Sube girando y silbando."],
+    flight: "spiral",
+    rise: { air: 0.03, whistle: 0.024, f0: 900, f1: 1380, tone: true },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 0.95, n = count(100, o), drag = 2.0, dir = chance(0.5) ? 1 : -1;
+      for (let k = 0; k < n; k++) {
+        const d = sphereDir(), s = R * drag * rand(0.92, 1.04), c = k % 3 === 0 ? b : a;
+        star(x, y, d.x * s, d.y * s, rand(1.6, 2.0), 2.6 * U, c, { drag, grav: 40, spin: dir * rand(1.2, 1.8), trail: 9, trailC: avg(c, C.gold), trailLife: 0.6, flags: F_FLICKER });
+      }
+      glitterCrown(x, y, R * 0.35, Math.round(22 * P.room()), C.silver);
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { body: 1350, crack: 0.8 }); Sound.sizzle(1.8, pan, 0.45, 0.5); },
+  },
+
   // Espiral: brazos que giran mientras se abren
   spiral: {
     cost: 500, name: ["Spiral", "Espiral"], desc: ["Stars that swirl as they open.", "Estrellas que giran al abrirse."],
@@ -3616,7 +3652,7 @@ const TYPES = {
     sound(p, pan) { Sound.boom(3, pan, { low: 70, body: 1000, gain: 1.15 }); Sound.boom(1.5, -0.4, { crack: 0 }); Sound.sizzle(5.5, pan, 1, 0.3); },
   },
 };
-const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "spiral", "chrysanthemum", "strobe", "dahlia", "comet", "crossette", "horsetail", "heart", "swarm", "saturn", "triple", "star"];
+const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "whirl", "spiral", "chrysanthemum", "strobe", "dahlia", "comet", "crossette", "horsetail", "heart", "swarm", "saturn", "triple", "star"];
 
 // Íconos de línea (SVG, sin emojis), uno por tipo
 const ICON = {
@@ -3634,6 +3670,7 @@ const ICON = {
   crossette: '<circle cx="12" cy="12" r="1.3" fill="currentColor"/><path d="M12 10V7M12 14v3M10 12H7M14 12h3"/><path d="M10.6 3.6l2.8 2.8M13.4 3.6l-2.8 2.8M10.6 17.6l2.8 2.8M13.4 17.6l-2.8 2.8M3.6 10.6l2.8 2.8M6.4 10.6l-2.8 2.8M17.6 10.6l2.8 2.8M20.4 10.6l-2.8 2.8"/>',
   saturn: '<circle cx="12" cy="12" r="4.2"/><ellipse cx="12" cy="12" rx="9.5" ry="3" transform="rotate(-18 12 12)"/>',
   star: '<path d="M12 3.8l2.4 5.1 5.5.6-4.1 3.8 1.1 5.5L12 16l-4.9 2.8 1.1-5.5-4.1-3.8 5.5-.6z"/>',
+  whirl: '<path d="M12 21c-2.4-1.2-2.4-2.8 0-4s2.4-2.8 0-4-2.4-2.8 0-4 2.4-2.8 0-4"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor"/><path d="M16.5 6.5c.9.6 1.4 1.4 1.4 2.2M18.8 4.8c1.4.9 2.2 2.2 2.2 3.6" opacity=".7"/>',
   chrysanthemum: '<circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 9.5V3.5M12 14.5v6M9.5 12h-6M14.5 12h6M10.2 10.2L6 6M13.8 13.8L18 18M13.8 10.2L18 6M10.2 13.8L6 18" stroke-dasharray="1.2 1.6"/>',
   dahlia: '<circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="19" r="1.9"/><circle cx="5" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/><circle cx="7" cy="7" r="1.5"/><circle cx="17" cy="17" r="1.5"/><circle cx="17" cy="7" r="1.5"/><circle cx="7" cy="17" r="1.5"/>',
   horsetail: '<circle cx="12" cy="5" r="1.4" fill="currentColor"/><path d="M12 6.5c-1.5 2-2.5 6-2.5 13M12 6.5c1.5 2 2.5 6 2.5 13M12 6.5c-3 1.5-5.5 5-6.5 11M12 6.5c3 1.5 5.5 5 6.5 11"/>',
@@ -3677,14 +3714,17 @@ const Game = (() => {
     tx = clamp(tx, 12, VW - 12);
     const x0 = clamp(tx + rand(-0.07, 0.07) * VW + (VW / 2 - tx) * 0.12, 16, VW - 16);
     const dist = (ly - ty) / VH;
-    const dur = (0.85 + 0.55 * dist) * (opts.chain ? 0.8 : 1) * (power > 1.4 ? 1.1 : 1);
-    const T = TYPES[type];
+    const T = TYPES[type], spiral = T.flight === "spiral";
+    // el de espiral sube un poco más despacio, para que se alcance a ver el giro
+    const dur = (0.85 + 0.55 * dist) * (opts.chain ? 0.8 : 1) * (power > 1.4 ? 1.1 : 1) * (spiral ? 1.25 : 1);
+    const turns = spiral ? rand(5.2, 6.4) * (opts.chain ? 0.6 : 1) : 0;
     // Cada cohete trae su propia cola, como los de verdad: chispas doradas, brillos plateados, crepitante o casi invisible
-    const tr = Math.random(), tail = opts.chain ? "gold" : tr < 0.5 ? "gold" : tr < 0.7 ? "glitter" : tr < 0.85 ? "crackle" : "dim";
+    const tr = Math.random(), tail = spiral ? "spiral" : opts.chain ? "gold" : tr < 0.5 ? "gold" : tr < 0.7 ? "glitter" : tr < 0.85 ? "crackle" : "dim";
     const r = {
       x0, y0: ly, tx, ty, x: x0, y: ly, t: 0, dur, type, power, opts, acc: 0, smoke: 0, seed: rand(100), tail, pop: 0,
-      arc: rand(-1, 1) * 12 * U * (opts.chain ? 0.3 : 1),
-      pal: opts.pal || palette(), whistle: Sound.rise(dur, panOf(x0), panOf(tx), T.rise, { power, chain: !!opts.chain }),
+      arc: spiral ? 0 : rand(-1, 1) * 12 * U * (opts.chain ? 0.3 : 1),
+      turns, sph: rand(TAU), sdir: chance(0.5) ? 1 : -1, srad: (opts.chain ? 9 : 17 + 4 * power) * U, z: 0,
+      pal: opts.pal || palette(), whistle: Sound.rise(dur, panOf(x0), panOf(tx), T.rise, { power, chain: !!opts.chain, spin: turns / dur }),
     };
     rockets.push(r);
     // Ignición: un destello pequeño abajo
@@ -3739,15 +3779,27 @@ const Game = (() => {
       const t = Math.min(1, r.t), u = 1 - (1 - t) * (1 - t);
       // subida balística (frena al llegar arriba), con un arco suave y un temblor que se calma
       r.x = lerp(r.x0, r.tx, u) + Math.sin(Math.PI * t) * r.arc + Math.sin(t * 17 + r.seed) * 1.3 * U * (1 - t);
+      // espiral (sacacorchos): gira a ritmo constante; z dice si la cabeza viene hacia ti (+1) o va por detrás (-1)
+      if (r.turns) {
+        const a = r.sph + r.sdir * TAU * r.turns * t, rad = r.srad * (0.55 + 0.6 * t) * (1 - 0.35 * t * t);
+        r.x += Math.sin(a) * rad;
+        r.z = Math.cos(a);
+      }
       r.y = lerp(r.y0, r.ty, u);
       const vx = (r.x - px) / Math.max(dt, 1e-3), vy = (r.y - py) / Math.max(dt, 1e-3);
       // Estela según su cola
-      const rate = { gold: 1, glitter: 0.55, crackle: 0.75, dim: 0.3 }[r.tail];
+      const rate = { gold: 1, glitter: 0.55, crackle: 0.75, dim: 0.3, spiral: 1.5 }[r.tail];
       r.acc += dt * (95 + 40 * r.power) * rate * (1 - 0.6 * t) * (Q.level === 0 ? 0.6 : 1);
       while (r.acc >= 1) {
         r.acc -= 1;
         const f = Math.random(), ex = lerp(px, r.x, f) + rand(-1, 1), ey = lerp(py, r.y, f);
-        if (r.tail === "glitter") {
+        if (r.tail === "spiral") {
+          // el rastro de la espiral: chispas que se quedan flotando un momento (más tenues cuando la cabeza va por detrás)
+          const k = 0.22 + 0.78 * Math.pow((r.z + 1) / 2, 1.3), silver = Math.random() < 0.35;
+          const i = P.add(ex, ey, -vx * 0.04 + rand(-5, 5) * U, -vy * 0.04 + rand(-3, 6) * U, rand(0.8, 1.4), rand(1.3, 1.9) * U * (0.85 + 0.3 * k),
+            (silver ? 0.95 : EMBER_C[0]) * k, (silver ? 0.95 : EMBER_C[1]) * k, (silver ? 1.0 : EMBER_C[2]) * k);
+          if (i >= 0) { P.kind[i] = K_EMBER; P.drag[i] = 4.5; P.grav[i] = 14 * U; }
+        } else if (r.tail === "glitter") {
           const i = P.add(ex, ey, -vx * 0.06 + rand(-10, 10) * U, -vy * 0.06 + rand(-4, 10) * U, rand(0.5, 0.95), rand(1.3, 1.8) * U, 0.95, 0.95, 1.0);
           if (i >= 0) { P.kind[i] = K_GLITTER; P.drag[i] = 3; P.grav[i] = 38 * U; }
         } else {
@@ -3770,8 +3822,9 @@ const Game = (() => {
       if (r.smoke > 0.07) { r.smoke = 0; Smoke.add(r.x, r.y, rand(-3, 3) * U, rand(-2, 2) * U, rand(2.2, 3.4), 5 * U, 9 * U, 0.05, 0.5, 0.35, 0.18); }
       // la cabeza del cohete titila (la pólvora no quema parejo)
       const fl = 0.8 + 0.25 * Math.sin(Timers.time * 41 + r.seed) * Math.sin(Timers.time * 23 + r.seed * 3) + rand(0, 0.12);
-      const hs = 3.2 * U * Math.pow(r.power, 0.3) * (r.tail === "dim" ? 0.75 : 1) * (0.9 + 0.2 * fl);
-      P.extra(r.x, r.y, vx * 0.02, vy * 0.02, hs, 1.5 * fl, 1.15 * fl, 0.8 * fl, 1);
+      const dz = r.turns ? 0.75 + 0.35 * r.z : 1;  // en la espiral: más grande y brillante cuando viene hacia ti
+      const hs = 3.2 * U * Math.pow(r.power, 0.3) * (r.tail === "dim" ? 0.75 : 1) * (0.9 + 0.2 * fl) * dz;
+      P.extra(r.x, r.y, vx * 0.02, vy * 0.02, hs, 1.5 * fl * dz, 1.15 * fl * dz, 0.8 * fl * dz, 1);
       if (r.t >= 1) { rockets.splice(k, 1); explode(r); }
     }
     // combo: se termina en silencio, sin castigo

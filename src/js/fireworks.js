@@ -342,6 +342,24 @@ const TYPES = {
     sound(p, pan) { Sound.boom(p, pan, { crack: 0.7 }); Sound.sizzle(2.8, pan, 0.55, 0.4); },
   },
 
+  // Silbido en espiral: sube girando como sacacorchos y silbando bajito; al abrirse, las estrellas también giran
+  whirl: {
+    cost: 450, name: ["Whistling Spiral", "Silbido en espiral"], desc: ["Spins and whistles on the way up.", "Sube girando y silbando."],
+    flight: "spiral",
+    rise: { air: 0.03, whistle: 0.024, f0: 900, f1: 1380, tone: true },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 0.95, n = count(100, o), drag = 2.0, dir = chance(0.5) ? 1 : -1;
+      for (let k = 0; k < n; k++) {
+        const d = sphereDir(), s = R * drag * rand(0.92, 1.04), c = k % 3 === 0 ? b : a;
+        star(x, y, d.x * s, d.y * s, rand(1.6, 2.0), 2.6 * U, c, { drag, grav: 40, spin: dir * rand(1.2, 1.8), trail: 9, trailC: avg(c, C.gold), trailLife: 0.6, flags: F_FLICKER });
+      }
+      glitterCrown(x, y, R * 0.35, Math.round(22 * P.room()), C.silver);
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { body: 1350, crack: 0.8 }); Sound.sizzle(1.8, pan, 0.45, 0.5); },
+  },
+
   // Espiral: brazos que giran mientras se abren
   spiral: {
     cost: 500, name: ["Spiral", "Espiral"], desc: ["Stars that swirl as they open.", "Estrellas que giran al abrirse."],
@@ -519,7 +537,7 @@ const TYPES = {
     sound(p, pan) { Sound.boom(3, pan, { low: 70, body: 1000, gain: 1.15 }); Sound.boom(1.5, -0.4, { crack: 0 }); Sound.sizzle(5.5, pan, 1, 0.3); },
   },
 };
-const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "spiral", "chrysanthemum", "strobe", "dahlia", "comet", "crossette", "horsetail", "heart", "swarm", "saturn", "triple", "star"];
+const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "whirl", "spiral", "chrysanthemum", "strobe", "dahlia", "comet", "crossette", "horsetail", "heart", "swarm", "saturn", "triple", "star"];
 
 // Íconos de línea (SVG, sin emojis), uno por tipo
 const ICON = {
@@ -537,6 +555,7 @@ const ICON = {
   crossette: '<circle cx="12" cy="12" r="1.3" fill="currentColor"/><path d="M12 10V7M12 14v3M10 12H7M14 12h3"/><path d="M10.6 3.6l2.8 2.8M13.4 3.6l-2.8 2.8M10.6 17.6l2.8 2.8M13.4 17.6l-2.8 2.8M3.6 10.6l2.8 2.8M6.4 10.6l-2.8 2.8M17.6 10.6l2.8 2.8M20.4 10.6l-2.8 2.8"/>',
   saturn: '<circle cx="12" cy="12" r="4.2"/><ellipse cx="12" cy="12" rx="9.5" ry="3" transform="rotate(-18 12 12)"/>',
   star: '<path d="M12 3.8l2.4 5.1 5.5.6-4.1 3.8 1.1 5.5L12 16l-4.9 2.8 1.1-5.5-4.1-3.8 5.5-.6z"/>',
+  whirl: '<path d="M12 21c-2.4-1.2-2.4-2.8 0-4s2.4-2.8 0-4-2.4-2.8 0-4 2.4-2.8 0-4"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor"/><path d="M16.5 6.5c.9.6 1.4 1.4 1.4 2.2M18.8 4.8c1.4.9 2.2 2.2 2.2 3.6" opacity=".7"/>',
   chrysanthemum: '<circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 9.5V3.5M12 14.5v6M9.5 12h-6M14.5 12h6M10.2 10.2L6 6M13.8 13.8L18 18M13.8 10.2L18 6M10.2 13.8L6 18" stroke-dasharray="1.2 1.6"/>',
   dahlia: '<circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="19" r="1.9"/><circle cx="5" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/><circle cx="7" cy="7" r="1.5"/><circle cx="17" cy="17" r="1.5"/><circle cx="17" cy="7" r="1.5"/><circle cx="7" cy="17" r="1.5"/>',
   horsetail: '<circle cx="12" cy="5" r="1.4" fill="currentColor"/><path d="M12 6.5c-1.5 2-2.5 6-2.5 13M12 6.5c1.5 2 2.5 6 2.5 13M12 6.5c-3 1.5-5.5 5-6.5 11M12 6.5c3 1.5 5.5 5 6.5 11"/>',
