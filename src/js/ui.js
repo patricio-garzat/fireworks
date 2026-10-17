@@ -28,6 +28,9 @@ const UI = (() => {
     $("#b-set").addEventListener("click", () => { press(); open("settings"); });
     $("#b-home").addEventListener("click", () => { press(); goHome(); });
     $("#sparks").addEventListener("click", () => { press(); colTab = "fw"; open("collection"); });
+    $("#pick-btn").addEventListener("click", () => { press(); togglePicker(); });
+    document.addEventListener("pointerdown", (e) => { if (pickOpen && !e.target.closest("#picker")) togglePicker(false); }, true);
+    document.addEventListener("keydown", (e) => { if (pickOpen && e.key === "Escape") togglePicker(false); });
     $("#finale").addEventListener("click", () => { if (Game.startFinale()) { Haptics.success(); finaleBar(); } });
     $("#scrim").addEventListener("click", close);
     $$("[data-close]").forEach((b) => b.addEventListener("click", () => { press(); close(); }));
@@ -82,6 +85,7 @@ const UI = (() => {
   function revealTitle() { $("#title").classList.add("in"); }
   function revealMenu() { $("#home").classList.remove("intro"); }
   function goHome() {
+    if (pickOpen) togglePicker(false);
     close();
     Game.setMode("home");
     showHome(false);
@@ -108,7 +112,7 @@ const UI = (() => {
   function tick(dt) {
     idleT += dt;
     const playing = Game.mode !== "home" && !sheet;
-    if (playing && idleT > (Game.finale ? 1.2 : 5) && !Game.recording && !body.classList.contains("idle")) body.classList.add("idle");
+    if (playing && !pickOpen && idleT > (Game.finale ? 1.2 : 5) && !Game.recording && !body.classList.contains("idle")) body.classList.add("idle");
     if (Game.recording) {
       const r = Game.recording;
       $("#show-status").textContent = `${t("recording")} · ${(Timers.time - r.t0).toFixed(1)} s · ${r.events.length} ${t("launches")}`;
@@ -117,19 +121,38 @@ const UI = (() => {
   }
 
   /* ---------- Selector ---------- */
+  // Selector de cohete: el botón muestra el elegido; la cuadrícula se abre encima y se cierra al elegir o al tocar fuera
+  let pickOpen = false;
   function buildPicker() {
-    const nav = $("#picker"), owned = TYPE_ORDER.filter((k) => Save.unlocked.types.includes(k));
+    const owned = TYPE_ORDER.filter((k) => Save.unlocked.types.includes(k));
     const items = owned.length > 1 ? ["mix", ...owned] : owned;
     if (!items.includes(Save.selected.type)) Save.selected.type = owned[0];
-    nav.innerHTML = items.map((k) => `<button class="chip${Save.selected.type === k ? " on" : ""}" data-k="${k}" type="button">${iconSVG(k)}<span>${k === "mix" ? t("mix") : TYPES[k].name[LANG]}</span></button>`).join("");
-    nav.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
+    const cur = Save.selected.type, name = (k) => (k === "mix" ? t("mix") : TYPES[k].name[LANG]);
+    const btn = $("#pick-btn");
+    btn.querySelector(".ci").innerHTML = iconSVG(cur);
+    btn.querySelector(".nm").textContent = name(cur);
+    $("#picker").classList.toggle("solo", items.length < 2);
+    const grid = $("#pick-pop .pick-grid");
+    grid.innerHTML = items.map((k) => `<button class="pick-it${k === cur ? " on" : ""}" data-k="${k}" type="button" role="menuitemradio" aria-checked="${k === cur}">${iconSVG(k)}<span>${name(k)}</span></button>`).join("");
+    grid.querySelectorAll(".pick-it").forEach((b) => b.addEventListener("click", () => {
       Save.selected.type = b.dataset.k; persist();
-      nav.querySelectorAll(".chip").forEach((x) => x.classList.toggle("on", x === b));
       Sound.tap(); Haptics.tap();
+      buildPicker(); togglePicker(false);
     }));
-    const on = nav.querySelector(".chip.on");
-    if (on) requestAnimationFrame(() => on.scrollIntoView({ block: "nearest", inline: "center" }));
   }
+  function togglePicker(open) {
+    if ($("#picker").classList.contains("solo")) open = false;
+    pickOpen = open === undefined ? !pickOpen : open;
+    $("#picker").classList.toggle("open", pickOpen);
+    $("#pick-pop").hidden = !pickOpen;
+    $("#pick-btn").setAttribute("aria-expanded", String(pickOpen));
+    if (pickOpen) {
+      Input.enabled = false;
+      const on = $("#pick-pop .pick-it.on");
+      if (on) on.scrollIntoView({ block: "nearest" });
+    } else setTimeout(() => { if (!pickOpen && !sheet) Input.enabled = Game.mode !== "home"; }, 0); // el toque que cerró no lanza un cohete
+  }
+
 
   /* ---------- HUD ---------- */
   let shown = -1;
@@ -192,6 +215,7 @@ const UI = (() => {
 
   /* ---------- Hojas ---------- */
   function open(name) {
+    if (pickOpen) togglePicker(false);
     close(true);
     sheet = name;
     if (name === "collection") renderCollection();

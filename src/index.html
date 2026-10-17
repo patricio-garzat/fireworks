@@ -76,7 +76,14 @@
     <p class="show-status" id="show-status"></p>
   </div>
 
-  <nav id="picker" class="picker" aria-label="Fireworks"></nav>
+  <!-- Selector de cohete: un botón chico abajo al centro; al tocarlo se abre una cuadrícula con todos -->
+  <nav id="picker" class="picker" aria-label="Fireworks">
+    <div id="pick-pop" class="pick-pop" role="menu" hidden><div class="pick-grid"></div></div>
+    <button id="pick-btn" class="pick-btn glass" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="pick-pop">
+      <span class="ci"></span><span class="nm"></span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 14.5l5-5 5 5"/></svg>
+    </button>
+  </nav>
 </div>
 
 <div id="floaters" aria-hidden="true"></div>
