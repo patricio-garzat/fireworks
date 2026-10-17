@@ -342,22 +342,41 @@ const TYPES = {
     sound(p, pan) { Sound.boom(p, pan, { crack: 0.7 }); Sound.sizzle(2.8, pan, 0.55, 0.4); },
   },
 
-  // Silbido en espiral: sube girando como sacacorchos y silbando bajito; al abrirse, las estrellas también giran
+  // Silbido en espiral: sube como sacacorchos, cerrado y rápido, silbando bajito. Al abrirse es un sauce dorado
+  // denso cuyas puntas, al ir cayendo, se vuelven brillitos que titilan (lluvia de oro que brilla al final).
   whirl: {
-    cost: 450, name: ["Whistling Spiral", "Silbido en espiral"], desc: ["Spins and whistles on the way up.", "Sube girando y silbando."],
+    cost: 450, name: ["Whistling Spiral", "Silbido en espiral"], desc: ["Spins up whistling, then a glittering golden willow.", "Sube girando y silbando; cae como sauce que brilla."],
     flight: "spiral",
     rise: { air: 0.03, whistle: 0.024, f0: 900, f1: 1380, tone: true },
-    burst(x, y, o) {
-      const [a, b] = o.colors || two(o.pal), R = radius(o) * 0.95, n = count(100, o), drag = 2.0, dir = chance(0.5) ? 1 : -1;
-      for (let k = 0; k < n; k++) {
-        const d = sphereDir(), s = R * drag * rand(0.92, 1.04), c = k % 3 === 0 ? b : a;
-        star(x, y, d.x * s, d.y * s, rand(1.6, 2.0), 2.6 * U, c, { drag, grav: 40, spin: dir * rand(1.2, 1.8), trail: 9, trailC: avg(c, C.gold), trailLife: 0.6, flags: F_FLICKER });
-      }
-      glitterCrown(x, y, R * 0.35, Math.round(22 * P.room()), C.silver);
-      flair(x, y, R, o, a);
-      return { light: avg(a, b), R };
+    burst(x, y, o, pan) {
+      const c = o.pal.metal, R = radius(o) * 0.95, drag = 2.6, g = 88 * U, T0 = rand(1.5, 1.8);
+      const gl = c === C.silver ? C.silver : C.warm, sparkle = [];
+      const layer = (n, f, life, size) => {
+        for (let k = 0; k < n; k++) {
+          const d = sphereDir(), s = R * drag * f * rand(0.9, 1.05), vx = d.x * s, vy = d.y * s - 10 * U;
+          star(x, y, vx, vy, life * rand(0.9, 1.1), size * U, [c[0] * 0.85, c[1] * 0.75, c[2] * 0.62],
+            { drag, grav: 88, heat: 1, trail: 50 * (Q.level === 0 ? 0.55 : 1), trailC: c, trailLife: 2.4, trailGrav: 6, flags: F_FLICKER });
+          if (k % 2 === 0) sparkle.push([vx, vy]);
+        }
+      };
+      layer(count(84, o), 1, 4.2, 2.6);
+      layer(count(36, o), 0.6, 3.6, 2.2);
+      // donde va cada punta al cabo de T0 (misma física que star: frenado + gravedad), ahí nacen los brillitos
+      Timers.after(T0, () => {
+        const e = Math.exp(-drag * T0), vt = g / drag;
+        for (const [vx, vy] of sparkle) {
+          const px = x + (vx / drag) * (1 - e), py = y + ((vy - vt) / drag) * (1 - e) + vt * T0;
+          const i = P.add(px, py, vx * e, vt + (vy - vt) * e, rand(1.4, 2.2), rand(1.5, 2.1) * U, gl[0], gl[1], gl[2]);
+          if (i < 0) break;
+          P.kind[i] = K_GLITTER; P.drag[i] = drag; P.grav[i] = g;
+        }
+        Sound.crackle(0.45, pan, 0);
+      });
+      glitterCrown(x, y, R * 0.3, Math.round(20 * P.room()), gl);
+      flair(x, y, R, o, c);
+      return { light: c, R };
     },
-    sound(p, pan) { Sound.boom(p, pan, { body: 1350, crack: 0.8 }); Sound.sizzle(1.8, pan, 0.45, 0.5); },
+    sound(p, pan) { Sound.boom(p, pan, { low: 78, body: 1100, crack: 0.5, gain: 0.95 }); Sound.sizzle(4.6, pan, 0.8, 0.2); },
   },
 
   // Espiral: brazos que giran mientras se abren

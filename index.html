@@ -1138,8 +1138,8 @@ const Sound = (() => {
         if (o2.spin > 0) {
           const lfo = ac.createOscillator(), dep = ac.createGain(), dep2 = ac.createGain();
           lfo.frequency.value = o2.spin;
-          dep.gain.value = w0 * 0.025; lfo.connect(dep); dep.connect(o.frequency); dep.connect(bp.frequency);
-          if (out.pan) { dep2.gain.value = 0.18; lfo.connect(dep2); dep2.connect(out.pan); }
+          dep.gain.value = w0 * 0.012; lfo.connect(dep); dep.connect(o.frequency); dep.connect(bp.frequency);
+          if (out.pan) { dep2.gain.value = 0.08; lfo.connect(dep2); dep2.connect(out.pan); }
           lfo.start(t); nodes.push(lfo);
         }
       }
@@ -3457,22 +3457,41 @@ const TYPES = {
     sound(p, pan) { Sound.boom(p, pan, { crack: 0.7 }); Sound.sizzle(2.8, pan, 0.55, 0.4); },
   },
 
-  // Silbido en espiral: sube girando como sacacorchos y silbando bajito; al abrirse, las estrellas también giran
+  // Silbido en espiral: sube como sacacorchos, cerrado y rápido, silbando bajito. Al abrirse es un sauce dorado
+  // denso cuyas puntas, al ir cayendo, se vuelven brillitos que titilan (lluvia de oro que brilla al final).
   whirl: {
-    cost: 450, name: ["Whistling Spiral", "Silbido en espiral"], desc: ["Spins and whistles on the way up.", "Sube girando y silbando."],
+    cost: 450, name: ["Whistling Spiral", "Silbido en espiral"], desc: ["Spins up whistling, then a glittering golden willow.", "Sube girando y silbando; cae como sauce que brilla."],
     flight: "spiral",
     rise: { air: 0.03, whistle: 0.024, f0: 900, f1: 1380, tone: true },
-    burst(x, y, o) {
-      const [a, b] = o.colors || two(o.pal), R = radius(o) * 0.95, n = count(100, o), drag = 2.0, dir = chance(0.5) ? 1 : -1;
-      for (let k = 0; k < n; k++) {
-        const d = sphereDir(), s = R * drag * rand(0.92, 1.04), c = k % 3 === 0 ? b : a;
-        star(x, y, d.x * s, d.y * s, rand(1.6, 2.0), 2.6 * U, c, { drag, grav: 40, spin: dir * rand(1.2, 1.8), trail: 9, trailC: avg(c, C.gold), trailLife: 0.6, flags: F_FLICKER });
-      }
-      glitterCrown(x, y, R * 0.35, Math.round(22 * P.room()), C.silver);
-      flair(x, y, R, o, a);
-      return { light: avg(a, b), R };
+    burst(x, y, o, pan) {
+      const c = o.pal.metal, R = radius(o) * 0.95, drag = 2.6, g = 88 * U, T0 = rand(1.5, 1.8);
+      const gl = c === C.silver ? C.silver : C.warm, sparkle = [];
+      const layer = (n, f, life, size) => {
+        for (let k = 0; k < n; k++) {
+          const d = sphereDir(), s = R * drag * f * rand(0.9, 1.05), vx = d.x * s, vy = d.y * s - 10 * U;
+          star(x, y, vx, vy, life * rand(0.9, 1.1), size * U, [c[0] * 0.85, c[1] * 0.75, c[2] * 0.62],
+            { drag, grav: 88, heat: 1, trail: 50 * (Q.level === 0 ? 0.55 : 1), trailC: c, trailLife: 2.4, trailGrav: 6, flags: F_FLICKER });
+          if (k % 2 === 0) sparkle.push([vx, vy]);
+        }
+      };
+      layer(count(84, o), 1, 4.2, 2.6);
+      layer(count(36, o), 0.6, 3.6, 2.2);
+      // donde va cada punta al cabo de T0 (misma física que star: frenado + gravedad), ahí nacen los brillitos
+      Timers.after(T0, () => {
+        const e = Math.exp(-drag * T0), vt = g / drag;
+        for (const [vx, vy] of sparkle) {
+          const px = x + (vx / drag) * (1 - e), py = y + ((vy - vt) / drag) * (1 - e) + vt * T0;
+          const i = P.add(px, py, vx * e, vt + (vy - vt) * e, rand(1.4, 2.2), rand(1.5, 2.1) * U, gl[0], gl[1], gl[2]);
+          if (i < 0) break;
+          P.kind[i] = K_GLITTER; P.drag[i] = drag; P.grav[i] = g;
+        }
+        Sound.crackle(0.45, pan, 0);
+      });
+      glitterCrown(x, y, R * 0.3, Math.round(20 * P.room()), gl);
+      flair(x, y, R, o, c);
+      return { light: c, R };
     },
-    sound(p, pan) { Sound.boom(p, pan, { body: 1350, crack: 0.8 }); Sound.sizzle(1.8, pan, 0.45, 0.5); },
+    sound(p, pan) { Sound.boom(p, pan, { low: 78, body: 1100, crack: 0.5, gain: 0.95 }); Sound.sizzle(4.6, pan, 0.8, 0.2); },
   },
 
   // Espiral: brazos que giran mientras se abren
@@ -3715,15 +3734,15 @@ const Game = (() => {
     const x0 = clamp(tx + rand(-0.07, 0.07) * VW + (VW / 2 - tx) * 0.12, 16, VW - 16);
     const dist = (ly - ty) / VH;
     const T = TYPES[type], spiral = T.flight === "spiral";
-    // el de espiral sube un poco más despacio, para que se alcance a ver el giro
-    const dur = (0.85 + 0.55 * dist) * (opts.chain ? 0.8 : 1) * (power > 1.4 ? 1.1 : 1) * (spiral ? 1.25 : 1);
-    const turns = spiral ? rand(5.2, 6.4) * (opts.chain ? 0.6 : 1) : 0;
+    const dur = (0.85 + 0.55 * dist) * (opts.chain ? 0.8 : 1) * (power > 1.4 ? 1.1 : 1) * (spiral ? 1.05 : 1);
+    // espiral cerrada y rápida: muchas vueltas chiquitas
+    const turns = spiral ? rand(8.5, 10.5) * (opts.chain ? 0.6 : 1) : 0;
     // Cada cohete trae su propia cola, como los de verdad: chispas doradas, brillos plateados, crepitante o casi invisible
     const tr = Math.random(), tail = spiral ? "spiral" : opts.chain ? "gold" : tr < 0.5 ? "gold" : tr < 0.7 ? "glitter" : tr < 0.85 ? "crackle" : "dim";
     const r = {
       x0, y0: ly, tx, ty, x: x0, y: ly, t: 0, dur, type, power, opts, acc: 0, smoke: 0, seed: rand(100), tail, pop: 0,
       arc: spiral ? 0 : rand(-1, 1) * 12 * U * (opts.chain ? 0.3 : 1),
-      turns, sph: rand(TAU), sdir: chance(0.5) ? 1 : -1, srad: (opts.chain ? 9 : 17 + 4 * power) * U, z: 0,
+      turns, sph: rand(TAU), sdir: chance(0.5) ? 1 : -1, srad: (opts.chain ? 5 : 8 + 2 * power) * U, z: 0,
       pal: opts.pal || palette(), whistle: Sound.rise(dur, panOf(x0), panOf(tx), T.rise, { power, chain: !!opts.chain, spin: turns / dur }),
     };
     rockets.push(r);
@@ -3781,7 +3800,7 @@ const Game = (() => {
       r.x = lerp(r.x0, r.tx, u) + Math.sin(Math.PI * t) * r.arc + Math.sin(t * 17 + r.seed) * 1.3 * U * (1 - t);
       // espiral (sacacorchos): gira a ritmo constante; z dice si la cabeza viene hacia ti (+1) o va por detrás (-1)
       if (r.turns) {
-        const a = r.sph + r.sdir * TAU * r.turns * t, rad = r.srad * (0.55 + 0.6 * t) * (1 - 0.35 * t * t);
+        const a = r.sph + r.sdir * TAU * r.turns * t, rad = r.srad * (0.7 + 0.45 * t) * (1 - 0.3 * t * t);
         r.x += Math.sin(a) * rad;
         r.z = Math.cos(a);
       }

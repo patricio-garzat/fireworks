@@ -33,15 +33,15 @@ const Game = (() => {
     const x0 = clamp(tx + rand(-0.07, 0.07) * VW + (VW / 2 - tx) * 0.12, 16, VW - 16);
     const dist = (ly - ty) / VH;
     const T = TYPES[type], spiral = T.flight === "spiral";
-    // el de espiral sube un poco más despacio, para que se alcance a ver el giro
-    const dur = (0.85 + 0.55 * dist) * (opts.chain ? 0.8 : 1) * (power > 1.4 ? 1.1 : 1) * (spiral ? 1.25 : 1);
-    const turns = spiral ? rand(5.2, 6.4) * (opts.chain ? 0.6 : 1) : 0;
+    const dur = (0.85 + 0.55 * dist) * (opts.chain ? 0.8 : 1) * (power > 1.4 ? 1.1 : 1) * (spiral ? 1.05 : 1);
+    // espiral cerrada y rápida: muchas vueltas chiquitas
+    const turns = spiral ? rand(8.5, 10.5) * (opts.chain ? 0.6 : 1) : 0;
     // Cada cohete trae su propia cola, como los de verdad: chispas doradas, brillos plateados, crepitante o casi invisible
     const tr = Math.random(), tail = spiral ? "spiral" : opts.chain ? "gold" : tr < 0.5 ? "gold" : tr < 0.7 ? "glitter" : tr < 0.85 ? "crackle" : "dim";
     const r = {
       x0, y0: ly, tx, ty, x: x0, y: ly, t: 0, dur, type, power, opts, acc: 0, smoke: 0, seed: rand(100), tail, pop: 0,
       arc: spiral ? 0 : rand(-1, 1) * 12 * U * (opts.chain ? 0.3 : 1),
-      turns, sph: rand(TAU), sdir: chance(0.5) ? 1 : -1, srad: (opts.chain ? 9 : 17 + 4 * power) * U, z: 0,
+      turns, sph: rand(TAU), sdir: chance(0.5) ? 1 : -1, srad: (opts.chain ? 5 : 8 + 2 * power) * U, z: 0,
       pal: opts.pal || palette(), whistle: Sound.rise(dur, panOf(x0), panOf(tx), T.rise, { power, chain: !!opts.chain, spin: turns / dur }),
     };
     rockets.push(r);
@@ -99,7 +99,7 @@ const Game = (() => {
       r.x = lerp(r.x0, r.tx, u) + Math.sin(Math.PI * t) * r.arc + Math.sin(t * 17 + r.seed) * 1.3 * U * (1 - t);
       // espiral (sacacorchos): gira a ritmo constante; z dice si la cabeza viene hacia ti (+1) o va por detrás (-1)
       if (r.turns) {
-        const a = r.sph + r.sdir * TAU * r.turns * t, rad = r.srad * (0.55 + 0.6 * t) * (1 - 0.35 * t * t);
+        const a = r.sph + r.sdir * TAU * r.turns * t, rad = r.srad * (0.7 + 0.45 * t) * (1 - 0.3 * t * t);
         r.x += Math.sin(a) * rad;
         r.z = Math.cos(a);
       }

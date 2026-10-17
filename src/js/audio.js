@@ -257,8 +257,8 @@ const Sound = (() => {
         if (o2.spin > 0) {
           const lfo = ac.createOscillator(), dep = ac.createGain(), dep2 = ac.createGain();
           lfo.frequency.value = o2.spin;
-          dep.gain.value = w0 * 0.025; lfo.connect(dep); dep.connect(o.frequency); dep.connect(bp.frequency);
-          if (out.pan) { dep2.gain.value = 0.18; lfo.connect(dep2); dep2.connect(out.pan); }
+          dep.gain.value = w0 * 0.012; lfo.connect(dep); dep.connect(o.frequency); dep.connect(bp.frequency);
+          if (out.pan) { dep2.gain.value = 0.08; lfo.connect(dep2); dep2.connect(out.pan); }
           lfo.start(t); nodes.push(lfo);
         }
       }
