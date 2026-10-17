@@ -16,6 +16,7 @@ Abre `http://localhost:8795/` (versión armada) o `http://localhost:8795/src/` (
 | `src/index.html`, `src/style.css` | La página y sus estilos |
 | `src/js/` | El código, en archivos separados (ver abajo) |
 | `tools/build.py` | Arma `index.html`: `python3 tools/build.py [versión]` |
+| `tools/sound-lab.html` | Laboratorio de sonido: reproduce cada sonido del juego por separado y mide su volumen y sus agudos |
 | `brand/` | Ícono |
 | `app/` | App de iOS (Capacitor 7): ver abajo |
 | `VERSION` | La versión que se ve en Ajustes |

@@ -1,0 +1,58 @@
+<!doctype html><meta charset="utf-8"><title>Fireworks · laboratorio de sonido</title>
+<script>window.Settings = { sfx: 0.85, music: 0, haptics: false };</script>
+<script src="../src/js/util.js"></script>
+<script>
+// Carga el sonido del juego (../src/js/audio.js) y, si existe, una versión anterior para comparar (tools/audio-old.js)
+window.SRC = {}; const ready = Promise.all([["new", "../src/js/audio.js"], ["old", "audio-old.js"]].map(([k, u]) => fetch(u).then((r) => (r.ok ? r.text() : null)).then((t) => { if (t) SRC[k] = t; }).catch(() => {})));
+</script>
+<script>
+const SR = 48000;
+const SCEN = {
+  ignite: (S) => S.ignite(0),
+  rise: (S) => S.rise(1.4, 0, 0, { air: 0.05, whistle: 0 }),
+  riseWhistle: (S) => S.rise(1.4, 0, 0, { air: 0.035, whistle: 0.05, f0: 760, f1: 1250 }),
+  classic: (S) => { S.boom(1, 0); S.sizzle(1.5, 0, 0.35, 0.9); },
+  boomOnly: (S) => S.boom(1, 0),
+  boomBig: (S) => S.boom(2.4, 0, { crack: 1.2 }),
+  willow: (S) => { S.boom(1, 0, { low: 80, body: 1100, crack: 0.6, gain: 0.9 }); S.sizzle(4.0, 0, 0.75, 0.2); },
+  crackling: (S) => { S.boom(1, 0, { crack: 0.8 }); S.crackle(1.6, 0, 0.78); },
+  crackleOnly: (S) => S.crackle(1.6, 0, 0),
+  sizzleOnly: (S) => S.sizzle(3, 0, 0.75, 0),
+  finale: (S) => { S.boom(3, 0, { low: 70, body: 1000, gain: 1.15 }); S.boom(1.5, -0.4, { crack: 0 }); S.sizzle(5.5, 0, 1, 0.3); },
+};
+function fft(re, im) { const n = re.length; for (let i = 1, j = 0; i < n; i++) { let b = n >> 1; for (; j & b; b >>= 1) j ^= b; j ^= b; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+  for (let len = 2; len <= n; len <<= 1) { const a = -2 * Math.PI / len, wr = Math.cos(a), wi = Math.sin(a); for (let i = 0; i < n; i += len) { let cr = 1, ci = 0; for (let j = 0; j < len / 2; j++) { const ur = re[i + j], ui = im[i + j], vr = re[i + j + len / 2] * cr - im[i + j + len / 2] * ci, vi = re[i + j + len / 2] * ci + im[i + j + len / 2] * cr; re[i + j] = ur + vr; im[i + j] = ui + vi; re[i + j + len / 2] = ur - vr; im[i + j + len / 2] = ui - vi; const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t; } } } }
+// remember the last context created
+const _OAC = OfflineAudioContext;
+async function analyze(ver, name, dur = 5) {
+  let last = null;
+  class FakeAC extends _OAC { constructor() { super(2, SR * dur, SR); last = this; } get state() { return "running"; } }
+  window.AudioContext = FakeAC;
+  const Sound = new Function(SRC[ver] + "\n;return Sound;")();
+  Sound.wake(); SCEN[name](Sound);
+  const buf = await last.startRendering();
+  const L = buf.getChannelData(0), R = buf.getChannelData(1), n = L.length;
+  let sq = 0, pk = 0; for (let i = 0; i < n; i++) { const m = (L[i] + R[i]) / 2; sq += m * m; pk = Math.max(pk, Math.abs(L[i]), Math.abs(R[i])); }
+  // loudness of the loudest 400 ms window (what you perceive) 
+  const W = SR * 0.4 | 0; let best = 0; for (let s = 0; s + W < n; s += W / 4 | 0) { let q = 0; for (let i = s; i < s + W; i++) { const m = (L[i] + R[i]) / 2; q += m * m; } best = Math.max(best, q / W); }
+  // spectrum via averaged FFT frames over the whole render
+  const N = 4096, bands = { lo: [0, 250], mid: [250, 1000], hm: [1000, 2500], hi: [2500, 5000], air: [5000, 24000] }, E = {}; for (const k in bands) E[k] = 0;
+  for (let s = 0; s + N <= n; s += N) { const re = new Float64Array(N), im = new Float64Array(N); for (let i = 0; i < N; i++) re[i] = ((L[s + i] + R[s + i]) / 2) * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / N)); fft(re, im);
+    for (let b = 1; b < N / 2; b++) { const f = b * SR / N, p = re[b] * re[b] + im[b] * im[b]; for (const k in bands) if (f >= bands[k][0] && f < bands[k][1]) E[k] += p; } }
+  const tot = Object.values(E).reduce((a, b) => a + b, 0) || 1; const pct = {}; for (const k in E) pct[k] = +(100 * E[k] / tot).toFixed(1);
+  // attack sharpness: max sample-to-sample jump relative to peak (clicks/harsh transients)
+  let jump = 0; for (let i = 1; i < n; i++) jump = Math.max(jump, Math.abs(L[i] - L[i - 1]));
+  const db = (x) => +(10 * Math.log10(x + 1e-12)).toFixed(1);
+  return { ver, name, loud400: db(best), rms: db(sq / n), peak: +pk.toFixed(2), jumpPct: +(100 * jump / (pk || 1)).toFixed(1), ...pct };
+}
+async function all(names) { await ready; const out = []; for (const nm of names || Object.keys(SCEN)) for (const v of Object.keys(SRC)) out.push(await analyze(v, nm)); return out; }
+// listen: play a rendered buffer through a real context
+async function play(ver, name) { let last = null; class FakeAC extends _OAC { constructor() { super(2, SR * 6, SR); last = this; } get state() { return "running"; } }
+  window.AudioContext = FakeAC; const Sound = new Function(SRC[ver] + "\n;return Sound;")(); Sound.wake(); SCEN[name](Sound); const buf = await last.startRendering();
+  const ac = new _AC(); const s = ac.createBufferSource(); s.buffer = buf; s.connect(ac.destination); s.start(); }
+const _AC = window.AudioContext;
+</script>
+<body style="font:14px system-ui;padding:16px"><h3>Fireworks · laboratorio de sonido</h3>
+<p>Renderiza cada sonido del juego sin el juego y lo reproduce. Abre <code>http://localhost:8795/tools/sound-lab.html</code>. "antes" solo aparece si existe <code>tools/audio-old.js</code>. En la consola, <code>await all()</code> mide volumen y reparto de graves y agudos.</p><div id="b"></div>
+<script>ready.then(() => { for (const k of Object.keys(SCEN)) { const d = document.createElement("div"); d.style.margin = "6px 0";
+  d.innerHTML = `<b style="display:inline-block;width:110px">${k}</b> ` + (SRC.old ? `<button onclick="play('old','${k}')">antes</button> ` : "") + `<button onclick="play('new','${k}')">ahora</button>`; b.appendChild(d); } });</script>
