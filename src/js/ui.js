@@ -6,6 +6,7 @@ const UI = (() => {
   let idleT = 0, sheet = null, colTab = "fw", toastQ = [], toastBusy = false;
   const thumbs = {};
   const SPARK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l1.9 6.2 6.3 1.9-6.3 2-1.9 6.3-1.9-6.3-6.3-2 6.3-1.9z" fill="currentColor"/></svg>';
+  const PHOTO_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.6"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l4.6-4.4 3.4 3 3-2.6L20 17"/></svg>';
   const LOCK = '<svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="10.5" width="13" height="9.5" rx="2.2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>';
   const HOW_ICONS = {
     tap: '<circle cx="12" cy="9" r="3.2"/><path d="M12 15.5v5M7.5 4.8A6.5 6.5 0 0 1 16.5 4.8"/>',
@@ -241,18 +242,30 @@ const UI = (() => {
         c.querySelector("[data-buy]")?.addEventListener("click", () => buy("palettes", k, PALETTES[k].cost, PALETTES[k].name[LANG], "classic", () => { Save.selected.palette = k; }));
       });
     } else if (colTab === "scn") {
-      el.innerHTML = `<div class="grid">${SCENE_ORDER.map((k) => {
+      // "Tu foto" va primero: siempre disponible, gratis
+      const ph = Photo.ready, phSel = ph && Save.selected.scene === "photo";
+      const photoCard = `<div class="card scene photo${phSel ? " sel" : ""}" data-photo>
+          <div class="thumb${ph ? "" : " empty"}"${ph ? ` style="background-image:url(${Photo.thumb()})"` : ""}>${ph ? "" : PHOTO_ICON}</div>
+          <h4>${t("phTitle")}</h4>
+          ${ph ? `<div class="card-row"><button class="card-btn${phSel ? " on" : ""}" data-use type="button">${phSel ? t("selected") : t("use")}</button><button class="card-btn" data-edit type="button">${t("phEdit")}</button></div>`
+               : `<button class="card-btn buy" data-choose type="button">${t("phChoose")}</button>`}
+        </div>`;
+      el.innerHTML = `<div class="grid">${photoCard}${SCENE_ORDER.map((k) => {
         const s = SCENES[k], own = Save.unlocked.scenes.includes(k), sel = Save.selected.scene === k;
         if (!thumbs[k]) thumbs[k] = Scene.thumb(k, 320, 200);
         return `<div class="card scene${own ? "" : " locked"}${sel ? " sel" : ""}" data-k="${k}"><div class="thumb" style="background-image:url(${thumbs[k]})"></div><h4>${s.name[LANG]}</h4>
           ${own ? `<button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button>` : buyBtn(s.cost)}</div>`;
       }).join("")}</div>`;
-      el.querySelectorAll(".card").forEach((c) => {
+      el.querySelectorAll(".card[data-k]").forEach((c) => {
         const k = c.dataset.k;
         const pickScene = () => { Save.selected.scene = k; persist(); Scene.apply(k); R.clearTrails(); };
         c.querySelector("[data-use]")?.addEventListener("click", () => { press(); pickScene(); renderCollection(); });
         c.querySelector("[data-buy]")?.addEventListener("click", () => buy("scenes", k, SCENES[k].cost, SCENES[k].name[LANG], "willow", pickScene));
       });
+      const pc = el.querySelector("[data-photo]");
+      pc.querySelector("[data-choose]")?.addEventListener("click", () => { press(); Photo.choose(); });
+      pc.querySelector("[data-edit]")?.addEventListener("click", () => { press(); Photo.edit(); });
+      pc.querySelector("[data-use]")?.addEventListener("click", () => { press(); Save.selected.scene = "photo"; persist(); Scene.apply("photo"); R.clearTrails(); renderCollection(); });
     } else renderGoals();
   }
   function renderGoals() {
@@ -324,7 +337,11 @@ const UI = (() => {
     $("#show-status").textContent = rec ? `${t("recording")}…` : cur ? `${t("slot")} ${Save.showSlot + 1} · ${cur.events.length} ${t("launches")} · ${Math.round(cur.dur)} s` : t("showHint");
   }
 
+  // Al terminar el editor de "Tu foto": cerrar la Colección para ver el cielo nuevo
+  function photoSaved() { close(); toast(t("phReady"), "", "classic"); }
+
   return {
+    photoSaved,
     init, showHome, revealTitle, revealMenu, enter, goHome, activity, tick,
     sparks, floater, combo, comboStep, finaleBar, finaleReady, finaleState, toast, goals, showState,
     get sheet() { return sheet; },

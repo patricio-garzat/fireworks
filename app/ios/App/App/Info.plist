@@ -33,6 +33,10 @@
 	<string>public.app-category.casual-games</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo to use as the backdrop for your fireworks.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo to use as the backdrop for your fireworks. It stays on your iPhone.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

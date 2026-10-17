@@ -194,6 +194,26 @@
   <div class="sheet-body" id="how-body"></div>
 </section>
 
+<!-- Editor de "Tu foto": pantalla completa, lo que se ve es como queda -->
+<section id="photo-ed" class="photo-ed" role="dialog" aria-modal="true" aria-labelledby="ph-h" hidden>
+  <canvas id="ph-cv" aria-label="Photo preview"></canvas>
+  <header class="ph-top">
+    <button class="ph-btn" id="ph-cancel" type="button" data-i18n="cancel">Cancel</button>
+    <h3 id="ph-h" data-i18n="phTitle">Your Photo</h3>
+    <button class="ph-btn gold" id="ph-save" type="button" data-i18n="phDone">Done</button>
+  </header>
+  <div class="ph-panel glass">
+    <p class="ph-hint" data-i18n="phHint">Pinch to zoom, drag to move. Fireworks launch from the horizon line.</p>
+    <div class="ph-row"><span data-i18n="phNight">Night</span><input type="range" id="ph-night" min="0" max="100" value="80" aria-label="Night"></div>
+    <div class="ph-row">
+      <div class="seg" id="ph-ground"><button data-v="0" class="on" type="button" data-i18n="phLand">Land</button><button data-v="1" type="button" data-i18n="phWater">Water</button></div>
+      <button class="sbtn icon-only" id="ph-change" type="button" data-i18n-aria="phChange" aria-label="Choose another photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.6"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l4.6-4.4 3.4 3 3-2.6L20 17"/></svg></button>
+    </div>
+  </div>
+  <div id="ph-hz" class="ph-hz" aria-hidden="true"><span class="ph-line"></span><span class="ph-grip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg><span data-i18n="phHorizon">Horizon</span></span></div>
+  <input type="file" id="ph-file" accept="image/*" hidden>
+</section>
+
 <div id="confirm" class="dialog" hidden>
   <div class="card glass">
     <p data-i18n="resetQ">Erase all Sparks, unlocks, records and shows?</p>
@@ -257,6 +277,7 @@
 <script src="js/fx.js"></script>
 <script src="js/renderer.js"></script>
 <script src="js/scenes.js"></script>
+<script src="js/photo.js"></script>
 <script src="js/fireworks.js"></script>
 <script src="js/game.js"></script>
 <script src="js/input.js"></script>

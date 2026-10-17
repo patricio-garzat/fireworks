@@ -59,6 +59,24 @@ function radius(o) { return 136 * U * Math.pow(o.power, 0.55); }
 function two(pal) { const a = pick(pal.colors); let b = pick(pal.colors), k = 0; while (b === a && k++ < 6) b = pick(pal.colors); return [a, b]; }
 function avg(a, b) { return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]; }
 
+/* Variantes: la misma forma puede terminar distinto cada vez, como en los fuegos de verdad.
+   - nada (la estrella se apaga con su parpadeo)
+   - crepitante: cada estrella termina en un puñito de chispas que truenan
+   - divididas: cada estrella se parte en dos o tres al final
+   - cambio de color: a medio camino pasan al segundo color
+   - brocado: dejan una estela dorada y larga
+   Regresa opciones para star() y el sonido extra que corresponde. */
+function variant(o, a, b, life) {
+  const r = Math.random();
+  if (o.chain) return { opt: {}, sound() {} };
+  if (r < 0.34) return { opt: {}, sound() {} };
+  if (r < 0.52) return { opt: { flags: F_CRACKLE }, sound(pan) { Sound.crackle(0.9, pan, life * 0.95); } };
+  if (r < 0.66) return { opt: { split: life * rand(0.78, 0.86) }, sound(pan) { Sound.crackle(0.4, pan, life * 0.8); } };
+  if (r < 0.84) return { opt: { to: b, at: rand(0.4, 0.55) }, sound() {} };
+  return { opt: { trail: 14, trailC: C.gold, trailLife: 1.1, trailGrav: 12 }, sound(pan) { Sound.sizzle(2.2, pan, 0.45, 0.4); } };
+}
+const mergeOpt = (base, v) => { const o = { ...base, ...v }; if (base.flags || v.flags) o.flags = (base.flags || 0) | (v.flags || 0); return o; };
+
 // Extras de los combos: corona de brillos, estrellas que cambian de color, halo de chispas
 function flair(x, y, R, o, c) {
   if (o.flair >= 1) glitterCrown(x, y, R * 0.55, Math.round(26 * P.room()));
@@ -81,11 +99,12 @@ const TYPES = {
     rise: { air: 0.05, whistle: 0 },
     burst(x, y, o) {
       const [a, b] = o.colors || two(o.pal), R = radius(o), n = count(130, o), drag = 2.1;
-      const shift = o.flair >= 2 || chance(0.25);
+      const v = variant(o, a, b, 1.8), shift = o.flair >= 2;
       for (let k = 0; k < n; k++) {
         const d = sphereDir(), s = R * drag * rand(0.94, 1.04);
-        star(x, y, d.x * s, d.y * s, rand(1.5, 2.1), rand(2.6, 3.4) * U, a, { drag, trail: 5, trailC: avg(a, C.gold), trailLife: 0.5, to: shift ? b : null, at: rand(0.45, 0.55), flags: F_FLICKER });
+        star(x, y, d.x * s, d.y * s, rand(1.5, 2.1), rand(2.6, 3.4) * U, a, mergeOpt({ drag, trail: 5, trailC: avg(a, C.gold), trailLife: 0.5, to: shift ? b : null, at: rand(0.45, 0.55), flags: F_FLICKER }, v.opt));
       }
+      v.sound(o.pan);
       const m = count(36, o);
       for (let k = 0; k < m; k++) {
         const d = sphereDir(), s = R * drag * 0.42 * rand(0.9, 1.05);
@@ -121,12 +140,13 @@ const TYPES = {
     burst(x, y, o) {
       const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.05, drag = 2.0;
       const tilt = rand(0, 1.1), roll = rand(TAU), cr = Math.cos(roll), sr = Math.sin(roll), ct = Math.cos(tilt);
-      const n = count(76, o);
+      const n = count(76, o), vr = variant(o, a, b, 1.8);
       for (let k = 0; k < n; k++) {
         const th = (k / n) * TAU, lx = Math.cos(th), ly = Math.sin(th) * ct;
         const dx = lx * cr - ly * sr, dy = lx * sr + ly * cr, s = R * drag * rand(0.985, 1.015);
-        star(x, y, dx * s, dy * s, rand(1.7, 1.9), 3.0 * U, a, { drag, grav: 40, trail: 3, trailLife: 0.4, to: o.flair >= 2 ? b : null });
+        star(x, y, dx * s, dy * s, rand(1.7, 1.9), 3.0 * U, a, mergeOpt({ drag, grav: 40, trail: 3, trailLife: 0.4, to: o.flair >= 2 ? b : null }, vr.opt));
       }
+      vr.sound(o.pan);
       // centro: un anillito interior del otro color
       const m = count(30, o);
       for (let k = 0; k < m; k++) {
@@ -138,6 +158,100 @@ const TYPES = {
       return { light: avg(a, b), R };
     },
     sound(p, pan) { Sound.boom(p, pan, { body: 1700, crack: 1.1 }); Sound.sizzle(1.2, pan, 0.25, 1.0); },
+  },
+
+  // Crisantemo: como la peonía, pero cada estrella deja una estela fina y larga: un "pompón" que florece
+  chrysanthemum: {
+    cost: 550, name: ["Chrysanthemum", "Crisantemo"], desc: ["Fine trails that bloom like a flower.", "Estelas finas que florecen."],
+    rise: { air: 0.05, whistle: 0 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o), n = count(110, o), drag = 2.2, v = variant(o, a, b, 1.9);
+      for (let k = 0; k < n; k++) {
+        const d = sphereDir(), s = R * drag * rand(0.95, 1.04);
+        star(x, y, d.x * s, d.y * s, rand(1.7, 2.1), 2.4 * U, a, mergeOpt({ drag, grav: 45, heat: 1, trail: 26 * (Q.level === 0 ? 0.6 : 1), trailC: avg(a, C.warm), trailLife: 0.75, trailGrav: 20, to: o.flair >= 2 ? b : null, at: 0.6 }, v.opt));
+      }
+      v.sound(o.pan);
+      flair(x, y, R, o, a);
+      return { light: a, R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { body: 1450 }); Sound.sizzle(1.9, pan, 0.4, 0.5); },
+  },
+
+  // Dalia: pocas estrellas grandes y muy brillantes, sin estela: pétalos gruesos
+  dahlia: {
+    cost: 700, name: ["Dahlia", "Dalia"], desc: ["Big, bold petals of light.", "Pétalos de luz grandes."],
+    rise: { air: 0.055, whistle: 0 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.08, m = Math.round(34 + 8 * o.power), drag = 1.9;
+      for (let k = 0; k < m; k++) {
+        const d = sphereDir(), s = R * drag * rand(0.92, 1.05);
+        star(x, y, d.x * s, d.y * s, rand(1.9, 2.3), rand(4.6, 5.4) * U, k % 3 ? a : b, { drag, grav: 50, heat: 1.1, bright: 1.25, flags: F_FLICKER });
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R };
+    },
+    sound(p, pan) { Sound.boom(p * 1.1, pan, { low: 84, body: 1300, crack: 1.1 }); },
+  },
+
+  // Cola de caballo: las estrellas salen hacia arriba y caen todas juntas, como una cascada que se abre
+  horsetail: {
+    cost: 1000, name: ["Horsetail", "Cola de caballo"], desc: ["A cascade that pours down.", "Una cascada que se derrama."],
+    rise: { air: 0.06, whistle: 0 },
+    burst(x, y, o) {
+      const c = chance(0.6) ? o.pal.metal : pick(o.pal.colors), R = radius(o) * 0.7, n = count(70, o);
+      for (let k = 0; k < n; k++) {
+        const th = -Math.PI / 2 + rand(-0.9, 0.9), s = R * rand(1.2, 2.2);
+        star(x, y, Math.cos(th) * s, Math.sin(th) * s, rand(2.6, 3.4), 2.2 * U, c,
+          { drag: 1.3, grav: 140, heat: 1, trail: 30 * (Q.level === 0 ? 0.6 : 1), trailC: c, trailLife: 1.2, trailGrav: 30, flags: F_FLICKER });
+      }
+      flair(x, y, R, o, c);
+      return { light: c, R: R * 1.3 };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { low: 80, body: 1150, crack: 0.7 }); Sound.sizzle(3.2, pan, 0.6, 0.3); },
+  },
+
+  // Enjambre: chispas que giran cada una a su ritmo, como abejas que se dispersan zumbando
+  swarm: {
+    cost: 1300, name: ["Swarm", "Enjambre"], desc: ["Sparks that whirl in every direction.", "Chispas que giran hacia todos lados."],
+    rise: { air: 0.05, whistle: 0.035, f0: 780, f1: 1200, wobble: true },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 0.75, m = Math.round(26 + 8 * o.power);
+      for (let k = 0; k < m; k++) {
+        const d = sphereDir(), s = R * 1.9 * rand(0.6, 1.1);
+        star(x, y, d.x * s, d.y * s, rand(1.4, 2.0), 2.2 * U, k % 2 ? a : C.silver,
+          { drag: 1.6, grav: 25, heat: 1, spin: (chance(0.5) ? 1 : -1) * rand(4, 8), trail: 22, trailC: k % 2 ? avg(a, C.gold) : C.silver, trailLife: 0.45, trailGrav: 8 });
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, C.silver), R };
+    },
+    sound(p, pan) { Sound.boom(p * 0.8, pan, { crack: 0.6 }); Sound.sizzle(2.0, pan, 0.6, 0.15); Sound.crackle(0.6, pan, 0.5); },
+  },
+
+  // Triple: tres estallidos seguidos, cada uno más grande y de otro color
+  triple: {
+    cost: 1550, name: ["Triple Break", "Triple"], desc: ["Three bursts, each one bigger.", "Tres estallidos, cada vez más grandes."],
+    rise: { air: 0.06, whistle: 0.04, f0: 760, f1: 1220 },
+    burst(x, y, o, pan) {
+      const cols = [pick(o.pal.colors), pick(o.pal.colors), o.pal.metal], R = radius(o);
+      const one = (i) => {
+        const c = cols[i], f = [0.5, 0.8, 1.1][i], n = count([50, 80, 110][i], o), yy = y - i * 8 * U;
+        for (let k = 0; k < n; k++) {
+          const d = sphereDir(), s = R * f * 2.1 * rand(0.94, 1.04);
+          star(x, yy, d.x * s, d.y * s, rand(1.0, 1.4) + i * 0.4, (2.4 + i * 0.3) * U, c, { drag: 2.1, trail: 4 + i * 4, trailC: avg(c, C.gold), trailLife: 0.5, flags: F_FLICKER });
+        }
+        if (i > 0) {
+          flash(x, yy, c, o.power * (0.6 + i * 0.2));
+          Lights.add(x, yy, c, 0.8 * Math.pow(o.power, 0.6), 220 * U, 3.4);
+          Sound.boom(o.power * (0.7 + i * 0.25), pan, { crack: 0.9 });
+          Haptics.burst(o.power * (0.6 + i * 0.25));
+        }
+      };
+      one(0);
+      Timers.after(0.38, () => one(1));
+      Timers.after(0.82, () => { one(2); Sound.sizzle(1.6, pan, 0.4, 0.6); });
+      return { light: cols[0], R: R * 0.6 };
+    },
+    sound(p, pan) { Sound.boom(p * 0.6, pan, { low: 100 }); },
   },
 
   // Doble: una explosión y, medio segundo después, otra más grande de otro color
@@ -405,7 +519,7 @@ const TYPES = {
     sound(p, pan) { Sound.boom(3, pan, { low: 70, body: 1000, gain: 1.15 }); Sound.boom(1.5, -0.4, { crack: 0 }); Sound.sizzle(5.5, pan, 1, 0.3); },
   },
 };
-const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "spiral", "strobe", "comet", "crossette", "heart", "saturn", "star"];
+const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "spiral", "chrysanthemum", "strobe", "dahlia", "comet", "crossette", "horsetail", "heart", "swarm", "saturn", "triple", "star"];
 
 // Íconos de línea (SVG, sin emojis), uno por tipo
 const ICON = {
@@ -423,5 +537,10 @@ const ICON = {
   crossette: '<circle cx="12" cy="12" r="1.3" fill="currentColor"/><path d="M12 10V7M12 14v3M10 12H7M14 12h3"/><path d="M10.6 3.6l2.8 2.8M13.4 3.6l-2.8 2.8M10.6 17.6l2.8 2.8M13.4 17.6l-2.8 2.8M3.6 10.6l2.8 2.8M6.4 10.6l-2.8 2.8M17.6 10.6l2.8 2.8M20.4 10.6l-2.8 2.8"/>',
   saturn: '<circle cx="12" cy="12" r="4.2"/><ellipse cx="12" cy="12" rx="9.5" ry="3" transform="rotate(-18 12 12)"/>',
   star: '<path d="M12 3.8l2.4 5.1 5.5.6-4.1 3.8 1.1 5.5L12 16l-4.9 2.8 1.1-5.5-4.1-3.8 5.5-.6z"/>',
+  chrysanthemum: '<circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 9.5V3.5M12 14.5v6M9.5 12h-6M14.5 12h6M10.2 10.2L6 6M13.8 13.8L18 18M13.8 10.2L18 6M10.2 13.8L6 18" stroke-dasharray="1.2 1.6"/>',
+  dahlia: '<circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="19" r="1.9"/><circle cx="5" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/><circle cx="7" cy="7" r="1.5"/><circle cx="17" cy="17" r="1.5"/><circle cx="17" cy="7" r="1.5"/><circle cx="7" cy="17" r="1.5"/>',
+  horsetail: '<circle cx="12" cy="5" r="1.4" fill="currentColor"/><path d="M12 6.5c-1.5 2-2.5 6-2.5 13M12 6.5c1.5 2 2.5 6 2.5 13M12 6.5c-3 1.5-5.5 5-6.5 11M12 6.5c3 1.5 5.5 5 6.5 11"/>',
+  swarm: '<path d="M6 7c1.5-1.5 3.5-.5 3 1.2-.4 1.5-2.6 1.4-2.4-.2M15.5 5.5c1.6-.8 3.2.6 2.4 2-.8 1.3-2.7.6-2.2-.8M13 14c1.7-.6 3 1 2 2.3-1 1.2-2.9.2-2.3-1.2M5.5 15.5c1.3-1.2 3.3-.2 2.8 1.4-.5 1.4-2.6 1.2-2.4-.3"/><circle cx="11.5" cy="10.5" r="1" fill="currentColor"/>',
+  triple: '<circle cx="7" cy="15" r="2.6"/><circle cx="12" cy="10" r="3.6"/><circle cx="17" cy="6" r="2.2" stroke-dasharray="1.4 1.6"/>',
 };
 const iconSVG = (k, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ICON.classic}</svg>`;

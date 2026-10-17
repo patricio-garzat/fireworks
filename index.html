@@ -328,6 +328,34 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
   #title span { filter: none !important; transform: none !important; }
   .finale.ready, .combo.step, #s-rec.on svg { animation: none !important; }
 }
+
+/* ---------- "Tu foto": tarjeta y editor ---------- */
+.thumb.empty { display: grid; place-items: center; border-style: dashed; color: var(--gold-2); background: rgba(255, 255, 255, 0.03); }
+.thumb.empty svg { width: 30px; height: 30px; opacity: 0.85; }
+.card-row { display: flex; gap: 6px; }
+.card-row .card-btn { flex: 1; }
+.photo-ed { position: fixed; inset: 0; z-index: 90; background: #02030a; touch-action: none; overflow: hidden; }
+.photo-ed canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.ph-top { position: absolute; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top) + 8px) 12px 10px; display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(rgba(2, 3, 10, 0.7), rgba(2, 3, 10, 0)); transition: opacity 0.35s ease; }
+.ph-top h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.ph-btn { height: 36px; padding: 0 14px; border-radius: 18px; font-size: 15px; color: var(--ink-2); background: rgba(255, 255, 255, 0.08); }
+.ph-btn.gold { color: #1a1206; background: var(--gold); font-weight: 600; }
+.ph-panel { position: absolute; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 12px); border-radius: 20px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+  transition: opacity 0.35s ease, transform 0.35s var(--ease); }
+.ph-hint { margin: 0; font-size: 12.5px; line-height: 1.35; color: var(--ink-2); }
+.ph-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.ph-row input[type="range"] { width: 66%; }
+.ph-row .seg { flex: 1; }
+.photo-ed.busy .ph-top, .photo-ed.busy .ph-panel { opacity: 0.12; }
+.photo-ed.busy .ph-panel { transform: translateY(8px); }
+.ph-hz { position: absolute; left: 0; right: 0; top: -22px; height: 44px; display: flex; align-items: center; touch-action: none; cursor: ns-resize; will-change: transform; }
+.ph-line { position: absolute; left: 0; right: 0; top: 50%; border-top: 1.5px dashed rgba(255, 227, 179, 0.85); box-shadow: 0 0 10px rgba(241, 194, 122, 0.35); }
+.ph-grip { position: relative; margin-left: auto; margin-right: 12px; height: 30px; padding: 0 11px 0 7px; border-radius: 15px; display: flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 600; color: #1a1206; background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4); }
+.ph-grip svg { width: 16px; height: 16px; }
+.ph-hz.drag .ph-grip { background: var(--gold-2); }
+@media (prefers-reduced-motion: reduce) { .ph-top, .ph-panel { transition: none; } }
 </style>
 </head>
 <body>
@@ -494,6 +522,26 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
     <button class="x" type="button" data-close data-i18n-aria="close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
   </div>
   <div class="sheet-body" id="how-body"></div>
+</section>
+
+<!-- Editor de "Tu foto": pantalla completa, lo que se ve es como queda -->
+<section id="photo-ed" class="photo-ed" role="dialog" aria-modal="true" aria-labelledby="ph-h" hidden>
+  <canvas id="ph-cv" aria-label="Photo preview"></canvas>
+  <header class="ph-top">
+    <button class="ph-btn" id="ph-cancel" type="button" data-i18n="cancel">Cancel</button>
+    <h3 id="ph-h" data-i18n="phTitle">Your Photo</h3>
+    <button class="ph-btn gold" id="ph-save" type="button" data-i18n="phDone">Done</button>
+  </header>
+  <div class="ph-panel glass">
+    <p class="ph-hint" data-i18n="phHint">Pinch to zoom, drag to move. Fireworks launch from the horizon line.</p>
+    <div class="ph-row"><span data-i18n="phNight">Night</span><input type="range" id="ph-night" min="0" max="100" value="80" aria-label="Night"></div>
+    <div class="ph-row">
+      <div class="seg" id="ph-ground"><button data-v="0" class="on" type="button" data-i18n="phLand">Land</button><button data-v="1" type="button" data-i18n="phWater">Water</button></div>
+      <button class="sbtn icon-only" id="ph-change" type="button" data-i18n-aria="phChange" aria-label="Choose another photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.6"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l4.6-4.4 3.4 3 3-2.6L20 17"/></svg></button>
+    </div>
+  </div>
+  <div id="ph-hz" class="ph-hz" aria-hidden="true"><span class="ph-line"></span><span class="ph-grip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg><span data-i18n="phHorizon">Horizon</span></span></div>
+  <input type="file" id="ph-file" accept="image/*" hidden>
 </section>
 
 <div id="confirm" class="dialog" hidden>
@@ -683,6 +731,17 @@ const STR = {
   launches: ["launches", "lanzamientos"],
   slot: ["Show", "Show"],
   zenMode: ["Zen", "Zen"],
+  phTitle: ["Your Photo", "Tu foto"],
+  phChoose: ["Choose photo", "Elegir foto"],
+  phEdit: ["Edit", "Editar"],
+  phDone: ["Done", "Listo"],
+  phHorizon: ["Horizon", "Horizonte"],
+  phHint: ["Pinch to zoom, drag to move. Rockets launch from the horizon.", "Pellizca para zoom y arrastra para mover. Los cohetes salen del horizonte."],
+  phNight: ["Night", "Noche"],
+  phLand: ["Land", "Tierra"],
+  phWater: ["Water", "Agua"],
+  phChange: ["Choose another photo", "Elegir otra foto"],
+  phReady: ["Your sky is ready", "Tu cielo está listo"],
 };
 
 let LANG = 0; // 0 = inglés, 1 = español
@@ -1703,7 +1762,7 @@ const R = (() => {
   }`;
   const FS_COMP = `
   precision highp float; varying vec2 v_uv;
-  uniform sampler2D u_p, u_a, u_c; uniform float u_ba, u_bc, u_water, u_time, u_exp; uniform vec2 u_res;
+  uniform sampler2D u_p, u_a, u_c, u_m; uniform float u_ba, u_bc, u_water, u_time, u_exp; uniform vec2 u_res;
   float h21(vec2 p){ p = fract(p*vec2(233.34, 851.73)); p += dot(p, p+23.45); return fract(p.x*p.y); }
   vec3 scene(vec2 uv){ return texture2D(u_p, uv).rgb + texture2D(u_a, uv).rgb*u_ba + texture2D(u_c, uv).rgb*u_bc; }
   void main(){
@@ -1716,7 +1775,9 @@ const R = (() => {
         float wob = sin(v_uv.y*260.0 + u_time*1.6)*0.0035*(0.3+depth) + sin(v_uv.y*90.0 - u_time*0.9)*0.002;
         vec2 ruv = vec2(v_uv.x + wob, ry);
         vec3 r = texture2D(u_a, ruv).rgb*0.9 + texture2D(u_c, ruv).rgb*0.7 + texture2D(u_p, ruv).rgb*0.35;
-        c = r * vec3(0.62, 0.72, 0.9) * (1.0 - depth*0.75);
+        // solo donde de verdad hay agua (en la playa, la arena no refleja)
+        float wm = texture2D(u_m, vec2(v_uv.x, 1.0 - v_uv.y)).g;
+        c = mix(c, r * vec3(0.62, 0.72, 0.9) * (1.0 - depth*0.75), wm);
       }
     }
     c = 1.0 - exp(-c*u_exp);
@@ -1955,7 +2016,7 @@ const R = (() => {
     gl.blendFunc(gl.ONE, gl.ONE);
     const c = prog.comp;
     full(c, null);
-    tex(0, tPart.tex, c.u.u_p); tex(1, tA.tex, c.u.u_a); tex(2, (wide ? tC : tA).tex, c.u.u_c);
+    tex(0, tPart.tex, c.u.u_p); tex(1, tA.tex, c.u.u_a); tex(2, (wide ? tC : tA).tex, c.u.u_c); tex(3, maskTex, c.u.u_m);
     gl.uniform1f(c.u.u_ba, 0.55); gl.uniform1f(c.u.u_bc, wide ? 0.6 : 0.3);
     gl.uniform1f(c.u.u_water, water > 0 ? water / (RH / scale) : -1);
     gl.uniform1f(c.u.u_time, time); gl.uniform1f(c.u.u_exp, 1.1);
@@ -1989,6 +2050,11 @@ function mulberry(seed) {
 }
 
 const SCENES = {
+  // "Tu foto": la pinta photo.js; el horizonte y el agua los define la persona en el editor
+  photo: {
+    cost: 0, name: ["Your Photo", "Tu foto"], photo: true,
+    sky: ["#03060f", "#071027", "#0f1d3e", "#1d2f55"], launch: 0.82, water: 0,
+  },
   alpine: {
     cost: 0, name: ["Alpine Night", "Noche alpina"],
     sky: ["#03060f", "#071027", "#0f1d3e", "#1d2f55"], launch: 1.02, water: 0,
@@ -2013,8 +2079,24 @@ const SCENES = {
     cost: 3200, name: ["Snowy Village", "Pueblo nevado"],
     sky: ["#03050d", "#0a1428", "#16264a", "#2c3f62"], launch: 1.02, water: 0,
   },
+  country: {
+    cost: 1200, name: ["Countryside", "Campo"],
+    sky: ["#03060e", "#0a1328", "#152446", "#26385a"], launch: 1.02, water: 0,
+  },
+  canyon: {
+    cost: 2300, name: ["Red Canyon", "Cañón rojo"],
+    sky: ["#04040d", "#0e0c25", "#211837", "#43293d"], launch: 1.02, water: 0,
+  },
+  beach: {
+    cost: 2900, name: ["Tropical Beach", "Playa tropical"],
+    sky: ["#02050d", "#071330", "#0f2650", "#1f4166"], launch: 0.77, water: 0.77,
+  },
+  bridge: {
+    cost: 3600, name: ["River Bridge", "Puente del río"],
+    sky: ["#04050f", "#0b0f28", "#191b3c", "#352c48"], launch: 0.8, water: 0.8,
+  },
 };
-const SCENE_ORDER = ["alpine", "lake", "desert", "city", "bay", "snow"];
+const SCENE_ORDER = ["alpine", "lake", "country", "desert", "city", "canyon", "bay", "beach", "snow", "bridge"];
 
 const Scene = (() => {
   let id = "alpine";
@@ -2385,24 +2467,242 @@ const Scene = (() => {
     pines(g, m, rng, near, s * 0.9, "#070c18", Math.round(w / s / 30));
   }
 
-  const PAINT = { alpine: paintAlpine, lake: paintLake, city: paintCity, desert: paintDesert, bay: paintBay, snow: paintSnow };
+  // Árbol de copa redonda (silueta hecha de círculos)
+  function roundTree(g, m, x, y, s, size, color) {
+    for (const ctx of [g, m]) {
+      ctx.fillStyle = ctx === g ? color : "rgb(255,0,0)";
+      ctx.fillRect(x - 1.6 * s, y - size * 1.1, 3.2 * s, size * 1.1 + 2 * s);
+      ctx.beginPath();
+      for (const [dx, dy, r] of [[0, -1.55, 0.62], [-0.5, -1.25, 0.5], [0.5, -1.25, 0.5], [-0.25, -1.85, 0.45], [0.3, -1.8, 0.45]]) {
+        ctx.moveTo(x + dx * size + r * size, y + dy * size); ctx.arc(x + dx * size, y + dy * size, r * size, 0, TAU);
+      }
+      ctx.fill();
+    }
+  }
+  function paintCountry(g, m, w, h, s, rng) {
+    const S = SCENES.country;
+    sky(g, w, h, S.sky);
+    milkyWay(g, w, h, rng, s);
+    const far = dunes(rng, w, 96, h * 0.79, h * 0.025);
+    haze(g, h * 0.8, h * 0.08, w, "60,90,140", 0.16);
+    fillRidge(g, m, far, h, "#101b30", 0.4);
+    // hileras de árboles lejanos
+    for (let i = 0; i < Math.round(w / s / 14); i++) {
+      const [x, y] = far[Math.floor(rng() * far.length)];
+      for (const ctx of [g, m]) { ctx.fillStyle = ctx === g ? "#0c1527" : "rgb(102,0,0)"; ctx.beginPath(); ctx.arc(x, y + 1 * s, (3 + rng() * 4) * s, 0, TAU); ctx.fill(); }
+    }
+    const mid = dunes(rng, w, 96, h * 0.875, h * 0.03);
+    haze(g, h * 0.86, h * 0.06, w, "50,75,120", 0.14);
+    fillRidge(g, m, mid, h, "#0a1222", 0.7);
+    // granero con una ventana cálida
+    const [bx, by] = mid[Math.floor(mid.length * (0.22 + rng() * 0.12))], bw = 30 * s, bh = 18 * s;
+    for (const ctx of [g, m]) {
+      ctx.fillStyle = ctx === g ? "#070d1a" : "rgb(178,0,0)";
+      ctx.fillRect(bx - bw / 2, by - bh + 3 * s, bw, bh);
+      ctx.beginPath(); ctx.moveTo(bx - bw / 2 - 2 * s, by - bh + 3.5 * s); ctx.lineTo(bx - bw * 0.25, by - bh - 7 * s); ctx.lineTo(bx + bw * 0.25, by - bh - 7 * s); ctx.lineTo(bx + bw / 2 + 2 * s, by - bh + 3.5 * s); ctx.closePath(); ctx.fill();
+    }
+    const wg = g.createRadialGradient(bx + 6 * s, by - bh * 0.45, 0, bx + 6 * s, by - bh * 0.45, 14 * s);
+    wg.addColorStop(0, "rgba(255,190,110,0.25)"); wg.addColorStop(1, "rgba(255,190,110,0)");
+    g.fillStyle = wg; g.fillRect(bx - 10 * s, by - bh - 10 * s, 32 * s, 30 * s);
+    g.fillStyle = "rgba(255,200,125,0.85)"; g.fillRect(bx + 4 * s, by - bh * 0.6, 4 * s, 4 * s);
+    const near = dunes(rng, w, 64, h * 0.95, h * 0.02);
+    fillRidge(g, m, near, h, "#04070f", 1);
+    // cerca de madera
+    g.strokeStyle = "#04070f"; m.strokeStyle = "rgb(255,0,0)";
+    for (const ctx of [g, m]) {
+      ctx.lineWidth = 1.4 * s; ctx.beginPath();
+      for (let i = 0; i < near.length - 1; i += 2) { const [x, y] = near[i]; ctx.moveTo(x, y + 2 * s); ctx.lineTo(x, y - 9 * s); }
+      for (const off of [6, 2]) { ctx.moveTo(0, near[0][1] - off * s); near.forEach(([x, y]) => ctx.lineTo(x, y - off * s)); }
+      ctx.stroke();
+    }
+    roundTree(g, m, near[Math.floor(near.length * 0.78)][0], near[Math.floor(near.length * 0.78)][1], s, 26 * s, "#03060d");
+  }
+
+  function paintCanyon(g, m, w, h, s, rng) {
+    const S = SCENES.canyon, base = h * 0.81;
+    sky(g, w, h, S.sky);
+    milkyWay(g, w, h, rng, s);
+    // "buttes" lejanas: mesas de cima plana con laderas inclinadas
+    haze(g, base, h * 0.1, w, "150,85,105", 0.12);
+    const far = [[0, base]];
+    let x = -rng() * 20 * s;
+    while (x < w) {
+      const top = h * (0.705 + rng() * 0.06), bw = (26 + rng() * 60) * s, sl = (8 + rng() * 12) * s, gap = (30 + rng() * 80) * s;
+      far.push([x, base], [x + sl, top], [x + sl + bw, top + (rng() - 0.5) * 2 * s], [x + 2 * sl + bw, base]);
+      x += 2 * sl + bw + gap;
+    }
+    far.push([w, base]);
+    fillRidge(g, m, far, h, "#24152c", 0.3);
+    // el fondo del cañón, más cerca y oscuro
+    const mid = dunes(rng, w, 64, h * 0.855, h * 0.012);
+    fillRidge(g, m, mid, h, "#0f0812", 0.6);
+    // paredes del cañón a los lados: cornisas escalonadas (acantilado + repisa), cada vez más anchas hacia abajo
+    for (const left of [true, false]) {
+      const y0 = h * (0.57 + rng() * 0.04), pts = [], steps = 5, n = 70, ph = rng() * 10;
+      for (let i = 0; i <= n; i++) {
+        const t = i / n, y = lerp(y0, h, t), st = Math.floor(t * steps), ft = t * steps - st;
+        const ledge = (st + smooth(0.55, 0.9, ft)) / steps;
+        const inner = w * (0.07 + 0.27 * ledge + 0.015 * Math.sin(ph + st * 2.3)) + (rng() - 0.5) * 3 * s;
+        pts.push([left ? inner : w - inner, y]);
+      }
+      const path = (ctx) => { ctx.beginPath(); ctx.moveTo(left ? 0 : w, y0); pts.forEach(([px, py]) => ctx.lineTo(px, py)); ctx.lineTo(left ? 0 : w, h + 2); ctx.closePath(); };
+      path(g);
+      const gr = g.createLinearGradient(0, y0, 0, h);
+      gr.addColorStop(0, "#3b1d2b"); gr.addColorStop(0.5, "#1d0f1a"); gr.addColorStop(1, "#08040a");
+      g.fillStyle = gr; g.fill();
+      path(m); m.fillStyle = "rgb(230,0,0)"; m.fill();
+      // vetas de roca y la luz tenue en el borde de cada repisa
+      g.save(); path(g); g.clip();
+      for (let i = 0; i < 26; i++) { const y = y0 + (h - y0) * rng(); g.fillStyle = `rgba(${rng() < 0.5 ? "200,120,120" : "30,12,28"},${(0.04 + rng() * 0.05).toFixed(3)})`; g.fillRect(0, y, w, (0.8 + rng() * 2.4) * s); }
+      g.restore();
+      g.strokeStyle = "rgba(230,150,140,0.12)"; g.lineWidth = 1.2 * s; g.beginPath();
+      pts.forEach(([px, py], i) => (i ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke();
+      g.fillStyle = "rgba(230,150,140,0.1)"; g.fillRect(left ? 0 : pts[0][0], y0, Math.abs(pts[0][0] - (left ? 0 : w)), 1.2 * s);
+    }
+    const floor = dunes(rng, w, 64, h * 0.965, h * 0.01);
+    fillRidge(g, m, floor, h, "#07040a", 1);
+  }
+
+  // Palmera (silueta): tronco curvo con anillos y hojas que se arquean y caen, cada una con sus hojitas
+  function palmTree(g, m, x, y, s, hgt, lean, color) {
+    const tx = x + lean * hgt * 0.35, ty = y - hgt;
+    for (const ctx of [g, m]) {
+      ctx.strokeStyle = ctx === g ? color : "rgb(255,0,0)"; ctx.fillStyle = ctx.strokeStyle; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      // tronco: más grueso abajo
+      for (let i = 0; i < 12; i++) {
+        const t0 = i / 12, t1 = (i + 1) / 12, q = (t) => [lerp(x, tx, t) + Math.sin(t * Math.PI) * lean * hgt * 0.08, lerp(y + 3 * s, ty, t)];
+        const [x0, y0] = q(t0), [x1, y1] = q(t1);
+        ctx.lineWidth = (5.2 - 2.4 * t0) * s; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      }
+      // hojas
+      const n = 9;
+      for (let k = 0; k < n; k++) {
+        const a = -Math.PI / 2 + lean * 0.25 + ((k / (n - 1)) - 0.5) * 3.3, L = hgt * (0.42 + 0.08 * Math.cos(k * 2.1));
+        const ex = tx + Math.cos(a) * L, ey = ty + Math.abs(Math.cos(a)) * L * 0.35 + L * 0.12 + Math.sin(a) * L * 0.25;
+        const cx = tx + Math.cos(a) * L * 0.5, cy = ty + Math.sin(a) * L * 0.55 - L * 0.12;
+        const pt = (t) => [(1 - t) * (1 - t) * tx + 2 * (1 - t) * t * cx + t * t * ex, (1 - t) * (1 - t) * ty + 2 * (1 - t) * t * cy + t * t * ey];
+        ctx.lineWidth = 1.5 * s; ctx.beginPath(); ctx.moveTo(tx, ty);
+        for (let t = 0.05; t <= 1.001; t += 0.05) { const [px, py] = pt(t); ctx.lineTo(px, py); }
+        ctx.stroke();
+        ctx.lineWidth = 1.1 * s; ctx.beginPath();
+        for (let t = 0.12; t < 0.98; t += 0.07) {
+          const [px, py] = pt(t), [qx, qy] = pt(t + 0.02), dx = qx - px, dy = qy - py, dl = Math.hypot(dx, dy) || 1;
+          const nx = -dy / dl, ny = dx / dl, ll = (8 - 5 * t) * s * (hgt / (180 * s));
+          for (const side of [1, -1]) { ctx.moveTo(px, py); ctx.lineTo(px + (nx * side * 0.8 + dx / dl * 0.4) * ll, py + (ny * side * 0.8 + 0.7) * ll); }
+        }
+        ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(tx, ty + 1.5 * s, 2.6 * s, 0, TAU); ctx.fill();
+    }
+  }
+  function paintBeach(g, m, w, h, s, rng) {
+    const S = SCENES.beach, wy = h * S.water, sand = h * 0.9;
+    sky(g, w, wy + 2, S.sky);
+    milkyWay(g, w, wy, rng, s);
+    // isla lejana
+    const isle = ridge(rng, w * 0.4, 32, wy - h * 0.012, h * 0.012, 0.5).map(([x, y]) => [x + w * 0.55, Math.min(y, wy)]);
+    for (const ctx of [g, m]) { ctx.beginPath(); ctx.moveTo(w * 0.55, wy); isle.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(w * 0.95, wy); ctx.closePath(); ctx.fillStyle = ctx === g ? "#0b1530" : "rgb(90,0,0)"; ctx.fill(); }
+    // el mar
+    const wg = g.createLinearGradient(0, wy, 0, sand);
+    wg.addColorStop(0, "#0d2142"); wg.addColorStop(1, "#04101f");
+    g.fillStyle = wg; g.fillRect(0, wy, w, sand - wy);
+    m.fillStyle = "rgb(0,255,0)"; m.fillRect(0, wy, w, sand - wy);
+    for (let i = 0; i < 240; i++) {
+      const y = wy + Math.pow(rng(), 1.5) * (sand - wy), x = rng() * w, l = (6 + rng() * 34) * s * (0.4 + (y - wy) / (sand - wy));
+      g.fillStyle = `rgba(150,190,235,${(0.025 + rng() * 0.04).toFixed(3)})`; g.fillRect(x, y, l, Math.max(1, 0.6 * s));
+    }
+    // la orilla: espuma suave y arena
+    const shore = dunes(rng, w, 64, sand, h * 0.006);
+    for (const ctx of [g, m]) {
+      ctx.beginPath(); ctx.moveTo(0, h + 2); shore.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(w, h + 2); ctx.closePath();
+      if (ctx === g) { const sg = ctx.createLinearGradient(0, sand, 0, h); sg.addColorStop(0, "#1a1d2e"); sg.addColorStop(1, "#090a12"); ctx.fillStyle = sg; } else ctx.fillStyle = "rgb(255,0,0)";
+      ctx.fill();
+    }
+    crest(g, shore.map(([x, y]) => [x, y - 1.5 * s]), s, "rgba(200,220,255,0.18)");
+    palmTree(g, m, w * 0.08, h * 0.97, s, h * 0.3, 0.7, "#03050b");
+    palmTree(g, m, w * 0.2, h * 0.99, s, h * 0.22, 0.4, "#03050b");
+    palmTree(g, m, w * 0.92, h * 0.98, s, h * 0.26, -0.8, "#03050b");
+  }
+
+  function paintBridge(g, m, w, h, s, rng) {
+    const S = SCENES.bridge, wy = h * S.water;
+    sky(g, w, wy + 2, S.sky);
+    milkyWay(g, w, wy * 0.8, rng, s);
+    const gl = g.createLinearGradient(0, wy - h * 0.12, 0, wy);
+    gl.addColorStop(0, "rgba(255,150,90,0)"); gl.addColorStop(1, "rgba(255,150,90,0.1)");
+    g.fillStyle = gl; g.fillRect(0, wy - h * 0.12, w, h * 0.12);
+    // ciudad baja al fondo
+    let x = 0;
+    while (x < w) {
+      const bw = (10 + rng() * 26) * s, bh = h * (0.01 + rng() * 0.045);
+      for (const ctx of [g, m]) { ctx.fillStyle = ctx === g ? "#0d1024" : "rgb(90,0,0)"; ctx.fillRect(x, wy - bh, bw + 1, bh); }
+      for (let k = 0; k < bh / (5 * s); k++) if (rng() < 0.4) { g.fillStyle = `rgba(255,205,140,${(0.2 + rng() * 0.3).toFixed(2)})`; g.fillRect(x + rng() * (bw - 3 * s), wy - bh + k * 5 * s + 2 * s, 2 * s, 2 * s); }
+      x += bw + rng() * 3 * s;
+    }
+    // el puente colgante: dos torres, cables y la calzada con su fila de luces
+    const deck = wy - h * 0.035, t1 = w * 0.18, t2 = w * 0.82, top = wy - h * 0.2;
+    for (const ctx of [g, m]) {
+      ctx.fillStyle = ctx === g ? "#05070f" : "rgb(255,0,0)"; ctx.strokeStyle = ctx.fillStyle;
+      for (const tx of [t1, t2]) { ctx.fillRect(tx - 3 * s, top, 6 * s, wy - top); ctx.fillRect(tx - 5 * s, top + (deck - top) * 0.35, 10 * s, 2 * s); }
+      ctx.fillRect(0, deck, w, 3.2 * s);
+      ctx.lineWidth = 1.2 * s; ctx.beginPath();
+      ctx.moveTo(-w * 0.1, deck - 2 * s); ctx.quadraticCurveTo((-w * 0.1 + t1) / 2, top + (deck - top) * 0.55, t1, top);
+      ctx.moveTo(t1, top); ctx.quadraticCurveTo(w / 2, deck + (deck - top) * 0.65, t2, top);
+      ctx.moveTo(t2, top); ctx.quadraticCurveTo((t2 + w * 1.1) / 2, top + (deck - top) * 0.55, w * 1.1, deck - 2 * s);
+      ctx.stroke();
+      ctx.lineWidth = 0.6 * s; ctx.beginPath();
+      for (let i = 1; i < 30; i++) {
+        const xx = t1 + (t2 - t1) * (i / 30), f = (xx - t1) / (t2 - t1), cy = (1 - f) * (1 - f) * top + 2 * (1 - f) * f * (deck + (deck - top) * 0.65) + f * f * top;
+        ctx.moveTo(xx, cy); ctx.lineTo(xx, deck);
+      }
+      ctx.stroke();
+    }
+    for (let i = 0; i <= 40; i++) { const lx = (i / 40) * w; g.fillStyle = "rgba(255,215,150,0.85)"; g.fillRect(lx - 0.8 * s, deck - 1.4 * s, 1.6 * s, 1.6 * s); }
+    for (const tx of [t1, t2]) { g.fillStyle = "rgba(255,90,80,0.9)"; g.fillRect(tx - 1 * s, top - 2 * s, 2 * s, 2 * s); }
+    // el río: reflejo del puente y de sus luces, movido
+    const wg = g.createLinearGradient(0, wy, 0, h);
+    wg.addColorStop(0, "#0b1530"); wg.addColorStop(1, "#02040b");
+    g.fillStyle = wg; g.fillRect(0, wy, w, h - wy);
+    m.fillStyle = "rgb(0,255,0)"; m.fillRect(0, wy, w, h - wy);
+    g.save(); g.beginPath(); g.rect(0, wy, w, h - wy); g.clip();
+    g.globalAlpha = 0.5; g.fillStyle = "#03050c";
+    for (const tx of [t1, t2]) g.fillRect(tx - 3 * s, wy, 6 * s, (wy - top) * 0.9);
+    g.globalAlpha = 1;
+    for (let i = 0; i < 260; i++) {
+      const lx = rng() * w, f = Math.pow(rng(), 0.7), y = wy + 2 * s + f * (h - wy) * 0.5, l = (3 + rng() * 10) * s;
+      g.fillStyle = `rgba(255,205,140,${(0.04 + rng() * 0.1 * (1 - f)).toFixed(3)})`; g.fillRect(lx - l / 2, y, l, Math.max(1, 0.6 * s));
+    }
+    g.restore();
+  }
+
+  const PAINT = { alpine: paintAlpine, lake: paintLake, city: paintCity, desert: paintDesert, bay: paintBay, snow: paintSnow, country: paintCountry, canyon: paintCanyon, beach: paintBeach, bridge: paintBridge };
 
   function paint(sceneId, w, h, s, cColor, cMask) {
     cColor.width = cMask.width = w; cColor.height = cMask.height = h;
     const g = cColor.getContext("2d"), m = cMask.getContext("2d");
     m.fillStyle = "#000"; m.fillRect(0, 0, w, h);
-    const seed = { alpine: 7, lake: 21, city: 33, desert: 45, bay: 58, snow: 64 }[sceneId] || 7;
+    if (sceneId === "photo") {
+      if (Photo.ready) {
+        const c = Photo.cfg, S = SCENES.photo;
+        S.launch = c.horizon; S.water = c.water ? c.horizon : 0;
+        Photo.paint(g, m, w, h);
+        return;
+      }
+      sceneId = "alpine";
+    }
+    const seed = { alpine: 7, lake: 21, city: 33, desert: 45, bay: 58, snow: 64, country: 71, canyon: 83, beach: 92, bridge: 105 }[sceneId] || 7;
     PAINT[sceneId](g, m, w, h, s, mulberry(seed * 977 + 13));
   }
 
   const cColor = document.createElement("canvas"), cMask = document.createElement("canvas");
   function apply(sceneId) {
-    id = SCENES[sceneId] ? sceneId : "alpine";
+    id = SCENES[sceneId] && (sceneId !== "photo" || Photo.ready) ? sceneId : "alpine";
     const sc = R.scale, w = Math.round(VW * sc), h = Math.round(VH * sc);
     paint(id, w, h, sc * Math.max(0.85, U), cColor, cMask);
     const S = SCENES[id];
     R.setBackground(cColor, cMask, S.water ? VH * S.water : -1, 1);
-    KILL_Y = S.water ? VH * S.water : VH + 30;
+    // en "Tu foto" las chispas se apagan al llegar al horizonte (caen detrás de la tierra)
+    KILL_Y = S.water ? VH * S.water : S.photo ? VH * S.launch : VH + 30;
   }
   // Miniatura para la Colección
   function thumb(sceneId, w, h) {
@@ -2417,6 +2717,366 @@ const Scene = (() => {
     apply, thumb,
     get id() { return id; },
     get launchY() { return VH * SCENES[id].launch; },
+  };
+})();
+
+/* ---------- js/photo.js ---------- */
+"use strict";
+/* photo.js: el escenario "Tu foto". La persona elige una foto de su carrete y la acomoda en el editor
+   (pellizco para zoom, arrastrar para mover, línea del horizonte, cuánta noche y si abajo hay tierra o agua).
+   El juego la vuelve de noche y la mete al cielo:
+   - Debajo del horizonte es tierra (o agua): de ahí salen los cohetes y ahí caen y se apagan las chispas.
+   - Arriba, lo liso es cielo (lleva estrellas y se funde con un cielo nocturno); lo que tiene detalle o es más
+     oscuro que el cielo (árboles, edificios, montañas) cuenta como tierra: sin estrellas y con la luz de las explosiones.
+   La foto (reducida) y cómo se acomodó se guardan en IndexedDB. Nunca sale del teléfono. */
+
+const Photo = (() => {
+  const MAX_SIDE = 2400;
+  const FRESH = { z: 1, cx: 0.5, cy: 0.5, horizon: 0.82, night: 0.9, water: false };
+  let img = null, cfg = null, version = 0, thumbURL = "", thumbV = -1;
+
+  /* ---------- Guardado (IndexedDB) ---------- */
+  function db() {
+    return new Promise((res, rej) => {
+      const rq = indexedDB.open("fireworks-photo", 1);
+      rq.onupgradeneeded = () => rq.result.createObjectStore("kv");
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => rej(rq.error);
+    });
+  }
+  async function idb(mode, fn) {
+    const d = await db();
+    return new Promise((res, rej) => {
+      const tx = d.transaction("kv", mode), rq = fn(tx.objectStore("kv"));
+      tx.oncomplete = () => res(rq && rq.result);
+      tx.onerror = () => rej(tx.error);
+    });
+  }
+  async function load() {
+    try {
+      const rec = await idb("readonly", (st) => st.get("scene"));
+      if (!rec || !rec.blob) return false;
+      img = await decode(rec.blob);
+      cfg = { ...FRESH, ...rec.cfg };
+      version++;
+      return true;
+    } catch (e) { return false; }
+  }
+  function store(blob, c) { return idb("readwrite", (st) => st.put({ blob, cfg: c }, "scene")).catch(() => {}); }
+
+  // Decodifica y reduce (las fotos del iPhone son enormes). Safari ya respeta la orientación de la foto.
+  async function decode(blob) {
+    const url = URL.createObjectURL(blob);
+    try {
+      const im = new Image();
+      im.src = url;
+      await im.decode();
+      const k = Math.min(1, MAX_SIDE / Math.max(im.naturalWidth, im.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+      const g = c.getContext("2d"); g.imageSmoothingQuality = "high";
+      g.drawImage(im, 0, 0, c.width, c.height);
+      return c;
+    } finally { URL.revokeObjectURL(url); }
+  }
+  const toBlob = (c) => new Promise((res) => c.toBlob(res, "image/jpeg", 0.9));
+
+  /* ---------- Acomodo: escala y esquina de la foto en un marco de w×h ---------- */
+  function place(src, c, w, h) {
+    const smin = Math.max(w / src.width, h / src.height), s = smin * c.z;
+    const ox = clamp(w / 2 - c.cx * src.width * s, w - src.width * s, 0);
+    const oy = clamp(h / 2 - c.cy * src.height * s, h - src.height * s, 0);
+    return { s, ox, oy };
+  }
+  function draw(g, src, c, w, h) {
+    const p = place(src, c, w, h);
+    g.fillStyle = "#04060f"; g.fillRect(0, 0, w, h);
+    g.imageSmoothingQuality = "high";
+    g.drawImage(src, p.ox, p.oy, src.width * p.s, src.height * p.s);
+  }
+
+  /* ---------- De día a noche + máscara ---------- */
+  const SKY = [[0, [3, 6, 15]], [0.35, [7, 16, 39]], [0.68, [15, 29, 62]], [1, [29, 47, 85]]];
+  function skyAt(t) {
+    for (let i = 1; i < SKY.length; i++) {
+      if (t <= SKY[i][0]) {
+        const [a, ca] = SKY[i - 1], [b, cb] = SKY[i], f = (t - a) / (b - a);
+        return [lerp(ca[0], cb[0], f) / 255, lerp(ca[1], cb[1], f) / 255, lerp(ca[2], cb[2], f) / 255];
+      }
+    }
+    return SKY[SKY.length - 1][1].map((v) => v / 255);
+  }
+  // Qué tanto es "tierra" cada zona de arriba del horizonte (0 = cielo liso, 1 = árbol, edificio, montaña…)
+  function landMap(g, w, h, hy) {
+    const sw = Math.max(16, Math.round(w / 6)), sh = Math.max(16, Math.round(h / 6));
+    const sc = document.createElement("canvas"); sc.width = sw; sc.height = sh;
+    const sg = sc.getContext("2d"); sg.drawImage(g.canvas, 0, 0, sw, sh);
+    const sd = sg.getImageData(0, 0, sw, sh).data, n = sw * sh, lum = new Float32Array(n), blue = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const r = sd[i * 4], g2 = sd[i * 4 + 1], b = sd[i * 4 + 2];
+      lum[i] = (0.299 * r + 0.587 * g2 + 0.114 * b) / 255;
+      blue[i] = b / (r + g2 + b + 1);
+    }
+    // cómo es el cielo: la mediana (brillo y qué tan azul) de la franja de arriba
+    const top = [], topB = [], hs = Math.max(2, Math.round((hy / h) * sh * 0.25));
+    for (let y = 0; y < hs; y++) for (let x = 0; x < sw; x++) { top.push(lum[y * sw + x]); topB.push(blue[y * sw + x]); }
+    top.sort((a, b) => a - b); topB.sort((a, b) => a - b);
+    const skyL = top[top.length >> 1] || 0.5, skyB = topB[topB.length >> 1] || 0.4;
+    let land = new Float32Array(n);
+    for (let y = 1; y < sh - 1; y++) {
+      for (let x = 1; x < sw - 1; x++) {
+        const i = y * sw + x, gx = lum[i + 1] - lum[i - 1], gy = lum[i + sw] - lum[i - sw];
+        const detail = smooth(0.035, 0.1, Math.hypot(gx, gy));
+        const darker = smooth(0.18, 0.38, skyL - lum[i]);
+        // de otro color que el cielo (pasto, tierra, árboles): menos azul, y no es una nube muy clara
+        const tint = smooth(0.06, 0.13, skyB - blue[i]) * (1 - smooth(0.75, 0.9, lum[i]));
+        land[i] = Math.max(detail, darker, tint);
+      }
+    }
+    // suavizar dos veces (caja 3×3) para que no queden bordes duros
+    for (let pass = 0; pass < 2; pass++) {
+      const out = new Float32Array(n);
+      for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
+        let s = 0, k = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx, yy = y + dy;
+          if (xx >= 0 && yy >= 0 && xx < sw && yy < sh) { s += land[yy * sw + xx]; k++; }
+        }
+        out[y * sw + x] = s / k;
+      }
+      land = out;
+    }
+    // lectura bilineal: bordes suaves, sin escalones
+    return (x, y) => {
+      const fx = clamp((x * sw) / w - 0.5, 0, sw - 1.001), fy = clamp((y * sh) / h - 0.5, 0, sh - 1.001);
+      const x0 = fx | 0, y0 = fy | 0, ax = fx - x0, ay = fy - y0, i = y0 * sw + x0;
+      return lerp(lerp(land[i], land[i + 1], ax), lerp(land[i + sw], land[i + sw + 1], ax), ay);
+    };
+  }
+  // Dónde está el horizonte en una foto recién elegida: la primera franja (de arriba hacia abajo) que ya es casi toda tierra
+  function autoHorizon(src, c) {
+    const w = 120, h = Math.round(120 * (VH / VW)), cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    const g = cv.getContext("2d", { willReadFrequently: true });
+    draw(g, src, c, w, h);
+    const at = landMap(g, w, h, h), rows = [];
+    for (let y = 0; y < h; y++) { let s = 0; for (let x = 0; x < w; x += 2) s += at(x, y); rows.push(s / (w / 2)); }
+    const run = Math.max(3, Math.round(h * 0.06));
+    for (let y = Math.round(h * 0.4); y < h - run; y++) {
+      let ok = true;
+      for (let k = 0; k < run && ok; k++) ok = rows[y + k] > 0.6;
+      if (ok) return clamp(y / h, 0.5, 0.92);
+    }
+    return 0.8;
+  }
+  // g ya trae la foto acomodada; la vuelve de noche en su lugar. Si viene m, escribe ahí la máscara.
+  function grade(g, m, w, h, c) {
+    const id = g.getImageData(0, 0, w, h), d = id.data;
+    const hy = h * c.horizon, k = 1 - (1 - c.night) * (1 - c.night), soft = Math.max(2, h * 0.004);
+    const landAt = landMap(g, w, h, hy);
+    const md = m ? m.createImageData(w, h) : null, mm = md && md.data;
+    for (let y = 0; y < h; y++) {
+      const below = smooth(hy - soft, hy + soft, y), sk = skyAt(Math.min(1, y / Math.max(1, hy)));
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const r = d[i] / 255, gg = d[i + 1] / 255, b = d[i + 2] / 255, L = 0.299 * r + 0.587 * gg + 0.114 * b;
+        const up = below < 1 ? landAt(x, y) : 1, land = Math.max(below, up), skyness = (1 - land) * (1 - below);
+        // noche: oscura, fría y poco saturada (como la ve el ojo con luna)
+        let nr = lerp(r, L * 0.62, 0.6) * 0.24, ng = lerp(gg, L * 0.74, 0.6) * 0.24, nb = lerp(b, L, 0.6) * 0.27;
+        // el cielo liso se funde con un cielo nocturno de verdad
+        const f = 0.85 * skyness;
+        nr = lerp(nr, sk[0], f); ng = lerp(ng, sk[1], f); nb = lerp(nb, sk[2], f);
+        d[i] = lerp(r, nr, k) * 255; d[i + 1] = lerp(gg, ng, k) * 255; d[i + 2] = lerp(b, nb, k) * 255;
+        if (mm) {
+          if (c.water) { mm[i] = up * (1 - below) * 255; mm[i + 1] = below * 255; }
+          else { mm[i] = land * 255; mm[i + 1] = 0; }
+          mm[i + 2] = 0; mm[i + 3] = 255;
+        }
+      }
+    }
+    g.putImageData(id, 0, 0);
+    if (m) m.putImageData(md, 0, 0);
+  }
+
+  // Para scenes.js: pinta el escenario completo
+  function paint(g, m, w, h) {
+    draw(g, img, cfg, w, h);
+    grade(g, m, w, h, cfg);
+  }
+  // Miniatura para la Colección (vertical: la tarjeta la recorta)
+  function thumb() {
+    if (!img) return "";
+    if (thumbV === version) return thumbURL;
+    const w = 180, h = Math.round(180 * (VH / VW)), c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const g = c.getContext("2d");
+    paint(g, null, w, h);
+    thumbURL = c.toDataURL("image/jpeg", 0.8); thumbV = version;
+    return thumbURL;
+  }
+
+  /* ---------- Editor ---------- */
+  const ed = { open: false, src: null, blob: null, c: null, ptrs: new Map(), g0: null, dirty: false, raf: 0, busyT: 0 };
+  const el = (id) => document.getElementById(id);
+
+  function choose() {
+    const f = el("ph-file");
+    f.value = "";
+    f.click();
+  }
+  async function picked(file) {
+    if (!file) return;
+    try {
+      const src = await decode(file);
+      ed.src = src; ed.blob = null; ed.c = { ...FRESH, night: ed.c ? ed.c.night : FRESH.night };
+      ed.c.horizon = autoHorizon(src, ed.c);
+      if (ed.open) syncControls();
+      if (!ed.open) show();
+      redraw();
+    } catch (e) {}
+  }
+  function edit() {
+    if (!img) { choose(); return; }
+    ed.src = img; ed.blob = "same"; ed.c = { ...cfg };
+    show();
+  }
+  function show() {
+    ed.open = true;
+    el("photo-ed").hidden = false;
+    syncControls();
+    Main.stop();
+    Input.enabled = false;
+    sizeCanvas();
+    redraw();
+  }
+  function hide() {
+    ed.open = false;
+    el("photo-ed").hidden = true;
+    ed.ptrs.clear();
+    Main.run();
+  }
+  async function done() {
+    if (!ed.src) { hide(); return; }
+    tick();
+    const c = { ...ed.c };
+    if (ed.blob !== "same") {
+      const blob = await toBlob(ed.src);
+      if (blob) await store(blob, c);
+      img = ed.src;
+    } else {
+      const rec = await idb("readonly", (st) => st.get("scene")).catch(() => null);
+      if (rec && rec.blob) await store(rec.blob, c);
+    }
+    cfg = c; version++;
+    hide();
+    Save.selected.scene = "photo"; persist();
+    Scene.apply("photo"); R.clearTrails();
+    UI.photoSaved();
+  }
+  function tick() { Sound.tap(); Haptics.tap(); }
+
+  function syncControls() {
+    const n = el("ph-night");
+    n.value = Math.round(ed.c.night * 100);
+    n.style.setProperty("--v", n.value + "%");
+    el("ph-ground").querySelectorAll("button").forEach((b) => b.classList.toggle("on", (b.dataset.v === "1") === !!ed.c.water));
+    placeHorizon();
+  }
+  function placeHorizon() { el("ph-hz").style.transform = `translateY(${ed.c.horizon * VH}px)`; }
+
+  function sizeCanvas() {
+    const cv = el("ph-cv"), k = Math.min(window.devicePixelRatio || 1, 1.5);
+    cv.width = Math.round(VW * k); cv.height = Math.round(VH * k);
+  }
+  function redraw() { ed.dirty = true; if (!ed.raf) ed.raf = requestAnimationFrame(render); }
+  function render() {
+    ed.raf = 0;
+    if (!ed.open || !ed.dirty || !ed.src) return;
+    ed.dirty = false;
+    const cv = el("ph-cv"), g = cv.getContext("2d", { willReadFrequently: true });
+    draw(g, ed.src, ed.c, cv.width, cv.height);
+    grade(g, null, cv.width, cv.height, ed.c);
+  }
+  // Mientras se mueve algo, los controles se apartan para ver la foto completa
+  function busy(on) {
+    clearTimeout(ed.busyT);
+    if (on) el("photo-ed").classList.add("busy");
+    else ed.busyT = setTimeout(() => el("photo-ed").classList.remove("busy"), 350);
+  }
+
+  /* Gestos: un dedo mueve, dos dedos hacen zoom (alrededor del punto medio) y mueven */
+  function gestureStart() {
+    const pts = [...ed.ptrs.values()];
+    const s = ed.src, p = place(s, ed.c, VW, VH);
+    const mid = pts.length > 1 ? [(pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2] : [pts[0].x, pts[0].y];
+    const dist = pts.length > 1 ? Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) : 0;
+    // el punto de la foto que está bajo los dedos (en coordenadas de la foto)
+    ed.g0 = { mid, dist, z: ed.c.z, ix: (mid[0] - p.ox) / p.s, iy: (mid[1] - p.oy) / p.s };
+  }
+  function gestureMove() {
+    const pts = [...ed.ptrs.values()], g0 = ed.g0, s = ed.src;
+    if (!g0) return;
+    const mid = pts.length > 1 ? [(pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2] : [pts[0].x, pts[0].y];
+    if (pts.length > 1 && g0.dist > 0) {
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      ed.c.z = clamp(g0.z * (dist / g0.dist), 1, 6);
+    }
+    // que el mismo punto de la foto siga bajo los dedos
+    const smin = Math.max(VW / s.width, VH / s.height), sc = smin * ed.c.z;
+    const ox = mid[0] - g0.ix * sc, oy = mid[1] - g0.iy * sc;
+    ed.c.cx = clamp((VW / 2 - ox) / (s.width * sc), 0, 1);
+    ed.c.cy = clamp((VH / 2 - oy) / (s.height * sc), 0, 1);
+    // guardar el centro ya ajustado a los bordes (la foto siempre cubre la pantalla)
+    const p = place(s, ed.c, VW, VH);
+    ed.c.cx = (VW / 2 - p.ox) / (s.width * p.s); ed.c.cy = (VH / 2 - p.oy) / (s.height * p.s);
+    redraw();
+  }
+
+  function init() {
+    const root = el("photo-ed"), cv = el("ph-cv"), hz = el("ph-hz");
+    el("ph-file").addEventListener("change", (e) => picked(e.target.files && e.target.files[0]));
+    el("ph-cancel").addEventListener("click", () => { tick(); hide(); });
+    el("ph-save").addEventListener("click", () => done());
+    el("ph-change").addEventListener("click", () => { tick(); choose(); });
+    el("ph-night").addEventListener("input", (e) => {
+      ed.c.night = e.target.value / 100; e.target.style.setProperty("--v", e.target.value + "%"); redraw();
+    });
+    el("ph-ground").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+      tick(); ed.c.water = b.dataset.v === "1"; syncControls(); redraw();
+    }));
+    cv.addEventListener("pointerdown", (e) => {
+      if (!ed.src) return;
+      cv.setPointerCapture(e.pointerId);
+      ed.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      gestureStart(); busy(true);
+    });
+    cv.addEventListener("pointermove", (e) => {
+      if (!ed.ptrs.has(e.pointerId)) return;
+      ed.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      gestureMove();
+    });
+    const up = (e) => {
+      if (!ed.ptrs.delete(e.pointerId)) return;
+      if (ed.ptrs.size) gestureStart(); else { ed.g0 = null; busy(false); }
+    };
+    cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+    // la línea del horizonte se arrastra
+    let hzId = null;
+    hz.addEventListener("pointerdown", (e) => { hzId = e.pointerId; hz.setPointerCapture(e.pointerId); hz.classList.add("drag"); busy(true); Haptics.tap(); });
+    hz.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== hzId) return;
+      ed.c.horizon = clamp(e.clientY / VH, 0.45, 0.97); placeHorizon(); redraw();
+    });
+    const hzUp = (e) => { if (e.pointerId !== hzId) return; hzId = null; hz.classList.remove("drag"); busy(false); };
+    hz.addEventListener("pointerup", hzUp); hz.addEventListener("pointercancel", hzUp);
+    root.addEventListener("contextmenu", (e) => e.preventDefault());
+    window.addEventListener("resize", () => { if (ed.open) { sizeCanvas(); placeHorizon(); redraw(); } });
+  }
+
+  return {
+    init, load, paint, thumb, choose, edit,
+    get ready() { return !!img && !!cfg; },
+    get cfg() { return cfg; },
   };
 })();
 
@@ -2482,6 +3142,24 @@ function radius(o) { return 136 * U * Math.pow(o.power, 0.55); }
 function two(pal) { const a = pick(pal.colors); let b = pick(pal.colors), k = 0; while (b === a && k++ < 6) b = pick(pal.colors); return [a, b]; }
 function avg(a, b) { return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]; }
 
+/* Variantes: la misma forma puede terminar distinto cada vez, como en los fuegos de verdad.
+   - nada (la estrella se apaga con su parpadeo)
+   - crepitante: cada estrella termina en un puñito de chispas que truenan
+   - divididas: cada estrella se parte en dos o tres al final
+   - cambio de color: a medio camino pasan al segundo color
+   - brocado: dejan una estela dorada y larga
+   Regresa opciones para star() y el sonido extra que corresponde. */
+function variant(o, a, b, life) {
+  const r = Math.random();
+  if (o.chain) return { opt: {}, sound() {} };
+  if (r < 0.34) return { opt: {}, sound() {} };
+  if (r < 0.52) return { opt: { flags: F_CRACKLE }, sound(pan) { Sound.crackle(0.9, pan, life * 0.95); } };
+  if (r < 0.66) return { opt: { split: life * rand(0.78, 0.86) }, sound(pan) { Sound.crackle(0.4, pan, life * 0.8); } };
+  if (r < 0.84) return { opt: { to: b, at: rand(0.4, 0.55) }, sound() {} };
+  return { opt: { trail: 14, trailC: C.gold, trailLife: 1.1, trailGrav: 12 }, sound(pan) { Sound.sizzle(2.2, pan, 0.45, 0.4); } };
+}
+const mergeOpt = (base, v) => { const o = { ...base, ...v }; if (base.flags || v.flags) o.flags = (base.flags || 0) | (v.flags || 0); return o; };
+
 // Extras de los combos: corona de brillos, estrellas que cambian de color, halo de chispas
 function flair(x, y, R, o, c) {
   if (o.flair >= 1) glitterCrown(x, y, R * 0.55, Math.round(26 * P.room()));
@@ -2504,11 +3182,12 @@ const TYPES = {
     rise: { air: 0.05, whistle: 0 },
     burst(x, y, o) {
       const [a, b] = o.colors || two(o.pal), R = radius(o), n = count(130, o), drag = 2.1;
-      const shift = o.flair >= 2 || chance(0.25);
+      const v = variant(o, a, b, 1.8), shift = o.flair >= 2;
       for (let k = 0; k < n; k++) {
         const d = sphereDir(), s = R * drag * rand(0.94, 1.04);
-        star(x, y, d.x * s, d.y * s, rand(1.5, 2.1), rand(2.6, 3.4) * U, a, { drag, trail: 5, trailC: avg(a, C.gold), trailLife: 0.5, to: shift ? b : null, at: rand(0.45, 0.55), flags: F_FLICKER });
+        star(x, y, d.x * s, d.y * s, rand(1.5, 2.1), rand(2.6, 3.4) * U, a, mergeOpt({ drag, trail: 5, trailC: avg(a, C.gold), trailLife: 0.5, to: shift ? b : null, at: rand(0.45, 0.55), flags: F_FLICKER }, v.opt));
       }
+      v.sound(o.pan);
       const m = count(36, o);
       for (let k = 0; k < m; k++) {
         const d = sphereDir(), s = R * drag * 0.42 * rand(0.9, 1.05);
@@ -2544,12 +3223,13 @@ const TYPES = {
     burst(x, y, o) {
       const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.05, drag = 2.0;
       const tilt = rand(0, 1.1), roll = rand(TAU), cr = Math.cos(roll), sr = Math.sin(roll), ct = Math.cos(tilt);
-      const n = count(76, o);
+      const n = count(76, o), vr = variant(o, a, b, 1.8);
       for (let k = 0; k < n; k++) {
         const th = (k / n) * TAU, lx = Math.cos(th), ly = Math.sin(th) * ct;
         const dx = lx * cr - ly * sr, dy = lx * sr + ly * cr, s = R * drag * rand(0.985, 1.015);
-        star(x, y, dx * s, dy * s, rand(1.7, 1.9), 3.0 * U, a, { drag, grav: 40, trail: 3, trailLife: 0.4, to: o.flair >= 2 ? b : null });
+        star(x, y, dx * s, dy * s, rand(1.7, 1.9), 3.0 * U, a, mergeOpt({ drag, grav: 40, trail: 3, trailLife: 0.4, to: o.flair >= 2 ? b : null }, vr.opt));
       }
+      vr.sound(o.pan);
       // centro: un anillito interior del otro color
       const m = count(30, o);
       for (let k = 0; k < m; k++) {
@@ -2561,6 +3241,100 @@ const TYPES = {
       return { light: avg(a, b), R };
     },
     sound(p, pan) { Sound.boom(p, pan, { body: 1700, crack: 1.1 }); Sound.sizzle(1.2, pan, 0.25, 1.0); },
+  },
+
+  // Crisantemo: como la peonía, pero cada estrella deja una estela fina y larga: un "pompón" que florece
+  chrysanthemum: {
+    cost: 550, name: ["Chrysanthemum", "Crisantemo"], desc: ["Fine trails that bloom like a flower.", "Estelas finas que florecen."],
+    rise: { air: 0.05, whistle: 0 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o), n = count(110, o), drag = 2.2, v = variant(o, a, b, 1.9);
+      for (let k = 0; k < n; k++) {
+        const d = sphereDir(), s = R * drag * rand(0.95, 1.04);
+        star(x, y, d.x * s, d.y * s, rand(1.7, 2.1), 2.4 * U, a, mergeOpt({ drag, grav: 45, heat: 1, trail: 26 * (Q.level === 0 ? 0.6 : 1), trailC: avg(a, C.warm), trailLife: 0.75, trailGrav: 20, to: o.flair >= 2 ? b : null, at: 0.6 }, v.opt));
+      }
+      v.sound(o.pan);
+      flair(x, y, R, o, a);
+      return { light: a, R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { body: 1450 }); Sound.sizzle(1.9, pan, 0.4, 0.5); },
+  },
+
+  // Dalia: pocas estrellas grandes y muy brillantes, sin estela: pétalos gruesos
+  dahlia: {
+    cost: 700, name: ["Dahlia", "Dalia"], desc: ["Big, bold petals of light.", "Pétalos de luz grandes."],
+    rise: { air: 0.055, whistle: 0 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.08, m = Math.round(34 + 8 * o.power), drag = 1.9;
+      for (let k = 0; k < m; k++) {
+        const d = sphereDir(), s = R * drag * rand(0.92, 1.05);
+        star(x, y, d.x * s, d.y * s, rand(1.9, 2.3), rand(4.6, 5.4) * U, k % 3 ? a : b, { drag, grav: 50, heat: 1.1, bright: 1.25, flags: F_FLICKER });
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R };
+    },
+    sound(p, pan) { Sound.boom(p * 1.1, pan, { low: 84, body: 1300, crack: 1.1 }); },
+  },
+
+  // Cola de caballo: las estrellas salen hacia arriba y caen todas juntas, como una cascada que se abre
+  horsetail: {
+    cost: 1000, name: ["Horsetail", "Cola de caballo"], desc: ["A cascade that pours down.", "Una cascada que se derrama."],
+    rise: { air: 0.06, whistle: 0 },
+    burst(x, y, o) {
+      const c = chance(0.6) ? o.pal.metal : pick(o.pal.colors), R = radius(o) * 0.7, n = count(70, o);
+      for (let k = 0; k < n; k++) {
+        const th = -Math.PI / 2 + rand(-0.9, 0.9), s = R * rand(1.2, 2.2);
+        star(x, y, Math.cos(th) * s, Math.sin(th) * s, rand(2.6, 3.4), 2.2 * U, c,
+          { drag: 1.3, grav: 140, heat: 1, trail: 30 * (Q.level === 0 ? 0.6 : 1), trailC: c, trailLife: 1.2, trailGrav: 30, flags: F_FLICKER });
+      }
+      flair(x, y, R, o, c);
+      return { light: c, R: R * 1.3 };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { low: 80, body: 1150, crack: 0.7 }); Sound.sizzle(3.2, pan, 0.6, 0.3); },
+  },
+
+  // Enjambre: chispas que giran cada una a su ritmo, como abejas que se dispersan zumbando
+  swarm: {
+    cost: 1300, name: ["Swarm", "Enjambre"], desc: ["Sparks that whirl in every direction.", "Chispas que giran hacia todos lados."],
+    rise: { air: 0.05, whistle: 0.035, f0: 780, f1: 1200, wobble: true },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 0.75, m = Math.round(26 + 8 * o.power);
+      for (let k = 0; k < m; k++) {
+        const d = sphereDir(), s = R * 1.9 * rand(0.6, 1.1);
+        star(x, y, d.x * s, d.y * s, rand(1.4, 2.0), 2.2 * U, k % 2 ? a : C.silver,
+          { drag: 1.6, grav: 25, heat: 1, spin: (chance(0.5) ? 1 : -1) * rand(4, 8), trail: 22, trailC: k % 2 ? avg(a, C.gold) : C.silver, trailLife: 0.45, trailGrav: 8 });
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, C.silver), R };
+    },
+    sound(p, pan) { Sound.boom(p * 0.8, pan, { crack: 0.6 }); Sound.sizzle(2.0, pan, 0.6, 0.15); Sound.crackle(0.6, pan, 0.5); },
+  },
+
+  // Triple: tres estallidos seguidos, cada uno más grande y de otro color
+  triple: {
+    cost: 1550, name: ["Triple Break", "Triple"], desc: ["Three bursts, each one bigger.", "Tres estallidos, cada vez más grandes."],
+    rise: { air: 0.06, whistle: 0.04, f0: 760, f1: 1220 },
+    burst(x, y, o, pan) {
+      const cols = [pick(o.pal.colors), pick(o.pal.colors), o.pal.metal], R = radius(o);
+      const one = (i) => {
+        const c = cols[i], f = [0.5, 0.8, 1.1][i], n = count([50, 80, 110][i], o), yy = y - i * 8 * U;
+        for (let k = 0; k < n; k++) {
+          const d = sphereDir(), s = R * f * 2.1 * rand(0.94, 1.04);
+          star(x, yy, d.x * s, d.y * s, rand(1.0, 1.4) + i * 0.4, (2.4 + i * 0.3) * U, c, { drag: 2.1, trail: 4 + i * 4, trailC: avg(c, C.gold), trailLife: 0.5, flags: F_FLICKER });
+        }
+        if (i > 0) {
+          flash(x, yy, c, o.power * (0.6 + i * 0.2));
+          Lights.add(x, yy, c, 0.8 * Math.pow(o.power, 0.6), 220 * U, 3.4);
+          Sound.boom(o.power * (0.7 + i * 0.25), pan, { crack: 0.9 });
+          Haptics.burst(o.power * (0.6 + i * 0.25));
+        }
+      };
+      one(0);
+      Timers.after(0.38, () => one(1));
+      Timers.after(0.82, () => { one(2); Sound.sizzle(1.6, pan, 0.4, 0.6); });
+      return { light: cols[0], R: R * 0.6 };
+    },
+    sound(p, pan) { Sound.boom(p * 0.6, pan, { low: 100 }); },
   },
 
   // Doble: una explosión y, medio segundo después, otra más grande de otro color
@@ -2828,7 +3602,7 @@ const TYPES = {
     sound(p, pan) { Sound.boom(3, pan, { low: 70, body: 1000, gain: 1.15 }); Sound.boom(1.5, -0.4, { crack: 0 }); Sound.sizzle(5.5, pan, 1, 0.3); },
   },
 };
-const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "spiral", "strobe", "comet", "crossette", "heart", "saturn", "star"];
+const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "spiral", "chrysanthemum", "strobe", "dahlia", "comet", "crossette", "horsetail", "heart", "swarm", "saturn", "triple", "star"];
 
 // Íconos de línea (SVG, sin emojis), uno por tipo
 const ICON = {
@@ -2846,6 +3620,11 @@ const ICON = {
   crossette: '<circle cx="12" cy="12" r="1.3" fill="currentColor"/><path d="M12 10V7M12 14v3M10 12H7M14 12h3"/><path d="M10.6 3.6l2.8 2.8M13.4 3.6l-2.8 2.8M10.6 17.6l2.8 2.8M13.4 17.6l-2.8 2.8M3.6 10.6l2.8 2.8M6.4 10.6l-2.8 2.8M17.6 10.6l2.8 2.8M20.4 10.6l-2.8 2.8"/>',
   saturn: '<circle cx="12" cy="12" r="4.2"/><ellipse cx="12" cy="12" rx="9.5" ry="3" transform="rotate(-18 12 12)"/>',
   star: '<path d="M12 3.8l2.4 5.1 5.5.6-4.1 3.8 1.1 5.5L12 16l-4.9 2.8 1.1-5.5-4.1-3.8 5.5-.6z"/>',
+  chrysanthemum: '<circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 9.5V3.5M12 14.5v6M9.5 12h-6M14.5 12h6M10.2 10.2L6 6M13.8 13.8L18 18M13.8 10.2L18 6M10.2 13.8L6 18" stroke-dasharray="1.2 1.6"/>',
+  dahlia: '<circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="19" r="1.9"/><circle cx="5" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/><circle cx="7" cy="7" r="1.5"/><circle cx="17" cy="17" r="1.5"/><circle cx="17" cy="7" r="1.5"/><circle cx="7" cy="17" r="1.5"/>',
+  horsetail: '<circle cx="12" cy="5" r="1.4" fill="currentColor"/><path d="M12 6.5c-1.5 2-2.5 6-2.5 13M12 6.5c1.5 2 2.5 6 2.5 13M12 6.5c-3 1.5-5.5 5-6.5 11M12 6.5c3 1.5 5.5 5 6.5 11"/>',
+  swarm: '<path d="M6 7c1.5-1.5 3.5-.5 3 1.2-.4 1.5-2.6 1.4-2.4-.2M15.5 5.5c1.6-.8 3.2.6 2.4 2-.8 1.3-2.7.6-2.2-.8M13 14c1.7-.6 3 1 2 2.3-1 1.2-2.9.2-2.3-1.2M5.5 15.5c1.3-1.2 3.3-.2 2.8 1.4-.5 1.4-2.6 1.2-2.4-.3"/><circle cx="11.5" cy="10.5" r="1" fill="currentColor"/>',
+  triple: '<circle cx="7" cy="15" r="2.6"/><circle cx="12" cy="10" r="3.6"/><circle cx="17" cy="6" r="2.2" stroke-dasharray="1.4 1.6"/>',
 };
 const iconSVG = (k, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ICON.classic}</svg>`;
 
@@ -2886,8 +3665,11 @@ const Game = (() => {
     const dist = (ly - ty) / VH;
     const dur = (0.85 + 0.55 * dist) * (opts.chain ? 0.8 : 1) * (power > 1.4 ? 1.1 : 1);
     const T = TYPES[type];
+    // Cada cohete trae su propia cola, como los de verdad: chispas doradas, brillos plateados, crepitante o casi invisible
+    const tr = Math.random(), tail = opts.chain ? "gold" : tr < 0.5 ? "gold" : tr < 0.7 ? "glitter" : tr < 0.85 ? "crackle" : "dim";
     const r = {
-      x0, y0: ly, tx, ty, x: x0, y: ly, t: 0, dur, type, power, opts, acc: 0, smoke: 0, seed: rand(100),
+      x0, y0: ly, tx, ty, x: x0, y: ly, t: 0, dur, type, power, opts, acc: 0, smoke: 0, seed: rand(100), tail, pop: 0,
+      arc: rand(-1, 1) * 12 * U * (opts.chain ? 0.3 : 1),
       pal: opts.pal || palette(), whistle: Sound.rise(dur, panOf(x0), panOf(tx), T.rise, { power, chain: !!opts.chain }),
     };
     rockets.push(r);
@@ -2898,6 +3680,8 @@ const Game = (() => {
       if (i >= 0) { P.kind[i] = K_SPARK; P.drag[i] = 4; P.grav[i] = 120 * U; }
     }
     Lights.add(x0, iy, C.gold, 0.35, 90 * U, 9);
+    // el humo del disparo, que se queda flotando abajo
+    if (!opts.chain) for (let k = 0; k < 3; k++) Smoke.add(x0 + rand(-5, 5) * U, iy - rand(2, 8) * U, rand(-9, 9) * U, -rand(5, 14) * U, rand(2.6, 4), 7 * U, 22 * U, 0.08, 0.5, 0.35, 0.18);
     Sound.ignite(panOf(x0));
     if (!opts.auto && !opts.finale && !opts.replay && mode !== "home") {
       Save.stats.launches++;
@@ -2939,22 +3723,41 @@ const Game = (() => {
       const px = r.x, py = r.y;
       r.t += dt / r.dur;
       const t = Math.min(1, r.t), u = 1 - (1 - t) * (1 - t);
-      r.x = lerp(r.x0, r.tx, u) + Math.sin(t * 17 + r.seed) * 1.3 * U * (1 - t);
+      // subida balística (frena al llegar arriba), con un arco suave y un temblor que se calma
+      r.x = lerp(r.x0, r.tx, u) + Math.sin(Math.PI * t) * r.arc + Math.sin(t * 17 + r.seed) * 1.3 * U * (1 - t);
       r.y = lerp(r.y0, r.ty, u);
       const vx = (r.x - px) / Math.max(dt, 1e-3), vy = (r.y - py) / Math.max(dt, 1e-3);
-      // Estela: chispitas doradas que caen y se apagan
-      r.acc += dt * (95 + 40 * r.power) * (1 - 0.6 * t) * (Q.level === 0 ? 0.6 : 1);
+      // Estela según su cola
+      const rate = { gold: 1, glitter: 0.55, crackle: 0.75, dim: 0.3 }[r.tail];
+      r.acc += dt * (95 + 40 * r.power) * rate * (1 - 0.6 * t) * (Q.level === 0 ? 0.6 : 1);
       while (r.acc >= 1) {
         r.acc -= 1;
-        const f = Math.random();
-        const i = P.add(lerp(px, r.x, f) + rand(-1, 1), lerp(py, r.y, f), -vx * 0.1 + rand(-14, 14) * U, -vy * 0.1 + rand(-8, 12) * U,
-          rand(0.3, 0.75), rand(1.2, 1.9) * U, EMBER_C[0], EMBER_C[1], EMBER_C[2]);
-        if (i >= 0) { P.kind[i] = K_EMBER; P.drag[i] = 3.5; P.grav[i] = 50 * U; }
+        const f = Math.random(), ex = lerp(px, r.x, f) + rand(-1, 1), ey = lerp(py, r.y, f);
+        if (r.tail === "glitter") {
+          const i = P.add(ex, ey, -vx * 0.06 + rand(-10, 10) * U, -vy * 0.06 + rand(-4, 10) * U, rand(0.5, 0.95), rand(1.3, 1.8) * U, 0.95, 0.95, 1.0);
+          if (i >= 0) { P.kind[i] = K_GLITTER; P.drag[i] = 3; P.grav[i] = 38 * U; }
+        } else {
+          const dim = r.tail === "dim" ? 0.55 : 1;
+          const i = P.add(ex, ey, -vx * 0.1 + rand(-14, 14) * U, -vy * 0.1 + rand(-8, 12) * U,
+            rand(0.3, 0.75) * dim, rand(1.2, 1.9) * U * dim, EMBER_C[0] * dim, EMBER_C[1] * dim, EMBER_C[2] * dim);
+          if (i >= 0) { P.kind[i] = K_EMBER; P.drag[i] = 3.5; P.grav[i] = 50 * U; }
+        }
+      }
+      // cola crepitante: de vez en cuando una chispita que revienta
+      if (r.tail === "crackle") {
+        r.pop += dt * 9 * (1 - 0.5 * t);
+        while (r.pop >= 1) {
+          r.pop -= 1;
+          const i = P.add(r.x + rand(-2, 2), r.y, rand(-12, 12) * U, rand(4, 20) * U, rand(0.15, 0.4), 1.4 * U, 1.1, 0.9, 0.6);
+          if (i >= 0) { P.drag[i] = 3; P.grav[i] = 40 * U; P.flags[i] = F_CRACKLE; }
+        }
       }
       r.smoke += dt;
       if (r.smoke > 0.07) { r.smoke = 0; Smoke.add(r.x, r.y, rand(-3, 3) * U, rand(-2, 2) * U, rand(2.2, 3.4), 5 * U, 9 * U, 0.05, 0.5, 0.35, 0.18); }
-      const hs = 3.2 * U * Math.pow(r.power, 0.3);
-      P.extra(r.x, r.y, vx * 0.02, vy * 0.02, hs, 1.5, 1.15, 0.8, 1);
+      // la cabeza del cohete titila (la pólvora no quema parejo)
+      const fl = 0.8 + 0.25 * Math.sin(Timers.time * 41 + r.seed) * Math.sin(Timers.time * 23 + r.seed * 3) + rand(0, 0.12);
+      const hs = 3.2 * U * Math.pow(r.power, 0.3) * (r.tail === "dim" ? 0.75 : 1) * (0.9 + 0.2 * fl);
+      P.extra(r.x, r.y, vx * 0.02, vy * 0.02, hs, 1.5 * fl, 1.15 * fl, 0.8 * fl, 1);
       if (r.t >= 1) { rockets.splice(k, 1); explode(r); }
     }
     // combo: se termina en silencio, sin castigo
@@ -2972,14 +3775,16 @@ const Game = (() => {
 
   function explode(r) {
     const T = TYPES[r.type], pan = panOf(r.tx);
-    const o = { power: r.power, pal: r.pal, flair: 0, colors: r.opts.colors };
+    const o = { power: r.power, pal: r.pal, flair: 0, colors: r.opts.colors, chain: !!r.opts.chain, pan };
     if (scoring() && !r.opts.auto && !r.opts.finale && !r.opts.replay) o.flair = onBurst(r);
     const res = T.burst(r.tx, r.ty, o, pan);
     flash(r.tx, r.ty, res.light, r.power);
     Lights.add(r.tx, r.ty, res.light, 1.0 * Math.pow(r.power, 0.6), res.R * 2.4, 3.0);
     Lights.flash(res.light, 0.05 * r.power);
     Smoke.burst(r.tx, r.ty, res.R * 0.75, res.light, r.power);
-    T.sound(r.power, pan);
+    // el sonido llega un instante después del destello: más tarde mientras más alto (y lejos) explota
+    const far = clamp((Scene.launchY - r.ty) / VH, 0, 1);
+    Timers.after(0.03 + 0.11 * far, () => T.sound(r.power, pan));
     Haptics.burst(r.power);
     if (r.opts.onBurst) r.opts.onBurst(r);
   }
@@ -3046,7 +3851,7 @@ const Game = (() => {
     // 2. Abanicos de cinco
     for (let v = 0; v < 5; v++) for (let j = 0; j < 5; j++) L(5.4 + v * 0.95 + j * 0.07, 0.14 + 0.18 * j, 0.3 + 0.07 * Math.abs(j - 2), v % 2 ? "willow" : "double", 0.66);
     // 3. Crescendo: todas las formas y colores
-    for (let k = 0; k < 26; k++) L(10.3 + k * 0.21, rand(0.12, 0.88), rand(0.16, 0.46), pick(["crackle", "comet", "spiral", "classic", "ring", "palm", "strobe", "crossette", "saturn"]), rand(0.7, 1.1));
+    for (let k = 0; k < 26; k++) L(10.3 + k * 0.21, rand(0.12, 0.88), rand(0.16, 0.46), pick(["crackle", "comet", "spiral", "classic", "ring", "palm", "strobe", "crossette", "saturn", "chrysanthemum", "dahlia", "horsetail", "swarm"]), rand(0.7, 1.1));
     L(13.2, 0.5, 0.3, "heart", 1.3);
     // 4. Muro: ráfaga rápida de explosiones pequeñas
     for (let k = 0; k < 30; k++) L(16 + k * 0.1, 0.1 + 0.8 * ((k * 0.381) % 1), rand(0.2, 0.44), pick(["classic", "crackle", "ring"]), 0.55);
@@ -3359,6 +4164,7 @@ const UI = (() => {
   let idleT = 0, sheet = null, colTab = "fw", toastQ = [], toastBusy = false;
   const thumbs = {};
   const SPARK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l1.9 6.2 6.3 1.9-6.3 2-1.9 6.3-1.9-6.3-6.3-2 6.3-1.9z" fill="currentColor"/></svg>';
+  const PHOTO_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.6"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l4.6-4.4 3.4 3 3-2.6L20 17"/></svg>';
   const LOCK = '<svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="10.5" width="13" height="9.5" rx="2.2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>';
   const HOW_ICONS = {
     tap: '<circle cx="12" cy="9" r="3.2"/><path d="M12 15.5v5M7.5 4.8A6.5 6.5 0 0 1 16.5 4.8"/>',
@@ -3594,18 +4400,30 @@ const UI = (() => {
         c.querySelector("[data-buy]")?.addEventListener("click", () => buy("palettes", k, PALETTES[k].cost, PALETTES[k].name[LANG], "classic", () => { Save.selected.palette = k; }));
       });
     } else if (colTab === "scn") {
-      el.innerHTML = `<div class="grid">${SCENE_ORDER.map((k) => {
+      // "Tu foto" va primero: siempre disponible, gratis
+      const ph = Photo.ready, phSel = ph && Save.selected.scene === "photo";
+      const photoCard = `<div class="card scene photo${phSel ? " sel" : ""}" data-photo>
+          <div class="thumb${ph ? "" : " empty"}"${ph ? ` style="background-image:url(${Photo.thumb()})"` : ""}>${ph ? "" : PHOTO_ICON}</div>
+          <h4>${t("phTitle")}</h4>
+          ${ph ? `<div class="card-row"><button class="card-btn${phSel ? " on" : ""}" data-use type="button">${phSel ? t("selected") : t("use")}</button><button class="card-btn" data-edit type="button">${t("phEdit")}</button></div>`
+               : `<button class="card-btn buy" data-choose type="button">${t("phChoose")}</button>`}
+        </div>`;
+      el.innerHTML = `<div class="grid">${photoCard}${SCENE_ORDER.map((k) => {
         const s = SCENES[k], own = Save.unlocked.scenes.includes(k), sel = Save.selected.scene === k;
         if (!thumbs[k]) thumbs[k] = Scene.thumb(k, 320, 200);
         return `<div class="card scene${own ? "" : " locked"}${sel ? " sel" : ""}" data-k="${k}"><div class="thumb" style="background-image:url(${thumbs[k]})"></div><h4>${s.name[LANG]}</h4>
           ${own ? `<button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button>` : buyBtn(s.cost)}</div>`;
       }).join("")}</div>`;
-      el.querySelectorAll(".card").forEach((c) => {
+      el.querySelectorAll(".card[data-k]").forEach((c) => {
         const k = c.dataset.k;
         const pickScene = () => { Save.selected.scene = k; persist(); Scene.apply(k); R.clearTrails(); };
         c.querySelector("[data-use]")?.addEventListener("click", () => { press(); pickScene(); renderCollection(); });
         c.querySelector("[data-buy]")?.addEventListener("click", () => buy("scenes", k, SCENES[k].cost, SCENES[k].name[LANG], "willow", pickScene));
       });
+      const pc = el.querySelector("[data-photo]");
+      pc.querySelector("[data-choose]")?.addEventListener("click", () => { press(); Photo.choose(); });
+      pc.querySelector("[data-edit]")?.addEventListener("click", () => { press(); Photo.edit(); });
+      pc.querySelector("[data-use]")?.addEventListener("click", () => { press(); Save.selected.scene = "photo"; persist(); Scene.apply("photo"); R.clearTrails(); renderCollection(); });
     } else renderGoals();
   }
   function renderGoals() {
@@ -3677,7 +4495,11 @@ const UI = (() => {
     $("#show-status").textContent = rec ? `${t("recording")}…` : cur ? `${t("slot")} ${Save.showSlot + 1} · ${cur.events.length} ${t("launches")} · ${Math.round(cur.dur)} s` : t("showHint");
   }
 
+  // Al terminar el editor de "Tu foto": cerrar la Colección para ver el cielo nuevo
+  function photoSaved() { close(); toast(t("phReady"), "", "classic"); }
+
   return {
+    photoSaved,
     init, showHome, revealTitle, revealMenu, enter, goHome, activity, tick,
     sparks, floater, combo, comboStep, finaleBar, finaleReady, finaleState, toast, goals, showState,
     get sheet() { return sheet; },
@@ -3748,6 +4570,9 @@ const Main = (() => {
     started = true;
     if (!R.init(cv)) { $("#nogl").hidden = false; $("#home").hidden = true; return; }
     UI.init();
+    Photo.init();
+    // "Tu foto" vive en IndexedDB: se carga sin bloquear el arranque y, si es el escenario elegido, se pinta
+    Photo.load().then((ok) => { if (ok && Save.selected.scene === "photo") { Scene.apply("photo"); R.clearTrails(); } });
     Input.init($("#surface"), ov);
     Goals.ensure();
     Game.setMode("intro");

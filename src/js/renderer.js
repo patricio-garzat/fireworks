@@ -145,7 +145,7 @@ const R = (() => {
   }`;
   const FS_COMP = `
   precision highp float; varying vec2 v_uv;
-  uniform sampler2D u_p, u_a, u_c; uniform float u_ba, u_bc, u_water, u_time, u_exp; uniform vec2 u_res;
+  uniform sampler2D u_p, u_a, u_c, u_m; uniform float u_ba, u_bc, u_water, u_time, u_exp; uniform vec2 u_res;
   float h21(vec2 p){ p = fract(p*vec2(233.34, 851.73)); p += dot(p, p+23.45); return fract(p.x*p.y); }
   vec3 scene(vec2 uv){ return texture2D(u_p, uv).rgb + texture2D(u_a, uv).rgb*u_ba + texture2D(u_c, uv).rgb*u_bc; }
   void main(){
@@ -158,7 +158,9 @@ const R = (() => {
         float wob = sin(v_uv.y*260.0 + u_time*1.6)*0.0035*(0.3+depth) + sin(v_uv.y*90.0 - u_time*0.9)*0.002;
         vec2 ruv = vec2(v_uv.x + wob, ry);
         vec3 r = texture2D(u_a, ruv).rgb*0.9 + texture2D(u_c, ruv).rgb*0.7 + texture2D(u_p, ruv).rgb*0.35;
-        c = r * vec3(0.62, 0.72, 0.9) * (1.0 - depth*0.75);
+        // solo donde de verdad hay agua (en la playa, la arena no refleja)
+        float wm = texture2D(u_m, vec2(v_uv.x, 1.0 - v_uv.y)).g;
+        c = mix(c, r * vec3(0.62, 0.72, 0.9) * (1.0 - depth*0.75), wm);
       }
     }
     c = 1.0 - exp(-c*u_exp);
@@ -397,7 +399,7 @@ const R = (() => {
     gl.blendFunc(gl.ONE, gl.ONE);
     const c = prog.comp;
     full(c, null);
-    tex(0, tPart.tex, c.u.u_p); tex(1, tA.tex, c.u.u_a); tex(2, (wide ? tC : tA).tex, c.u.u_c);
+    tex(0, tPart.tex, c.u.u_p); tex(1, tA.tex, c.u.u_a); tex(2, (wide ? tC : tA).tex, c.u.u_c); tex(3, maskTex, c.u.u_m);
     gl.uniform1f(c.u.u_ba, 0.55); gl.uniform1f(c.u.u_bc, wide ? 0.6 : 0.3);
     gl.uniform1f(c.u.u_water, water > 0 ? water / (RH / scale) : -1);
     gl.uniform1f(c.u.u_time, time); gl.uniform1f(c.u.u_exp, 1.1);

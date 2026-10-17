@@ -84,6 +84,17 @@ const STR = {
   launches: ["launches", "lanzamientos"],
   slot: ["Show", "Show"],
   zenMode: ["Zen", "Zen"],
+  phTitle: ["Your Photo", "Tu foto"],
+  phChoose: ["Choose photo", "Elegir foto"],
+  phEdit: ["Edit", "Editar"],
+  phDone: ["Done", "Listo"],
+  phHorizon: ["Horizon", "Horizonte"],
+  phHint: ["Pinch to zoom, drag to move. Rockets launch from the horizon.", "Pellizca para zoom y arrastra para mover. Los cohetes salen del horizonte."],
+  phNight: ["Night", "Noche"],
+  phLand: ["Land", "Tierra"],
+  phWater: ["Water", "Agua"],
+  phChange: ["Choose another photo", "Elegir otra foto"],
+  phReady: ["Your sky is ready", "Tu cielo está listo"],
 };
 
 let LANG = 0; // 0 = inglés, 1 = español

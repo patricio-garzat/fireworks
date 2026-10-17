@@ -34,8 +34,11 @@ const Game = (() => {
     const dist = (ly - ty) / VH;
     const dur = (0.85 + 0.55 * dist) * (opts.chain ? 0.8 : 1) * (power > 1.4 ? 1.1 : 1);
     const T = TYPES[type];
+    // Cada cohete trae su propia cola, como los de verdad: chispas doradas, brillos plateados, crepitante o casi invisible
+    const tr = Math.random(), tail = opts.chain ? "gold" : tr < 0.5 ? "gold" : tr < 0.7 ? "glitter" : tr < 0.85 ? "crackle" : "dim";
     const r = {
-      x0, y0: ly, tx, ty, x: x0, y: ly, t: 0, dur, type, power, opts, acc: 0, smoke: 0, seed: rand(100),
+      x0, y0: ly, tx, ty, x: x0, y: ly, t: 0, dur, type, power, opts, acc: 0, smoke: 0, seed: rand(100), tail, pop: 0,
+      arc: rand(-1, 1) * 12 * U * (opts.chain ? 0.3 : 1),
       pal: opts.pal || palette(), whistle: Sound.rise(dur, panOf(x0), panOf(tx), T.rise, { power, chain: !!opts.chain }),
     };
     rockets.push(r);
@@ -46,6 +49,8 @@ const Game = (() => {
       if (i >= 0) { P.kind[i] = K_SPARK; P.drag[i] = 4; P.grav[i] = 120 * U; }
     }
     Lights.add(x0, iy, C.gold, 0.35, 90 * U, 9);
+    // el humo del disparo, que se queda flotando abajo
+    if (!opts.chain) for (let k = 0; k < 3; k++) Smoke.add(x0 + rand(-5, 5) * U, iy - rand(2, 8) * U, rand(-9, 9) * U, -rand(5, 14) * U, rand(2.6, 4), 7 * U, 22 * U, 0.08, 0.5, 0.35, 0.18);
     Sound.ignite(panOf(x0));
     if (!opts.auto && !opts.finale && !opts.replay && mode !== "home") {
       Save.stats.launches++;
@@ -87,22 +92,41 @@ const Game = (() => {
       const px = r.x, py = r.y;
       r.t += dt / r.dur;
       const t = Math.min(1, r.t), u = 1 - (1 - t) * (1 - t);
-      r.x = lerp(r.x0, r.tx, u) + Math.sin(t * 17 + r.seed) * 1.3 * U * (1 - t);
+      // subida balística (frena al llegar arriba), con un arco suave y un temblor que se calma
+      r.x = lerp(r.x0, r.tx, u) + Math.sin(Math.PI * t) * r.arc + Math.sin(t * 17 + r.seed) * 1.3 * U * (1 - t);
       r.y = lerp(r.y0, r.ty, u);
       const vx = (r.x - px) / Math.max(dt, 1e-3), vy = (r.y - py) / Math.max(dt, 1e-3);
-      // Estela: chispitas doradas que caen y se apagan
-      r.acc += dt * (95 + 40 * r.power) * (1 - 0.6 * t) * (Q.level === 0 ? 0.6 : 1);
+      // Estela según su cola
+      const rate = { gold: 1, glitter: 0.55, crackle: 0.75, dim: 0.3 }[r.tail];
+      r.acc += dt * (95 + 40 * r.power) * rate * (1 - 0.6 * t) * (Q.level === 0 ? 0.6 : 1);
       while (r.acc >= 1) {
         r.acc -= 1;
-        const f = Math.random();
-        const i = P.add(lerp(px, r.x, f) + rand(-1, 1), lerp(py, r.y, f), -vx * 0.1 + rand(-14, 14) * U, -vy * 0.1 + rand(-8, 12) * U,
-          rand(0.3, 0.75), rand(1.2, 1.9) * U, EMBER_C[0], EMBER_C[1], EMBER_C[2]);
-        if (i >= 0) { P.kind[i] = K_EMBER; P.drag[i] = 3.5; P.grav[i] = 50 * U; }
+        const f = Math.random(), ex = lerp(px, r.x, f) + rand(-1, 1), ey = lerp(py, r.y, f);
+        if (r.tail === "glitter") {
+          const i = P.add(ex, ey, -vx * 0.06 + rand(-10, 10) * U, -vy * 0.06 + rand(-4, 10) * U, rand(0.5, 0.95), rand(1.3, 1.8) * U, 0.95, 0.95, 1.0);
+          if (i >= 0) { P.kind[i] = K_GLITTER; P.drag[i] = 3; P.grav[i] = 38 * U; }
+        } else {
+          const dim = r.tail === "dim" ? 0.55 : 1;
+          const i = P.add(ex, ey, -vx * 0.1 + rand(-14, 14) * U, -vy * 0.1 + rand(-8, 12) * U,
+            rand(0.3, 0.75) * dim, rand(1.2, 1.9) * U * dim, EMBER_C[0] * dim, EMBER_C[1] * dim, EMBER_C[2] * dim);
+          if (i >= 0) { P.kind[i] = K_EMBER; P.drag[i] = 3.5; P.grav[i] = 50 * U; }
+        }
+      }
+      // cola crepitante: de vez en cuando una chispita que revienta
+      if (r.tail === "crackle") {
+        r.pop += dt * 9 * (1 - 0.5 * t);
+        while (r.pop >= 1) {
+          r.pop -= 1;
+          const i = P.add(r.x + rand(-2, 2), r.y, rand(-12, 12) * U, rand(4, 20) * U, rand(0.15, 0.4), 1.4 * U, 1.1, 0.9, 0.6);
+          if (i >= 0) { P.drag[i] = 3; P.grav[i] = 40 * U; P.flags[i] = F_CRACKLE; }
+        }
       }
       r.smoke += dt;
       if (r.smoke > 0.07) { r.smoke = 0; Smoke.add(r.x, r.y, rand(-3, 3) * U, rand(-2, 2) * U, rand(2.2, 3.4), 5 * U, 9 * U, 0.05, 0.5, 0.35, 0.18); }
-      const hs = 3.2 * U * Math.pow(r.power, 0.3);
-      P.extra(r.x, r.y, vx * 0.02, vy * 0.02, hs, 1.5, 1.15, 0.8, 1);
+      // la cabeza del cohete titila (la pólvora no quema parejo)
+      const fl = 0.8 + 0.25 * Math.sin(Timers.time * 41 + r.seed) * Math.sin(Timers.time * 23 + r.seed * 3) + rand(0, 0.12);
+      const hs = 3.2 * U * Math.pow(r.power, 0.3) * (r.tail === "dim" ? 0.75 : 1) * (0.9 + 0.2 * fl);
+      P.extra(r.x, r.y, vx * 0.02, vy * 0.02, hs, 1.5 * fl, 1.15 * fl, 0.8 * fl, 1);
       if (r.t >= 1) { rockets.splice(k, 1); explode(r); }
     }
     // combo: se termina en silencio, sin castigo
@@ -120,14 +144,16 @@ const Game = (() => {
 
   function explode(r) {
     const T = TYPES[r.type], pan = panOf(r.tx);
-    const o = { power: r.power, pal: r.pal, flair: 0, colors: r.opts.colors };
+    const o = { power: r.power, pal: r.pal, flair: 0, colors: r.opts.colors, chain: !!r.opts.chain, pan };
     if (scoring() && !r.opts.auto && !r.opts.finale && !r.opts.replay) o.flair = onBurst(r);
     const res = T.burst(r.tx, r.ty, o, pan);
     flash(r.tx, r.ty, res.light, r.power);
     Lights.add(r.tx, r.ty, res.light, 1.0 * Math.pow(r.power, 0.6), res.R * 2.4, 3.0);
     Lights.flash(res.light, 0.05 * r.power);
     Smoke.burst(r.tx, r.ty, res.R * 0.75, res.light, r.power);
-    T.sound(r.power, pan);
+    // el sonido llega un instante después del destello: más tarde mientras más alto (y lejos) explota
+    const far = clamp((Scene.launchY - r.ty) / VH, 0, 1);
+    Timers.after(0.03 + 0.11 * far, () => T.sound(r.power, pan));
     Haptics.burst(r.power);
     if (r.opts.onBurst) r.opts.onBurst(r);
   }
@@ -194,7 +220,7 @@ const Game = (() => {
     // 2. Abanicos de cinco
     for (let v = 0; v < 5; v++) for (let j = 0; j < 5; j++) L(5.4 + v * 0.95 + j * 0.07, 0.14 + 0.18 * j, 0.3 + 0.07 * Math.abs(j - 2), v % 2 ? "willow" : "double", 0.66);
     // 3. Crescendo: todas las formas y colores
-    for (let k = 0; k < 26; k++) L(10.3 + k * 0.21, rand(0.12, 0.88), rand(0.16, 0.46), pick(["crackle", "comet", "spiral", "classic", "ring", "palm", "strobe", "crossette", "saturn"]), rand(0.7, 1.1));
+    for (let k = 0; k < 26; k++) L(10.3 + k * 0.21, rand(0.12, 0.88), rand(0.16, 0.46), pick(["crackle", "comet", "spiral", "classic", "ring", "palm", "strobe", "crossette", "saturn", "chrysanthemum", "dahlia", "horsetail", "swarm"]), rand(0.7, 1.1));
     L(13.2, 0.5, 0.3, "heart", 1.3);
     // 4. Muro: ráfaga rápida de explosiones pequeñas
     for (let k = 0; k < 30; k++) L(16 + k * 0.1, 0.1 + 0.8 * ((k * 0.381) % 1), rand(0.2, 0.44), pick(["classic", "crackle", "ring"]), 0.55);

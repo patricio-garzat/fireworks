@@ -8,6 +8,11 @@ function mulberry(seed) {
 }
 
 const SCENES = {
+  // "Tu foto": la pinta photo.js; el horizonte y el agua los define la persona en el editor
+  photo: {
+    cost: 0, name: ["Your Photo", "Tu foto"], photo: true,
+    sky: ["#03060f", "#071027", "#0f1d3e", "#1d2f55"], launch: 0.82, water: 0,
+  },
   alpine: {
     cost: 0, name: ["Alpine Night", "Noche alpina"],
     sky: ["#03060f", "#071027", "#0f1d3e", "#1d2f55"], launch: 1.02, water: 0,
@@ -32,8 +37,24 @@ const SCENES = {
     cost: 3200, name: ["Snowy Village", "Pueblo nevado"],
     sky: ["#03050d", "#0a1428", "#16264a", "#2c3f62"], launch: 1.02, water: 0,
   },
+  country: {
+    cost: 1200, name: ["Countryside", "Campo"],
+    sky: ["#03060e", "#0a1328", "#152446", "#26385a"], launch: 1.02, water: 0,
+  },
+  canyon: {
+    cost: 2300, name: ["Red Canyon", "Cañón rojo"],
+    sky: ["#04040d", "#0e0c25", "#211837", "#43293d"], launch: 1.02, water: 0,
+  },
+  beach: {
+    cost: 2900, name: ["Tropical Beach", "Playa tropical"],
+    sky: ["#02050d", "#071330", "#0f2650", "#1f4166"], launch: 0.77, water: 0.77,
+  },
+  bridge: {
+    cost: 3600, name: ["River Bridge", "Puente del río"],
+    sky: ["#04050f", "#0b0f28", "#191b3c", "#352c48"], launch: 0.8, water: 0.8,
+  },
 };
-const SCENE_ORDER = ["alpine", "lake", "desert", "city", "bay", "snow"];
+const SCENE_ORDER = ["alpine", "lake", "country", "desert", "city", "canyon", "bay", "beach", "snow", "bridge"];
 
 const Scene = (() => {
   let id = "alpine";
@@ -404,24 +425,242 @@ const Scene = (() => {
     pines(g, m, rng, near, s * 0.9, "#070c18", Math.round(w / s / 30));
   }
 
-  const PAINT = { alpine: paintAlpine, lake: paintLake, city: paintCity, desert: paintDesert, bay: paintBay, snow: paintSnow };
+  // Árbol de copa redonda (silueta hecha de círculos)
+  function roundTree(g, m, x, y, s, size, color) {
+    for (const ctx of [g, m]) {
+      ctx.fillStyle = ctx === g ? color : "rgb(255,0,0)";
+      ctx.fillRect(x - 1.6 * s, y - size * 1.1, 3.2 * s, size * 1.1 + 2 * s);
+      ctx.beginPath();
+      for (const [dx, dy, r] of [[0, -1.55, 0.62], [-0.5, -1.25, 0.5], [0.5, -1.25, 0.5], [-0.25, -1.85, 0.45], [0.3, -1.8, 0.45]]) {
+        ctx.moveTo(x + dx * size + r * size, y + dy * size); ctx.arc(x + dx * size, y + dy * size, r * size, 0, TAU);
+      }
+      ctx.fill();
+    }
+  }
+  function paintCountry(g, m, w, h, s, rng) {
+    const S = SCENES.country;
+    sky(g, w, h, S.sky);
+    milkyWay(g, w, h, rng, s);
+    const far = dunes(rng, w, 96, h * 0.79, h * 0.025);
+    haze(g, h * 0.8, h * 0.08, w, "60,90,140", 0.16);
+    fillRidge(g, m, far, h, "#101b30", 0.4);
+    // hileras de árboles lejanos
+    for (let i = 0; i < Math.round(w / s / 14); i++) {
+      const [x, y] = far[Math.floor(rng() * far.length)];
+      for (const ctx of [g, m]) { ctx.fillStyle = ctx === g ? "#0c1527" : "rgb(102,0,0)"; ctx.beginPath(); ctx.arc(x, y + 1 * s, (3 + rng() * 4) * s, 0, TAU); ctx.fill(); }
+    }
+    const mid = dunes(rng, w, 96, h * 0.875, h * 0.03);
+    haze(g, h * 0.86, h * 0.06, w, "50,75,120", 0.14);
+    fillRidge(g, m, mid, h, "#0a1222", 0.7);
+    // granero con una ventana cálida
+    const [bx, by] = mid[Math.floor(mid.length * (0.22 + rng() * 0.12))], bw = 30 * s, bh = 18 * s;
+    for (const ctx of [g, m]) {
+      ctx.fillStyle = ctx === g ? "#070d1a" : "rgb(178,0,0)";
+      ctx.fillRect(bx - bw / 2, by - bh + 3 * s, bw, bh);
+      ctx.beginPath(); ctx.moveTo(bx - bw / 2 - 2 * s, by - bh + 3.5 * s); ctx.lineTo(bx - bw * 0.25, by - bh - 7 * s); ctx.lineTo(bx + bw * 0.25, by - bh - 7 * s); ctx.lineTo(bx + bw / 2 + 2 * s, by - bh + 3.5 * s); ctx.closePath(); ctx.fill();
+    }
+    const wg = g.createRadialGradient(bx + 6 * s, by - bh * 0.45, 0, bx + 6 * s, by - bh * 0.45, 14 * s);
+    wg.addColorStop(0, "rgba(255,190,110,0.25)"); wg.addColorStop(1, "rgba(255,190,110,0)");
+    g.fillStyle = wg; g.fillRect(bx - 10 * s, by - bh - 10 * s, 32 * s, 30 * s);
+    g.fillStyle = "rgba(255,200,125,0.85)"; g.fillRect(bx + 4 * s, by - bh * 0.6, 4 * s, 4 * s);
+    const near = dunes(rng, w, 64, h * 0.95, h * 0.02);
+    fillRidge(g, m, near, h, "#04070f", 1);
+    // cerca de madera
+    g.strokeStyle = "#04070f"; m.strokeStyle = "rgb(255,0,0)";
+    for (const ctx of [g, m]) {
+      ctx.lineWidth = 1.4 * s; ctx.beginPath();
+      for (let i = 0; i < near.length - 1; i += 2) { const [x, y] = near[i]; ctx.moveTo(x, y + 2 * s); ctx.lineTo(x, y - 9 * s); }
+      for (const off of [6, 2]) { ctx.moveTo(0, near[0][1] - off * s); near.forEach(([x, y]) => ctx.lineTo(x, y - off * s)); }
+      ctx.stroke();
+    }
+    roundTree(g, m, near[Math.floor(near.length * 0.78)][0], near[Math.floor(near.length * 0.78)][1], s, 26 * s, "#03060d");
+  }
+
+  function paintCanyon(g, m, w, h, s, rng) {
+    const S = SCENES.canyon, base = h * 0.81;
+    sky(g, w, h, S.sky);
+    milkyWay(g, w, h, rng, s);
+    // "buttes" lejanas: mesas de cima plana con laderas inclinadas
+    haze(g, base, h * 0.1, w, "150,85,105", 0.12);
+    const far = [[0, base]];
+    let x = -rng() * 20 * s;
+    while (x < w) {
+      const top = h * (0.705 + rng() * 0.06), bw = (26 + rng() * 60) * s, sl = (8 + rng() * 12) * s, gap = (30 + rng() * 80) * s;
+      far.push([x, base], [x + sl, top], [x + sl + bw, top + (rng() - 0.5) * 2 * s], [x + 2 * sl + bw, base]);
+      x += 2 * sl + bw + gap;
+    }
+    far.push([w, base]);
+    fillRidge(g, m, far, h, "#24152c", 0.3);
+    // el fondo del cañón, más cerca y oscuro
+    const mid = dunes(rng, w, 64, h * 0.855, h * 0.012);
+    fillRidge(g, m, mid, h, "#0f0812", 0.6);
+    // paredes del cañón a los lados: cornisas escalonadas (acantilado + repisa), cada vez más anchas hacia abajo
+    for (const left of [true, false]) {
+      const y0 = h * (0.57 + rng() * 0.04), pts = [], steps = 5, n = 70, ph = rng() * 10;
+      for (let i = 0; i <= n; i++) {
+        const t = i / n, y = lerp(y0, h, t), st = Math.floor(t * steps), ft = t * steps - st;
+        const ledge = (st + smooth(0.55, 0.9, ft)) / steps;
+        const inner = w * (0.07 + 0.27 * ledge + 0.015 * Math.sin(ph + st * 2.3)) + (rng() - 0.5) * 3 * s;
+        pts.push([left ? inner : w - inner, y]);
+      }
+      const path = (ctx) => { ctx.beginPath(); ctx.moveTo(left ? 0 : w, y0); pts.forEach(([px, py]) => ctx.lineTo(px, py)); ctx.lineTo(left ? 0 : w, h + 2); ctx.closePath(); };
+      path(g);
+      const gr = g.createLinearGradient(0, y0, 0, h);
+      gr.addColorStop(0, "#3b1d2b"); gr.addColorStop(0.5, "#1d0f1a"); gr.addColorStop(1, "#08040a");
+      g.fillStyle = gr; g.fill();
+      path(m); m.fillStyle = "rgb(230,0,0)"; m.fill();
+      // vetas de roca y la luz tenue en el borde de cada repisa
+      g.save(); path(g); g.clip();
+      for (let i = 0; i < 26; i++) { const y = y0 + (h - y0) * rng(); g.fillStyle = `rgba(${rng() < 0.5 ? "200,120,120" : "30,12,28"},${(0.04 + rng() * 0.05).toFixed(3)})`; g.fillRect(0, y, w, (0.8 + rng() * 2.4) * s); }
+      g.restore();
+      g.strokeStyle = "rgba(230,150,140,0.12)"; g.lineWidth = 1.2 * s; g.beginPath();
+      pts.forEach(([px, py], i) => (i ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke();
+      g.fillStyle = "rgba(230,150,140,0.1)"; g.fillRect(left ? 0 : pts[0][0], y0, Math.abs(pts[0][0] - (left ? 0 : w)), 1.2 * s);
+    }
+    const floor = dunes(rng, w, 64, h * 0.965, h * 0.01);
+    fillRidge(g, m, floor, h, "#07040a", 1);
+  }
+
+  // Palmera (silueta): tronco curvo con anillos y hojas que se arquean y caen, cada una con sus hojitas
+  function palmTree(g, m, x, y, s, hgt, lean, color) {
+    const tx = x + lean * hgt * 0.35, ty = y - hgt;
+    for (const ctx of [g, m]) {
+      ctx.strokeStyle = ctx === g ? color : "rgb(255,0,0)"; ctx.fillStyle = ctx.strokeStyle; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      // tronco: más grueso abajo
+      for (let i = 0; i < 12; i++) {
+        const t0 = i / 12, t1 = (i + 1) / 12, q = (t) => [lerp(x, tx, t) + Math.sin(t * Math.PI) * lean * hgt * 0.08, lerp(y + 3 * s, ty, t)];
+        const [x0, y0] = q(t0), [x1, y1] = q(t1);
+        ctx.lineWidth = (5.2 - 2.4 * t0) * s; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      }
+      // hojas
+      const n = 9;
+      for (let k = 0; k < n; k++) {
+        const a = -Math.PI / 2 + lean * 0.25 + ((k / (n - 1)) - 0.5) * 3.3, L = hgt * (0.42 + 0.08 * Math.cos(k * 2.1));
+        const ex = tx + Math.cos(a) * L, ey = ty + Math.abs(Math.cos(a)) * L * 0.35 + L * 0.12 + Math.sin(a) * L * 0.25;
+        const cx = tx + Math.cos(a) * L * 0.5, cy = ty + Math.sin(a) * L * 0.55 - L * 0.12;
+        const pt = (t) => [(1 - t) * (1 - t) * tx + 2 * (1 - t) * t * cx + t * t * ex, (1 - t) * (1 - t) * ty + 2 * (1 - t) * t * cy + t * t * ey];
+        ctx.lineWidth = 1.5 * s; ctx.beginPath(); ctx.moveTo(tx, ty);
+        for (let t = 0.05; t <= 1.001; t += 0.05) { const [px, py] = pt(t); ctx.lineTo(px, py); }
+        ctx.stroke();
+        ctx.lineWidth = 1.1 * s; ctx.beginPath();
+        for (let t = 0.12; t < 0.98; t += 0.07) {
+          const [px, py] = pt(t), [qx, qy] = pt(t + 0.02), dx = qx - px, dy = qy - py, dl = Math.hypot(dx, dy) || 1;
+          const nx = -dy / dl, ny = dx / dl, ll = (8 - 5 * t) * s * (hgt / (180 * s));
+          for (const side of [1, -1]) { ctx.moveTo(px, py); ctx.lineTo(px + (nx * side * 0.8 + dx / dl * 0.4) * ll, py + (ny * side * 0.8 + 0.7) * ll); }
+        }
+        ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(tx, ty + 1.5 * s, 2.6 * s, 0, TAU); ctx.fill();
+    }
+  }
+  function paintBeach(g, m, w, h, s, rng) {
+    const S = SCENES.beach, wy = h * S.water, sand = h * 0.9;
+    sky(g, w, wy + 2, S.sky);
+    milkyWay(g, w, wy, rng, s);
+    // isla lejana
+    const isle = ridge(rng, w * 0.4, 32, wy - h * 0.012, h * 0.012, 0.5).map(([x, y]) => [x + w * 0.55, Math.min(y, wy)]);
+    for (const ctx of [g, m]) { ctx.beginPath(); ctx.moveTo(w * 0.55, wy); isle.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(w * 0.95, wy); ctx.closePath(); ctx.fillStyle = ctx === g ? "#0b1530" : "rgb(90,0,0)"; ctx.fill(); }
+    // el mar
+    const wg = g.createLinearGradient(0, wy, 0, sand);
+    wg.addColorStop(0, "#0d2142"); wg.addColorStop(1, "#04101f");
+    g.fillStyle = wg; g.fillRect(0, wy, w, sand - wy);
+    m.fillStyle = "rgb(0,255,0)"; m.fillRect(0, wy, w, sand - wy);
+    for (let i = 0; i < 240; i++) {
+      const y = wy + Math.pow(rng(), 1.5) * (sand - wy), x = rng() * w, l = (6 + rng() * 34) * s * (0.4 + (y - wy) / (sand - wy));
+      g.fillStyle = `rgba(150,190,235,${(0.025 + rng() * 0.04).toFixed(3)})`; g.fillRect(x, y, l, Math.max(1, 0.6 * s));
+    }
+    // la orilla: espuma suave y arena
+    const shore = dunes(rng, w, 64, sand, h * 0.006);
+    for (const ctx of [g, m]) {
+      ctx.beginPath(); ctx.moveTo(0, h + 2); shore.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(w, h + 2); ctx.closePath();
+      if (ctx === g) { const sg = ctx.createLinearGradient(0, sand, 0, h); sg.addColorStop(0, "#1a1d2e"); sg.addColorStop(1, "#090a12"); ctx.fillStyle = sg; } else ctx.fillStyle = "rgb(255,0,0)";
+      ctx.fill();
+    }
+    crest(g, shore.map(([x, y]) => [x, y - 1.5 * s]), s, "rgba(200,220,255,0.18)");
+    palmTree(g, m, w * 0.08, h * 0.97, s, h * 0.3, 0.7, "#03050b");
+    palmTree(g, m, w * 0.2, h * 0.99, s, h * 0.22, 0.4, "#03050b");
+    palmTree(g, m, w * 0.92, h * 0.98, s, h * 0.26, -0.8, "#03050b");
+  }
+
+  function paintBridge(g, m, w, h, s, rng) {
+    const S = SCENES.bridge, wy = h * S.water;
+    sky(g, w, wy + 2, S.sky);
+    milkyWay(g, w, wy * 0.8, rng, s);
+    const gl = g.createLinearGradient(0, wy - h * 0.12, 0, wy);
+    gl.addColorStop(0, "rgba(255,150,90,0)"); gl.addColorStop(1, "rgba(255,150,90,0.1)");
+    g.fillStyle = gl; g.fillRect(0, wy - h * 0.12, w, h * 0.12);
+    // ciudad baja al fondo
+    let x = 0;
+    while (x < w) {
+      const bw = (10 + rng() * 26) * s, bh = h * (0.01 + rng() * 0.045);
+      for (const ctx of [g, m]) { ctx.fillStyle = ctx === g ? "#0d1024" : "rgb(90,0,0)"; ctx.fillRect(x, wy - bh, bw + 1, bh); }
+      for (let k = 0; k < bh / (5 * s); k++) if (rng() < 0.4) { g.fillStyle = `rgba(255,205,140,${(0.2 + rng() * 0.3).toFixed(2)})`; g.fillRect(x + rng() * (bw - 3 * s), wy - bh + k * 5 * s + 2 * s, 2 * s, 2 * s); }
+      x += bw + rng() * 3 * s;
+    }
+    // el puente colgante: dos torres, cables y la calzada con su fila de luces
+    const deck = wy - h * 0.035, t1 = w * 0.18, t2 = w * 0.82, top = wy - h * 0.2;
+    for (const ctx of [g, m]) {
+      ctx.fillStyle = ctx === g ? "#05070f" : "rgb(255,0,0)"; ctx.strokeStyle = ctx.fillStyle;
+      for (const tx of [t1, t2]) { ctx.fillRect(tx - 3 * s, top, 6 * s, wy - top); ctx.fillRect(tx - 5 * s, top + (deck - top) * 0.35, 10 * s, 2 * s); }
+      ctx.fillRect(0, deck, w, 3.2 * s);
+      ctx.lineWidth = 1.2 * s; ctx.beginPath();
+      ctx.moveTo(-w * 0.1, deck - 2 * s); ctx.quadraticCurveTo((-w * 0.1 + t1) / 2, top + (deck - top) * 0.55, t1, top);
+      ctx.moveTo(t1, top); ctx.quadraticCurveTo(w / 2, deck + (deck - top) * 0.65, t2, top);
+      ctx.moveTo(t2, top); ctx.quadraticCurveTo((t2 + w * 1.1) / 2, top + (deck - top) * 0.55, w * 1.1, deck - 2 * s);
+      ctx.stroke();
+      ctx.lineWidth = 0.6 * s; ctx.beginPath();
+      for (let i = 1; i < 30; i++) {
+        const xx = t1 + (t2 - t1) * (i / 30), f = (xx - t1) / (t2 - t1), cy = (1 - f) * (1 - f) * top + 2 * (1 - f) * f * (deck + (deck - top) * 0.65) + f * f * top;
+        ctx.moveTo(xx, cy); ctx.lineTo(xx, deck);
+      }
+      ctx.stroke();
+    }
+    for (let i = 0; i <= 40; i++) { const lx = (i / 40) * w; g.fillStyle = "rgba(255,215,150,0.85)"; g.fillRect(lx - 0.8 * s, deck - 1.4 * s, 1.6 * s, 1.6 * s); }
+    for (const tx of [t1, t2]) { g.fillStyle = "rgba(255,90,80,0.9)"; g.fillRect(tx - 1 * s, top - 2 * s, 2 * s, 2 * s); }
+    // el río: reflejo del puente y de sus luces, movido
+    const wg = g.createLinearGradient(0, wy, 0, h);
+    wg.addColorStop(0, "#0b1530"); wg.addColorStop(1, "#02040b");
+    g.fillStyle = wg; g.fillRect(0, wy, w, h - wy);
+    m.fillStyle = "rgb(0,255,0)"; m.fillRect(0, wy, w, h - wy);
+    g.save(); g.beginPath(); g.rect(0, wy, w, h - wy); g.clip();
+    g.globalAlpha = 0.5; g.fillStyle = "#03050c";
+    for (const tx of [t1, t2]) g.fillRect(tx - 3 * s, wy, 6 * s, (wy - top) * 0.9);
+    g.globalAlpha = 1;
+    for (let i = 0; i < 260; i++) {
+      const lx = rng() * w, f = Math.pow(rng(), 0.7), y = wy + 2 * s + f * (h - wy) * 0.5, l = (3 + rng() * 10) * s;
+      g.fillStyle = `rgba(255,205,140,${(0.04 + rng() * 0.1 * (1 - f)).toFixed(3)})`; g.fillRect(lx - l / 2, y, l, Math.max(1, 0.6 * s));
+    }
+    g.restore();
+  }
+
+  const PAINT = { alpine: paintAlpine, lake: paintLake, city: paintCity, desert: paintDesert, bay: paintBay, snow: paintSnow, country: paintCountry, canyon: paintCanyon, beach: paintBeach, bridge: paintBridge };
 
   function paint(sceneId, w, h, s, cColor, cMask) {
     cColor.width = cMask.width = w; cColor.height = cMask.height = h;
     const g = cColor.getContext("2d"), m = cMask.getContext("2d");
     m.fillStyle = "#000"; m.fillRect(0, 0, w, h);
-    const seed = { alpine: 7, lake: 21, city: 33, desert: 45, bay: 58, snow: 64 }[sceneId] || 7;
+    if (sceneId === "photo") {
+      if (Photo.ready) {
+        const c = Photo.cfg, S = SCENES.photo;
+        S.launch = c.horizon; S.water = c.water ? c.horizon : 0;
+        Photo.paint(g, m, w, h);
+        return;
+      }
+      sceneId = "alpine";
+    }
+    const seed = { alpine: 7, lake: 21, city: 33, desert: 45, bay: 58, snow: 64, country: 71, canyon: 83, beach: 92, bridge: 105 }[sceneId] || 7;
     PAINT[sceneId](g, m, w, h, s, mulberry(seed * 977 + 13));
   }
 
   const cColor = document.createElement("canvas"), cMask = document.createElement("canvas");
   function apply(sceneId) {
-    id = SCENES[sceneId] ? sceneId : "alpine";
+    id = SCENES[sceneId] && (sceneId !== "photo" || Photo.ready) ? sceneId : "alpine";
     const sc = R.scale, w = Math.round(VW * sc), h = Math.round(VH * sc);
     paint(id, w, h, sc * Math.max(0.85, U), cColor, cMask);
     const S = SCENES[id];
     R.setBackground(cColor, cMask, S.water ? VH * S.water : -1, 1);
-    KILL_Y = S.water ? VH * S.water : VH + 30;
+    // en "Tu foto" las chispas se apagan al llegar al horizonte (caen detrás de la tierra)
+    KILL_Y = S.water ? VH * S.water : S.photo ? VH * S.launch : VH + 30;
   }
   // Miniatura para la Colección
   function thumb(sceneId, w, h) {
