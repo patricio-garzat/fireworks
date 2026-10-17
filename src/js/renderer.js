@@ -17,7 +17,7 @@ const R = (() => {
   let bgTex = null, maskTex = null, smokeTex = null;
   const prog = {};
   const L4 = new Float32Array(32), L3 = new Float32Array(24);
-  let water = -1, starAmt = 1, ok = false;
+  let water = -1, starAmt = 1, mistAmt = 0, ok = false;
 
   /* ---------- Shaders ---------- */
   const VS_FULL = `attribute vec2 a_c; varying vec2 v_uv; void main(){ v_uv = a_c*0.5+0.5; gl_Position = vec4(a_c,0.0,1.0); }`;
@@ -80,9 +80,13 @@ const R = (() => {
   precision highp float;
   varying vec2 v_uv;
   uniform sampler2D u_bg, u_mask;
-  uniform vec2 u_res; uniform float u_time, u_dpr, u_water, u_stars;
+  uniform vec2 u_res; uniform float u_time, u_dpr, u_water, u_stars, u_mist;
   uniform vec4 u_L[8]; uniform vec3 u_LC[8]; uniform vec3 u_flash;
   float h21(vec2 p){ p = fract(p*vec2(233.34, 851.73)); p += dot(p, p+23.45); return fract(p.x*p.y); }
+  // ruido suave (para la neblina)
+  float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0 - 2.0*f);
+    return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
+  float fbm(vec2 p){ return vn(p)*0.55 + vn(p*2.03 + 1.7)*0.3 + vn(p*4.07 + 3.1)*0.15; }
   float starLayer(vec2 px, float cell, float dens, float rmin, float rmax, float seed){
     vec2 q = px/cell; vec2 g = floor(q); vec2 f = q - g;
     float h = h21(g + seed);
@@ -103,6 +107,19 @@ const R = (() => {
     vec3 col = texture2D(u_bg, uv).rgb;
     vec4 m = texture2D(u_mask, uv);
     float land = m.r, wat = m.g, sky = (1.0 - smoothstep(0.0, 0.05, land)) * (1.0 - wat);
+    // Agua viva: ondas que mueven lo pintado encima (reflejos, luces, el camino de la luna)
+    float depth = 0.0, glint = 0.0;
+    if (u_water > 0.0 && wat > 0.5) {
+      depth = clamp((px.y - u_water)/(u_res.y - u_water + 1.0), 0.0, 1.0);
+      float gx = px.x/u_dpr, gy = (px.y - u_water)/u_dpr;
+      float wob = sin(gy*0.42 + u_time*1.25 + sin(gx*0.018 + u_time*0.35)*2.2)*(0.6 + 1.6*depth) + sin(gy*0.13 - u_time*0.7)*0.8;
+      vec2 wuv = uv + vec2(wob*u_dpr/u_res.x, 0.0);
+      if (texture2D(u_mask, wuv).g > 0.5) col = texture2D(u_bg, wuv).rgb;
+      // destellos de luna que se mueven sobre la superficie
+      float g = sin(gx*0.11 + u_time*0.8 + sin(gy*0.21 + u_time*0.5)*2.5) * sin(gy*0.9 - u_time*1.9 + sin(gx*0.05)*3.0);
+      glint = pow(max(g, 0.0), 18.0) * (1.0 - depth*0.7);
+      col += vec3(0.75, 0.82, 1.0) * glint * 0.07;
+    }
     float alt = smoothstep(0.92, 0.35, uv.y);
     col += vec3(0.86, 0.9, 1.0) * stars(px) * sky * mix(0.35, 1.0, alt) * u_stars;
     vec3 glow = vec3(0.0), wglow = vec3(0.0);
@@ -118,11 +135,19 @@ const R = (() => {
       }
     }
     col += glow * (sky*0.17 + land*0.3 + wat*0.05) + u_flash * (sky*0.10 + land*0.16 + wat*0.08);
+    // Neblina que se desplaza despacio entre cerros y valles; las explosiones la iluminan con su color
+    if (u_mist > 0.0) {
+      float band = smoothstep(0.52, 0.76, uv.y) * (1.0 - smoothstep(0.9, 1.0, uv.y));
+      if (band > 0.0) {
+        vec2 q = vec2(px.x/u_dpr*0.006 + u_time*0.013, px.y/u_dpr*0.02 - u_time*0.004);
+        float mist = smoothstep(0.42, 0.85, fbm(q)) * band * u_mist;
+        col = mix(col, vec3(0.13, 0.17, 0.26), mist*0.3) + (glow*0.22 + u_flash*0.12)*mist;
+      }
+    }
     if (wat > 0.0) {
-      float depth = clamp((px.y - u_water)/(u_res.y - u_water + 1.0), 0.0, 1.0);
       vec2 rp = vec2(px.x + sin(px.y*0.11/u_dpr + u_time*1.3)*1.6*u_dpr*(0.4+depth), u_water - (px.y - u_water)*1.8);
       col += vec3(0.8,0.86,1.0) * stars(rp) * 0.28 * (1.0 - depth) * wat * u_stars;
-      col += wglow * 0.16 * wat * (1.0 - depth*0.6);
+      col += wglow * (0.16 + glint*2.5) * wat * (1.0 - depth*0.6);
     }
     col += (h21(px + fract(u_time)*50.0) - 0.5)/255.0;
     gl_FragColor = vec4(col, 1.0);
@@ -287,12 +312,13 @@ const R = (() => {
     tC = target(Math.max(2, RW >> 3), Math.max(2, RH >> 3), hdr); tD = target(tC.w, tC.h, hdr);
   }
 
-  function setBackground(colorCanvas, maskCanvas, waterY, stars = 1) {
+  function setBackground(colorCanvas, maskCanvas, waterY, stars = 1, mist = 0) {
     if (!ok) return;
     bgTex = texFromCanvas(colorCanvas, bgTex);
     maskTex = texFromCanvas(maskCanvas, maskTex);
     water = waterY;
     starAmt = stars;
+    mistAmt = mist;
   }
 
   function bindQuad() {
@@ -368,7 +394,7 @@ const R = (() => {
     gl.uniform2f(b.u.u_res, RW, RH);
     gl.uniform1f(b.u.u_time, time); gl.uniform1f(b.u.u_dpr, scale);
     gl.uniform1f(b.u.u_water, water > 0 ? water * scale : -1);
-    gl.uniform1f(b.u.u_stars, starAmt);
+    gl.uniform1f(b.u.u_stars, starAmt); gl.uniform1f(b.u.u_mist, mistAmt);
     Lights.top(L4, L3, scale);
     gl.uniform4fv(b.u.u_L, L4); gl.uniform3fv(b.u.u_LC, L3);
     const fl = Lights.sky; gl.uniform3f(b.u.u_flash, fl[0], fl[1], fl[2]);

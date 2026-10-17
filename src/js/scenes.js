@@ -12,52 +12,66 @@ const SCENES = {
   photo: {
     cost: 0, name: ["Your Photo", "Tu foto"], photo: true,
     sky: ["#03060f", "#071027", "#0f1d3e", "#1d2f55"], launch: 0.82, water: 0,
+    mist: 0, life: {},
   },
   alpine: {
     cost: 0, name: ["Alpine Night", "Noche alpina"],
     sky: ["#03060f", "#071027", "#0f1d3e", "#1d2f55"], launch: 1.02, water: 0,
+    mist: 1, life: { birds: "geese", birdY: [0.42, 0.58] },
   },
   lake: {
     cost: 1000, name: ["Still Lake", "Lago en calma"],
     sky: ["#02050d", "#061229", "#0c2142", "#18375a"], launch: 0.735, water: 0.735,
+    mist: 0.9, life: { birds: "geese", birdY: [0.42, 0.6] },
   },
   city: {
     cost: 2000, name: ["City Lights", "Luces de la ciudad"],
     sky: ["#04050f", "#0b0e26", "#1a1838", "#3a2a40"], launch: 1.02, water: 0,
+    mist: 0.3, life: {},
   },
   desert: {
     cost: 1500, name: ["Desert Dunes", "Dunas del desierto"],
     sky: ["#05040e", "#100c27", "#25193b", "#4a2d46"], launch: 1.02, water: 0,
+    mist: 0.22, life: { birds: "hawk", birdY: [0.36, 0.55] },
   },
   bay: {
     cost: 2600, name: ["Moonlit Bay", "Bahía de luna"],
     sky: ["#02040c", "#07112a", "#11244b", "#2b4068"], launch: 0.74, water: 0.74,
+    mist: 0.55, life: { birds: "gull", birdY: [0.42, 0.62] },
   },
   snow: {
     cost: 3200, name: ["Snowy Village", "Pueblo nevado"],
     sky: ["#03050d", "#0a1428", "#16264a", "#2c3f62"], launch: 1.02, water: 0,
+    mist: 0.6, life: { snow: true },
   },
   country: {
     cost: 1200, name: ["Countryside", "Campo"],
     sky: ["#03060e", "#0a1328", "#152446", "#26385a"], launch: 1.02, water: 0,
+    mist: 0.8, life: { birds: "geese", birdY: [0.45, 0.65] },
   },
   canyon: {
     cost: 2300, name: ["Red Canyon", "Cañón rojo"],
     sky: ["#04040d", "#0e0c25", "#211837", "#43293d"], launch: 1.02, water: 0,
+    mist: 0.45, life: { birds: "hawk", birdY: [0.34, 0.5] },
   },
   beach: {
     cost: 2900, name: ["Tropical Beach", "Playa tropical"],
     sky: ["#02050d", "#071330", "#0f2650", "#1f4166"], launch: 0.77, water: 0.77,
+    mist: 0.35, life: { birds: "gull", birdY: [0.45, 0.65] },
   },
   bridge: {
     cost: 3600, name: ["River Bridge", "Puente del río"],
     sky: ["#04050f", "#0b0f28", "#191b3c", "#352c48"], launch: 0.8, water: 0.8,
+    mist: 0.45, life: { birds: "gull", birdY: [0.45, 0.66] },
   },
 };
 const SCENE_ORDER = ["alpine", "lake", "country", "desert", "city", "canyon", "bay", "beach", "snow", "bridge"];
 
 const Scene = (() => {
   let id = "alpine";
+  // Lo que cada escenario deja para la capa de vida (ambient.js): luces que parpadean y el faro (en fracción de pantalla)
+  let lights = { blink: [], beam: null }, pw = 1, ph = 1;
+  const blink = (x, y, period = 1.6) => lights.blink.push({ x: x / pw, y: y / ph, period, ph: rand(TAU) });
 
   // Línea de cresta con desplazamiento de punto medio (montañas creíbles, siempre las mismas por la semilla)
   function ridge(rng, w, n, base, amp, rough) {
@@ -224,11 +238,13 @@ const Scene = (() => {
       while (x < w) {
         const bw = (L.wmin + rng() * (L.wmax - L.wmin)) * s, bh = h * (L.hmin + rng() * (L.hmax - L.hmin));
         const top = h * L.base - bh;
+        const antenna = rng() < 0.18;
         for (const ctx of [g, m]) {
           ctx.fillStyle = ctx === g ? L.col : `rgb(${Math.round(L.mask * 255)},0,0)`;
           ctx.fillRect(x, top, bw + 1, h - top);
-          if (rng() < 0.18) ctx.fillRect(x + bw * 0.45, top - bh * 0.18, Math.max(1, 1.2 * s), bh * 0.18); // antena
+          if (antenna) ctx.fillRect(x + bw * 0.45, top - bh * 0.18, Math.max(1, 1.2 * s), bh * 0.18);
         }
+        if (antenna && L.mask > 0.5) blink(x + bw * 0.45 + 0.6 * s, top - bh * 0.18, rand(1.4, 2.2));
         // ventanas: pocas encendidas, cálidas y tenues
         const cw = 4 * s, ch = 5 * s;
         for (let yy = top + 4 * s; yy < h * L.base - 3 * s; yy += ch + 3 * s) {
@@ -336,9 +352,7 @@ const Scene = (() => {
     }
     g.fillStyle = "rgba(44,54,78,0.9)"; g.fillRect(lx - 2.6 * s, ly - th * 0.55, 5.2 * s, 2.4 * s);
     const ly2 = ly - th - 2.4 * s;
-    const beam = g.createLinearGradient(lx, 0, lx + w * 0.5, 0);
-    beam.addColorStop(0, "rgba(255,225,160,0.10)"); beam.addColorStop(1, "rgba(255,225,160,0)");
-    g.fillStyle = beam; g.beginPath(); g.moveTo(lx, ly2); g.lineTo(lx + w * 0.5, ly2 - h * 0.05); g.lineTo(lx + w * 0.5, ly2 + h * 0.03); g.closePath(); g.fill();
+    lights.beam = { x: lx / pw, y: ly2 / ph };   // el haz gira en ambient.js
     const lamp = g.createRadialGradient(lx, ly2, 0, lx, ly2, 26 * s);
     lamp.addColorStop(0, "rgba(255,226,165,0.55)"); lamp.addColorStop(1, "rgba(255,226,165,0)");
     g.fillStyle = lamp; g.fillRect(lx - 26 * s, ly2 - 26 * s, 52 * s, 52 * s);
@@ -616,7 +630,7 @@ const Scene = (() => {
       ctx.stroke();
     }
     for (let i = 0; i <= 40; i++) { const lx = (i / 40) * w; g.fillStyle = "rgba(255,215,150,0.85)"; g.fillRect(lx - 0.8 * s, deck - 1.4 * s, 1.6 * s, 1.6 * s); }
-    for (const tx of [t1, t2]) { g.fillStyle = "rgba(255,90,80,0.9)"; g.fillRect(tx - 1 * s, top - 2 * s, 2 * s, 2 * s); }
+    for (const tx of [t1, t2]) { g.fillStyle = "rgba(255,90,80,0.9)"; g.fillRect(tx - 1 * s, top - 2 * s, 2 * s, 2 * s); blink(tx, top - 1 * s, 1.8); }
     // el río: reflejo del puente y de sus luces, movido
     const wg = g.createLinearGradient(0, wy, 0, h);
     wg.addColorStop(0, "#0b1530"); wg.addColorStop(1, "#02040b");
@@ -636,6 +650,7 @@ const Scene = (() => {
   const PAINT = { alpine: paintAlpine, lake: paintLake, city: paintCity, desert: paintDesert, bay: paintBay, snow: paintSnow, country: paintCountry, canyon: paintCanyon, beach: paintBeach, bridge: paintBridge };
 
   function paint(sceneId, w, h, s, cColor, cMask) {
+    lights = { blink: [], beam: null }; pw = w; ph = h;
     cColor.width = cMask.width = w; cColor.height = cMask.height = h;
     const g = cColor.getContext("2d"), m = cMask.getContext("2d");
     m.fillStyle = "#000"; m.fillRect(0, 0, w, h);
@@ -658,7 +673,8 @@ const Scene = (() => {
     const sc = R.scale, w = Math.round(VW * sc), h = Math.round(VH * sc);
     paint(id, w, h, sc * Math.max(0.85, U), cColor, cMask);
     const S = SCENES[id];
-    R.setBackground(cColor, cMask, S.water ? VH * S.water : -1, 1);
+    R.setBackground(cColor, cMask, S.water ? VH * S.water : -1, 1, S.mist || 0);
+    Ambient.setScene({ ...(S.life || {}), ...lights });
     // en "Tu foto" las chispas se apagan al llegar al horizonte (caen detrás de la tierra)
     KILL_Y = S.water ? VH * S.water : S.photo ? VH * S.launch : VH + 30;
   }

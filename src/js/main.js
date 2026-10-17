@@ -14,6 +14,7 @@ const Main = (() => {
     U = clamp(Math.min(VW, VH * 0.62) / 390, 0.75, 2.4);
     R.resize(VW, VH, dprFor(Q.level));
     Input.resize();
+    Ambient.resize();
     Scene.apply(Save.selected.scene);
   }
   function applyQuality() {
@@ -50,6 +51,7 @@ const Main = (() => {
     Smoke.update(dt);
     Lights.update(dt);
     R.render(dt, time);
+    Ambient.update(dt);
     UI.tick(dt);
     autoQuality(dt);
   }
@@ -65,6 +67,7 @@ const Main = (() => {
     // "Tu foto" vive en IndexedDB: se carga sin bloquear el arranque y, si es el escenario elegido, se pinta
     Photo.load().then((ok) => { if (ok && Save.selected.scene === "photo") { Scene.apply("photo"); R.clearTrails(); } });
     Input.init($("#surface"), ov);
+    Ambient.init($("#amb"));
     Goals.ensure();
     Game.setMode("intro");
     applyQuality();

@@ -30,6 +30,7 @@ Abre `http://localhost:8795/` (versión armada) o `http://localhost:8795/src/` (
 | `fireworks.js` | Paletas y las recetas de los 8 fuegos (más el gran cierre de la Gran Final) |
 | `game.js` | Cohetes, Sparks, combos, Gran Final, retos y Show Creator |
 | `scenes.js` | Los 10 escenarios, pintados con Canvas 2D (color + máscara de tierra y agua) |
+| `ambient.js` | Vida del escenario en su propia capa: pájaros, luces que parpadean, el faro, estrellas fugaces y nieve |
 | `photo.js` | "Tu foto": editor (zoom, mover, horizonte, noche, tierra o agua) y la foto vuelta de noche; se guarda en IndexedDB |
 | `audio.js` | Sonido procedural (Web Audio): ignición, silbido, explosiones con eco, crackles, chispas y música ambiental |
 | `haptics.js` | Vibración: Capacitor Haptics en la app; en Safari web no existe y no se finge |
