@@ -1073,9 +1073,12 @@ const Sound = (() => {
   function rise(dur, pan0, pan1, style, o2 = {}) {
     if (!ok()) return null;
     const t = now() + 0.01, end = t + dur, nodes = [];
-    let mi = randi(0, MOODS.length - 1);
-    if (mi === lastMood) mi = (mi + randi(1, MOODS.length - 1)) % MOODS.length;
-    lastMood = mi;
+    let mi = o2.mood;
+    if (mi === undefined) {
+      mi = randi(0, MOODS.length - 1);
+      if (mi === lastMood) mi = (mi + randi(1, MOODS.length - 1)) % MOODS.length;
+      lastMood = mi;
+    }
     const M = MOODS[mi], big = (o2.power || 1) > 1.4, chain = !!o2.chain;
     const lvl = style.air * M.lvl * (big ? 1.3 : 1) * (chain ? 0.55 : 1) * rand(0.85, 1.15);
     // salida: paneo que sigue al cohete, paso bajo que se cierra (se aleja) y reverb que crece
@@ -1353,11 +1356,29 @@ const Sound = (() => {
     lastPerf = p; lastTime = ac.currentTime;
     if (!unlocked) { unlocked = true; setSession(); }
   }
+  // Llama a cb en cuanto el audio de verdad está sonando (iOS lo arranca un instante después de crearlo)
+  function whenRunning(cb) {
+    if (!ac) return;
+    if (ac.state === "running") { cb(); return; }
+    const on = () => { if (ac && ac.state === "running") { ac.removeEventListener("statechange", on); cb(); } };
+    ac.addEventListener("statechange", on);
+    ac.resume().catch(() => {});
+  }
+  // Intro de BluBer (4 s) con sonidos del juego, sutiles: las letras suben como un cohete ("fffh" suave) y el brillo
+  // que barre el logo es su estallido, lejano, con chispitas que se apagan con el brillo.
+  // from = segundos que ya lleva la animación (si el audio arrancó tarde, entra justo donde va)
+  function studio(from = 0) {
+    const cues = [
+      [1.15, () => rise(0.8, -0.08, 0.04, { air: 0.034, whistle: 0 }, { mood: 0 })],
+      [2.8, () => { boom(0.4, 0, { crack: 0.25, gain: 0.42, low: 78, body: 900 }); sizzle(1.4, 0, 0.5, 0.06); }],
+    ];
+    for (const [at, fn] of cues) if (at >= from - 0.05) setTimeout(fn, Math.max(0, at - from) * 1000);
+  }
   function suspend() { if (ac && ac.state === "running") ac.suspend().catch(() => {}); }
   function resume() { if (ac && unlocked) ac.resume().catch(() => {}); }
 
   return {
-    wake, suspend, resume, applyVolumes,
+    wake, suspend, resume, applyVolumes, whenRunning, studio,
     ignite, rise, boom, crackle, sizzle, mallet, melody, tap,
     get ready() { return !!ac && ac.state === "running"; },
   };
@@ -4882,8 +4903,8 @@ const Main = (() => {
 })();
 
 /* ---------- Intro del estudio (copiada de Cube Swipe / SMUSH!): el oso aparece, "BluBer" sube letra por letra,
-   "GAMES" se abre, brillo y parpadeo. 4 s sobre blanco, no se puede saltar. Suena con sonidos del juego:
-   un estallido lejano y suave cuando aparece el oso y el chisporroteo de las chispas con el brillo. ---------- */
+   "GAMES" se abre, brillo y parpadeo. 4 s sobre blanco, no se puede saltar. Suena con dos sonidos del juego
+   (Sound.studio): las letras suben con el "fffh" suave de un cohete y el brillo es su estallido lejano, con chispitas. ---------- */
 function nativeBar(dark) {
   try { const sb = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.StatusBar; if (sb) sb.setStyle({ style: dark ? "DARK" : "LIGHT" }); } catch (e) {}
 }
@@ -4926,8 +4947,12 @@ function playStudio(el, next) {
   setTimeout(begin, 2500);
   function run() {
     if (!el.isConnected) return;
-    setTimeout(() => Sound.boom(0.45, 0, { crack: 0, gain: 0.5, low: 78, body: 900 }), 250);
-    setTimeout(() => Sound.sizzle(1.6, 0, 0.55), 2750);
+    // Sonido en el reloj de la animación: en la app entra en cuanto el audio corre; en la web, al primer toque
+    const t0 = performance.now();
+    let sounded = false;
+    const sound = () => { if (sounded || !el.isConnected) return; sounded = true; Sound.studio((performance.now() - t0) / 1000); };
+    if (isNative()) Sound.whenRunning(sound);
+    else document.addEventListener("pointerdown", () => Sound.whenRunning(sound), { once: true, capture: true });
     if (reduceMotion || !el.animate) { el.classList.add("go"); setTimeout(finish, 1600); return; }
     const ws = q("bb-word-shape");
     el.querySelectorAll("#bb-word path").forEach((l) => ws.appendChild(l.cloneNode()));

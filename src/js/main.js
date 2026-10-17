@@ -93,8 +93,8 @@ const Main = (() => {
 })();
 
 /* ---------- Intro del estudio (copiada de Cube Swipe / SMUSH!): el oso aparece, "BluBer" sube letra por letra,
-   "GAMES" se abre, brillo y parpadeo. 4 s sobre blanco, no se puede saltar. Suena con sonidos del juego:
-   un estallido lejano y suave cuando aparece el oso y el chisporroteo de las chispas con el brillo. ---------- */
+   "GAMES" se abre, brillo y parpadeo. 4 s sobre blanco, no se puede saltar. Suena con dos sonidos del juego
+   (Sound.studio): las letras suben con el "fffh" suave de un cohete y el brillo es su estallido lejano, con chispitas. ---------- */
 function nativeBar(dark) {
   try { const sb = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.StatusBar; if (sb) sb.setStyle({ style: dark ? "DARK" : "LIGHT" }); } catch (e) {}
 }
@@ -137,8 +137,12 @@ function playStudio(el, next) {
   setTimeout(begin, 2500);
   function run() {
     if (!el.isConnected) return;
-    setTimeout(() => Sound.boom(0.45, 0, { crack: 0, gain: 0.5, low: 78, body: 900 }), 250);
-    setTimeout(() => Sound.sizzle(1.6, 0, 0.55), 2750);
+    // Sonido en el reloj de la animación: en la app entra en cuanto el audio corre; en la web, al primer toque
+    const t0 = performance.now();
+    let sounded = false;
+    const sound = () => { if (sounded || !el.isConnected) return; sounded = true; Sound.studio((performance.now() - t0) / 1000); };
+    if (isNative()) Sound.whenRunning(sound);
+    else document.addEventListener("pointerdown", () => Sound.whenRunning(sound), { once: true, capture: true });
     if (reduceMotion || !el.animate) { el.classList.add("go"); setTimeout(finish, 1600); return; }
     const ws = q("bb-word-shape");
     el.querySelectorAll("#bb-word path").forEach((l) => ws.appendChild(l.cloneNode()));
