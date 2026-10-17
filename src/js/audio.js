@@ -1,8 +1,8 @@
 "use strict";
 /* audio.js: todo el sonido es procedural (Web Audio API), sin archivos.
-   Estilo ASMR: cálido, redondo y nunca agudo. Nada de ruido blanco crudo: los cuerpos usan ruido rosa y café
-   (más cálidos), los ataques son suaves y los crackles y chispas son granitos de sonido con ventana (sin clics).
-   Explosión = "pomp" redondo + cuerpo afelpado que se cierra + golpe grave, con reverb oscura y eco de montaña.
+   Realista pero ASMR: cálido y nunca agudo. Las explosiones son todas de ruido (sin tonos que caen, que suenan a
+   burbuja): estallido seco + BOOM de ruido rosa que se cierra + retumbo café que rueda + un grave de peso,
+   con reverb oscura y eco de montaña. Crackles estéreo y chispas que se apagan.
    Efectos y música tienen volumen independiente. */
 
 const Sound = (() => {
@@ -88,15 +88,6 @@ const Sound = (() => {
     const out = ac.createBuffer(1, n - x, ac.sampleRate); out.getChannelData(0).set(d.subarray(0, n - x));
     return out;
   }
-  // Un granito de sonido: seno corto con ventana suave (sin clic al empezar ni al terminar)
-  function grain(L, R, at, len, f, amp, pan, sr, grit = 0) {
-    const w = 2 * Math.PI * f / sr, ph = Math.random() * 6.28;
-    for (let i = 0; i < len && at + i < L.length; i++) {
-      const win = Math.sin(Math.PI * i / len) ** 2;
-      const v = (Math.sin(ph + w * i) + grit * (Math.random() * 2 - 1)) * win * amp;
-      L[at + i] += v * (1 - pan * 0.8); R[at + i] += v * (0.2 + pan * 0.8);
-    }
-  }
   function impulse(sec) {
     const sr = ac.sampleRate, n = Math.floor(sr * sec), b = ac.createBuffer(2, n, sr);
     for (let c = 0; c < 2; c++) {
@@ -112,34 +103,34 @@ const Sound = (() => {
     }
     return b;
   }
-  // Crackle: cientos de "pops" diminutos y redondos (como dulces que truenan a lo lejos), densos al principio.
-  // La mayoría son suaves y unos pocos más claros; algunos son graves, como burbujas.
+  // Crackle: cientos de chasquidos diminutos repartidos en estéreo, densos al principio
   function crackleBuffer(sec, count) {
     const sr = ac.sampleRate, n = Math.floor(sr * sec), b = ac.createBuffer(2, n, sr);
     const L = b.getChannelData(0), R = b.getChannelData(1);
     for (let k = 0; k < count; k++) {
-      const at = Math.floor(Math.pow(Math.random(), 1.6) * (n - sr * 0.01));
-      const low = Math.random() < 0.25;
-      const f = low ? 380 + Math.random() * 380 : 850 + Math.random() * 1250;
-      const len = Math.floor(sr * (low ? 0.006 + Math.random() * 0.006 : 0.0025 + Math.random() * 0.004));
-      const amp = 0.15 + 0.85 * Math.random() ** 2.2;
-      grain(L, R, at, len, f, amp, Math.random(), sr, 0.25);
+      const at = Math.floor(Math.pow(Math.random(), 1.6) * (n - 600));
+      const len = 30 + Math.floor(Math.random() * 160), amp = 0.25 + Math.random() * 0.75, pan = Math.random();
+      const decay = 3 + Math.random() * 5;
+      for (let i = 0; i < len; i++) {
+        const v = (Math.random() * 2 - 1) * amp * Math.exp(-decay * i / len);
+        L[at + i] += v * (1 - pan * 0.8); R[at + i] += v * (0.2 + pan * 0.8);
+      }
     }
-    soften(L, 0.35); soften(R, 0.35);
+    soften(L, 0.45); soften(R, 0.45);
     return b;
   }
-  // Fizz: brillitos muy finos y densos (chispas que se apagan, el sauce dorado), sobre un aire rosa muy bajo
+  // Fizz: chisporroteo muy fino y denso (chispas que se apagan, el sauce dorado)
   function fizzBuffer(sec) {
     const sr = ac.sampleRate, n = Math.floor(sr * sec), b = ac.createBuffer(2, n, sr);
-    const L = b.getChannelData(0), R = b.getChannelData(1);
-    const bed = pink.getChannelData(0);
-    for (let i = 0; i < n; i++) { const v = bed[i % bed.length] * 0.05; L[i] = v; R[i] = bed[(i + 9000) % bed.length] * 0.05; }
-    const grains = Math.floor(sec * 150);
-    for (let k = 0; k < grains; k++) {
-      const len = Math.floor(sr * (0.0015 + Math.random() * 0.003));
-      grain(L, R, Math.floor(Math.random() * (n - len)), len, 1100 + Math.random() * 1500, 0.06 + 0.3 * Math.random() ** 2, Math.random(), sr, 0.15);
+    for (let c = 0; c < 2; c++) {
+      const d = b.getChannelData(c); let flick = 0;
+      for (let i = 0; i < n; i++) {
+        if (Math.random() < 0.004) flick = 0.4 + Math.random() * 0.6;
+        flick *= 0.9985;
+        d[i] = (Math.random() * 2 - 1) * (0.12 + flick) * 0.5;
+      }
+      soften(d, 0.55);
     }
-    soften(L, 0.4); soften(R, 0.4);
     return b;
   }
   // Paso bajo de un polo + quitar graves: nada áspero
@@ -220,38 +211,54 @@ const Sound = (() => {
     return { stop() { try { nodes.forEach((x) => x.stop()); } catch (e) {} } };
   }
 
-  // Explosión ASMR: un "pomp" redondo (lo que más se oye en el celular) + cuerpo afelpado de ruido rosa que se cierra
-  // + golpe grave que cae de tono, con reverb oscura y eco. Sin "crack" de ruido: los ataques son suaves.
+  // Explosión realista y ASMR, toda de ruido (los tonos que caen suenan a burbuja o a tambor):
+  // 1) estallido: el "¡pa!" seco del inicio, de banda ancha pero sin agudos ásperos
+  // 2) BOOM: ruido rosa con un filtro que se cierra rápido (de brillante a sordo), como el aire empujado
+  // 3) retumbo: grave café que rueda unos segundos con un vaivén irregular (los ecos en las montañas)
+  // 4) peso: un grave casi sin cambio de tono, para audífonos y bocinas buenas
   function boom(power, pan, kind = {}) {
     if (!ok()) return;
     const t = now() + 0.008, c = crowd();
     const size = clamp(power, 0.4, 3);
     const vol = (0.5 + 0.28 * size) * c * (kind.gain || 1);
+    const crack = kind.crack === undefined ? 1 : kind.crack, body = kind.body || 1500;
     const out = panner(pan * 0.7);
     out.connect(sfxBus);
     const sendR = ac.createGain(); sendR.gain.value = 0.6 + 0.12 * size; out.connect(sendR); sendR.connect(revIn);
     const sendE = ac.createGain(); sendE.gain.value = 0.4 + 0.15 * size; out.connect(sendE); sendE.connect(echoIn);
-    // golpe
-    const o = ac.createOscillator(), og = ac.createGain();
-    o.type = "sine";
-    const f0 = (kind.low || 92) / Math.pow(size, 0.18);
-    o.frequency.setValueAtTime(f0 * 1.5, t); o.frequency.exponentialRampToValueAtTime(f0, t + 0.05);
-    o.frequency.exponentialRampToValueAtTime(f0 * 0.45, t + 0.7);
-    env(og, t, 0.01, 0.75 * vol, 1.0 + 0.3 * size);
-    o.connect(og); og.connect(out); o.start(t); o.stop(t + 1.6 + 0.3 * size);
-    // "pomp": tono medio-grave que cae rápido, redondo como un tambor con fieltro (se oye bien en las bocinas del celular)
-    const pf = rand(230, 290) / Math.pow(size, 0.12), po = ac.createOscillator(), pg = ac.createGain(), plp = ac.createBiquadFilter();
-    po.type = "triangle";
-    po.frequency.setValueAtTime(pf, t); po.frequency.exponentialRampToValueAtTime(pf * 0.5, t + 0.16);
-    plp.type = "lowpass"; plp.frequency.value = 900; plp.Q.value = 0.4;
-    env(pg, t, 0.006, 0.34 * vol * (kind.crack === 0 ? 0.6 : 0.8 + 0.2 * (kind.crack || 1)), 0.2);
-    po.connect(plp); plp.connect(pg); pg.connect(out); po.start(t); po.stop(t + 0.3);
-    // cuerpo afelpado: ruido rosa que entra suave y se va cerrando (el "fffomm" que llena el cielo)
+    // 1) estallido
+    if (crack > 0) {
+      const n = noiseSrc(false, noise), lp = ac.createBiquadFilter(), hp = ac.createBiquadFilter(), g = ac.createGain();
+      lp.type = "lowpass"; lp.frequency.value = 2400 + 300 * crack; lp.Q.value = 0.5;
+      hp.type = "highpass"; hp.frequency.value = 180;
+      env(g, t, 0.0015, 0.42 * vol * crack, 0.07);
+      n.connect(lp); lp.connect(hp); hp.connect(g); g.connect(out); n.start(t, rand(0, 1.5), 0.15);
+    }
+    // 2) BOOM
     const n = noiseSrc(false), lp = ac.createBiquadFilter(), g = ac.createGain();
-    lp.type = "lowpass"; lp.Q.value = 0.7;
-    lp.frequency.setValueAtTime((kind.body || 1500) * (0.5 + 0.06 * size), t); lp.frequency.exponentialRampToValueAtTime(140, t + 1.0 + 0.3 * size);
-    env(g, t, 0.025, 0.7 * vol, 1.4 + 0.5 * size);
-    n.connect(lp); lp.connect(g); g.connect(out); n.start(t, rand(0, 0.5), 2.4 + size);
+    lp.type = "lowpass"; lp.Q.value = 0.8;
+    lp.frequency.setValueAtTime(body * (0.8 + 0.1 * size), t);
+    lp.frequency.exponentialRampToValueAtTime(260, t + 0.12);
+    lp.frequency.exponentialRampToValueAtTime(90, t + 0.9 + 0.3 * size);
+    env(g, t, 0.004, 0.95 * vol, 0.8 + 0.35 * size);
+    n.connect(lp); lp.connect(g); g.connect(out); n.start(t, rand(0, 1), 1.6 + 0.5 * size);
+    // 3) retumbo que rueda: su volumen lo mueve un ruido café muy lento (irregular, no un trémolo)
+    const r = noiseSrc(false, brown), rl = ac.createBiquadFilter(), rg = ac.createGain(), roll = ac.createGain();
+    rl.type = "lowpass"; rl.frequency.value = 300 + 40 * size; rl.Q.value = 0.6;
+    const rEnd = 2.2 + 0.7 * size;
+    rg.gain.setValueAtTime(0.0001, t); rg.gain.exponentialRampToValueAtTime(0.55 * vol, t + 0.09);
+    rg.gain.exponentialRampToValueAtTime(0.0001, t + rEnd);
+    const mod = noiseSrc(true, brown), mg = ac.createGain();
+    mod.playbackRate.value = 0.03; mg.gain.value = 0.6; roll.gain.value = 1;
+    mod.connect(mg); mg.connect(roll.gain);
+    r.connect(rl); rl.connect(rg); rg.connect(roll); roll.connect(out);
+    r.start(t, rand(0, 1), rEnd + 0.1); mod.start(t, rand(0, 2)); mod.stop(t + rEnd + 0.1);
+    // 4) peso
+    const o = ac.createOscillator(), og = ac.createGain();
+    const f0 = (kind.low || 92) * 0.75 / Math.pow(size, 0.15);
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.8, t + 0.4);
+    env(og, t, 0.008, 0.6 * vol, 0.6 + 0.2 * size);
+    o.connect(og); og.connect(out); o.start(t); o.stop(t + 1 + 0.2 * size);
   }
 
   // Crackles: varias capas del buffer de chasquidos, cada una con su paneo
@@ -261,23 +268,23 @@ const Sound = (() => {
     for (let i = 0; i < layers; i++) {
       const t = now() + delay + i * rand(0.05, 0.15);
       const s = ac.createBufferSource(); s.buffer = pick(crackles); s.playbackRate.value = rand(0.82, 1.12);
-      const g = ac.createGain(); g.gain.value = (0.3 + 0.12 * amount) * c * 0.3;  // los granitos rinden más que el ruido de antes
+      const g = ac.createGain(); g.gain.value = (0.3 + 0.12 * amount) * c;
       const p = panner(clamp(pan * 0.7 + rand(-0.35, 0.35), -1, 1));
-      const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3600;
+      const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 5200;
       s.connect(lp); lp.connect(g); g.connect(p); p.connect(sfxBus);
-      const r = ac.createGain(); r.gain.value = 0.3; g.connect(r); r.connect(revIn);
+      const r = ac.createGain(); r.gain.value = 0.25; g.connect(r); r.connect(revIn);
       s.start(t);
     }
   }
 
-  // Chispas que se apagan: brillitos finísimos que se desvanecen (no un siseo)
+  // Chispas que se apagan: siseo finísimo que se desvanece
   function sizzle(dur, pan, vol = 1, delay = 0) {
     if (!ok()) return;
     const t = now() + delay, s = ac.createBufferSource(); s.buffer = fizz; s.loop = true;
     s.playbackRate.value = rand(0.85, 1.05);
-    const bp = ac.createBiquadFilter(); bp.type = "lowpass"; bp.frequency.value = rand(2600, 3200); bp.Q.value = 0.5;
+    const bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = rand(2200, 3200); bp.Q.value = 0.6;
     const g = ac.createGain();
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.24 * vol, t + 0.35);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16 * vol, t + 0.25);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     const p = panner(pan * 0.7);
     s.connect(bp); bp.connect(g); g.connect(p); p.connect(sfxBus);
