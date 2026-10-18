@@ -1,10 +1,14 @@
 "use strict";
-/* doodle.js: el cohete "Tu dibujo". La persona dibuja una forma con el dedo (uno o varios trazos) y la explosión la
-   reproduce en el cielo: cada estrella sale con una velocidad proporcional a un punto del dibujo y, como todas frenan
-   igual, la forma se conserva (igual que el corazón y la estrella).
-   - El dibujo se guarda normalizado (centrado, de -1 a 1, y hacia abajo) en Save.doodle, remuestreado y ligero.
-   - Mientras no haya dibujo, explota como una carita feliz.
-   - sample(n) reparte n puntos a lo largo de todos los trazos según su largo (cada trazo alterna color). */
+/* doodle.js: la forma "Tu dibujo". La persona dibuja con el dedo (uno o varios trazos) y la explosión la reproduce en
+   el cielo: cada estrella sale con una velocidad proporcional a un punto del dibujo y, como todas frenan igual, la forma
+   se conserva (igual que el corazón y la estrella).
+   - Desde el 18 oct 2026 se dibuja SOLO en el Taller (workshop.js): es una forma más, con su final, cola, silbido,
+     colores y tamaño, y cada diseño guarda su propio dibujo (spec.doodle). Antes había un solo dibujo en Save.doodle;
+     el Taller lo convierte en un diseño la primera vez (Workshop.register).
+   - El dibujo se guarda normalizado (centrado, de -1 a 1, y hacia abajo), remuestreado y ligero.
+   - Sin dibujo, explota como una carita feliz.
+   - sample(n, strokes) reparte n puntos a lo largo de todos los trazos según su largo (cada trazo alterna color).
+   - icon(strokes) lo dibuja chiquito como ícono de línea (para el selector y la lista del Taller). */
 
 const Doodle = (() => {
   // Carita feliz: el dibujo de fábrica
@@ -14,13 +18,14 @@ const Doodle = (() => {
     for (let i = 0; i <= 16; i++) { const a = 0.2 * Math.PI + (i / 16) * 0.6 * Math.PI; smile.push([Math.cos(a) * 0.55, Math.sin(a) * 0.55 + 0.05]); }
     return [ring, [[-0.33, -0.32], [-0.33, -0.2]], [[0.33, -0.32], [0.33, -0.2]], smile];
   })();
-  const get = () => (Array.isArray(Save.doodle) && Save.doodle.length ? Save.doodle : DEFAULT);
+  const valid = (s) => Array.isArray(s) && s.length > 0;
+  const get = (src) => (valid(src) ? src : valid(Save.doodle) ? Save.doodle : DEFAULT);
 
   const segLen = (st) => { let L = 0; for (let i = 1; i < st.length; i++) L += Math.hypot(st[i][0] - st[i - 1][0], st[i][1] - st[i - 1][1]); return L; };
 
   // n puntos repartidos a lo largo de todos los trazos (un punto suelto cuenta como un trazo cortito)
-  function sample(n) {
-    const strokes = get(), lens = strokes.map((st) => Math.max(0.08, segLen(st))), total = lens.reduce((a, b) => a + b, 0);
+  function sample(n, src) {
+    const strokes = get(src), lens = strokes.map((st) => Math.max(0.08, segLen(st))), total = lens.reduce((a, b) => a + b, 0);
     const out = [];
     strokes.forEach((st, si) => {
       const k = Math.max(st.length > 1 ? 3 : 2, Math.round((n * lens[si]) / total));
@@ -40,7 +45,7 @@ const Doodle = (() => {
   }
 
   /* ---------- Pantalla para dibujar ---------- */
-  let strokes = [], cur = null, cv, g, size = 300, dpr = 1, open = false, onClose = null;
+  let strokes = [], cur = null, cv, g, size = 300, dpr = 1, open = false, onDone = null;
   const el = (id) => document.getElementById(id);
 
   function init() {
@@ -66,29 +71,27 @@ const Doodle = (() => {
   const tick = () => { Sound.tap(); Haptics.tap(); };
   function pos(e) { const r = cv.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * size, ((e.clientY - r.top) / r.height) * size]; }
 
-  function show(after) {
-    onClose = after || null;
+  // Abre la pantalla para dibujar con un dibujo de partida (normalizado, o nada); done(trazos normalizados | null si se cancela)
+  function edit(initial, done) {
+    onDone = done || null;
     open = true;
     el("doodle").hidden = false;
     size = Math.round(Math.min(VW - 64, 330));
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     cv.style.width = cv.style.height = size + "px";
     cv.width = cv.height = Math.round(size * dpr);
-    // el dibujo guardado aparece para seguir editándolo
-    strokes = Array.isArray(Save.doodle) ? Save.doodle.map((st) => st.map(([x, y]) => [(x * 0.42 + 0.5) * size, (y * 0.42 + 0.5) * size])) : [];
+    // el dibujo de partida aparece para seguir editándolo
+    strokes = valid(initial) ? initial.map((st) => st.map(([x, y]) => [(x * 0.42 + 0.5) * size, (y * 0.42 + 0.5) * size])) : [];
     Input.enabled = false;
     draw();
   }
   function close(save) {
-    if (save && strokes.some((st) => st.length)) {
-      Save.doodle = normalize(strokes);
-      Save.selected.type = "doodle";
-      persist();
-    }
+    const out = save && strokes.some((st) => st.length) ? normalize(strokes) : null;
     open = false; cur = null;
     el("doodle").hidden = true;
     Input.enabled = Game.mode !== "home" && !UI.sheet;
-    if (onClose) onClose(save);
+    const cb = onDone; onDone = null;
+    if (cb) cb(out);
   }
 
   // Centra, escala a [-1, 1] (conservando la proporción) y remuestrea cada trazo a pasos parejos
@@ -132,5 +135,16 @@ const Doodle = (() => {
     el("dd-empty").hidden = strokes.length > 0;
   }
 
-  return { init, sample, show, get ready() { return Array.isArray(Save.doodle) && Save.doodle.length > 0; } };
+  // El dibujo como ícono de línea (contenido de un <svg viewBox="0 0 24 24">, igual que ICON)
+  function icon(src) {
+    const strokes = get(src), f = (v) => (12 + v * 8.6).toFixed(1);
+    return strokes.map((st) => {
+      if (st.length < 2) return `<path d="M${f(st[0][0])} ${f(st[0][1])}h.01"/>`;
+      const step = Math.max(1, Math.floor(st.length / 40));
+      const pts = st.filter((p, i) => i % step === 0 || i === st.length - 1);
+      return `<path d="M${pts.map(([x, y]) => f(x) + " " + f(y)).join("L")}"/>`;
+    }).join("");
+  }
+
+  return { init, sample, edit, icon, valid };
 })();

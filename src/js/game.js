@@ -14,7 +14,8 @@ const Game = (() => {
 
   const scoring = () => mode === "free";
   const palette = () => PALETTES[Save.selected.palette] || PALETTES.classic;
-  const owned = () => TYPE_ORDER.filter((k) => Save.unlocked.types.includes(k));
+  // "Tu dibujo" no entra en la Mezcla: se usa desde el Taller, con el dibujo de cada diseño
+  const owned = () => TYPE_ORDER.filter((k) => k !== "doodle" && Save.unlocked.types.includes(k));
   function chooseType() {
     const s = Save.selected.type;
     if (s !== "mix" && (Save.unlocked.types.includes(s) || (TYPES[s] && TYPES[s].custom))) return s;

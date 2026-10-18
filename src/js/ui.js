@@ -29,7 +29,6 @@ const UI = (() => {
     $("#b-home").addEventListener("click", () => { press(); goHome(); });
     $("#sparks").addEventListener("click", () => { press(); colTab = "fw"; open("collection"); });
     $("#pick-btn").addEventListener("click", () => { press(); togglePicker(); });
-    $("#pick-draw").addEventListener("click", () => { press(); togglePicker(false); Doodle.show(() => buildPicker()); });
     $("#pick-ws").addEventListener("click", () => { press(); togglePicker(false); open("workshop"); });
     $("#ws-back").addEventListener("click", () => { press(); Workshop.back(); });
     $("#ws-body").addEventListener("click", () => { $("#ws-back").hidden = !Workshop.editing; });
@@ -130,7 +129,8 @@ const UI = (() => {
   // Selector de cohete: el botón muestra el elegido; la cuadrícula se abre encima y se cierra al elegir o al tocar fuera
   let pickOpen = false;
   function buildPicker() {
-    const owned = TYPE_ORDER.filter((k) => Save.unlocked.types.includes(k)), mine = Workshop.ids();
+    // "Tu dibujo" no sale suelto: es una forma del Taller (sus diseños salen en "Mis fuegos")
+    const owned = TYPE_ORDER.filter((k) => k !== "doodle" && Save.unlocked.types.includes(k)), mine = Workshop.ids();
     const items = [...(owned.length > 1 ? ["mix", ...owned] : owned), ...mine];
     if (!items.includes(Save.selected.type)) Save.selected.type = owned.length > 1 ? "mix" : owned[0];
     const cur = Save.selected.type, name = (k) => (k === "mix" ? t("mix") : TYPES[k].name[LANG]);
@@ -142,7 +142,6 @@ const UI = (() => {
     const item = (k) => `<button class="pick-it${k === cur ? " on" : ""}" data-k="${k}" type="button" role="menuitemradio" aria-checked="${k === cur}"${TYPES[k] && TYPES[k].custom ? ` style="--c:${Workshop.color(k)}"` : ""}>${iconSVG(k)}<span></span></button>`;
     grid.innerHTML = items.filter((k) => !mine.includes(k)).map(item).join("") + (mine.length ? `<div class="pick-head">${t("wsMine")}</div>` + mine.map(item).join("") : "");
     grid.querySelectorAll(".pick-it").forEach((b) => { b.querySelector("span").textContent = name(b.dataset.k); });
-    $("#pick-draw").hidden = !owned.includes("doodle");
     grid.querySelectorAll(".pick-it").forEach((b) => b.addEventListener("click", () => {
       Save.selected.type = b.dataset.k; persist();
       Sound.tap(); Haptics.tap();
@@ -313,19 +312,20 @@ const UI = (() => {
         const T = TYPES[k], own = Save.unlocked.types.includes(k), sel = Save.selected.type === k, n = Save.stats.byType[k] || 0;
         return `<div class="card${own ? "" : " locked"}${sel ? " sel" : ""}" data-k="${k}">
           ${own ? "" : LOCK}<span class="ci">${iconSVG(k)}</span><h4>${T.name[LANG]}</h4><p>${T.desc[LANG]}</p>
-          ${own ? `<span class="meta">${t("launched")} ${fmt(n)}</span>${k === "doodle"
-            ? `<div class="card-row"><button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button><button class="card-btn" data-draw type="button">${t("ddDraw")}</button></div>`
-            : `<button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button>`}` : buyBtn(T.cost)}
+          ${own ? (k === "doodle"
+            ? `<span class="meta">${t("wsInside")}</span><button class="card-btn" data-draw type="button">${t("ddInWs")}</button>`
+            : `<span class="meta">${t("launched")} ${fmt(n)}</span><button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button>`) : buyBtn(T.cost)}
         </div>`;
       }).join("")}</div>`;
       el.querySelectorAll(".card").forEach((c) => {
         const k = c.dataset.k;
         c.querySelector("[data-use]")?.addEventListener("click", () => { press(); Save.selected.type = k; persist(); buildPicker(); renderCollection(); });
         c.querySelector("[data-buy]")?.addEventListener("click", () => buy("types", k, TYPES[k].cost, TYPES[k].name[LANG], k, () => {
+          // "Tu dibujo" se usa en el Taller: recién comprado, se abre ahí con un diseño nuevo, directo a dibujar
+          if (k === "doodle") { setTimeout(() => { open("workshop"); Workshop.startDoodle(); }, 500); return; }
           Save.selected.type = k; buildPicker();
-          if (k === "doodle") setTimeout(() => Doodle.show(() => { buildPicker(); renderCollection(); }), 500);  // recién comprado: a dibujar
         }));
-        c.querySelector("[data-draw]")?.addEventListener("click", () => { press(); Doodle.show(() => { buildPicker(); renderCollection(); }); });
+        c.querySelector("[data-draw]")?.addEventListener("click", () => { press(); open("workshop"); Workshop.startDoodle(); });
       });
       $("#col-ws").addEventListener("click", () => { press(); open("workshop"); });
     } else if (colTab === "pal") {

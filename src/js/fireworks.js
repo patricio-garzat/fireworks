@@ -680,11 +680,11 @@ const TYPES = {
 
   // Tu dibujo: la explosión dibuja en el cielo la forma que la persona trazó con el dedo (doodle.js)
   doodle: {
-    cost: 1000, name: ["Your Drawing", "Tu dibujo"], desc: ["Bursts into a shape you draw.", "Explota con la forma que dibujes."],
+    cost: 1000, name: ["Your Drawing", "Tu dibujo"], desc: ["Draw your own shape in the Workshop.", "Dibuja tu propia forma en el Taller."],
     rise: { air: 0.04, whistle: 0.04, f0: 740, f1: 1150 },
     burst(x, y, o) {
       const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.1, drag = 2.0;
-      const pts = Doodle.sample(count(130, o, true));
+      const pts = Doodle.sample(count(130, o, true), o.strokes);   // o.strokes: el dibujo del diseño del Taller
       for (const [px, py, st] of pts) {
         star(x, y, px * R * drag, py * R * drag, rand(1.9, 2.2), 2.6 * U, st % 2 ? b : a, { drag, grav: 18, trail: 3, trailLife: 0.5, to: o.flair >= 2 ? C.white : null, at: 0.7 });
       }

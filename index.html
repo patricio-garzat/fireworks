@@ -444,6 +444,13 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
 .ws-shapes button.on { color: var(--ink); background: rgba(241, 194, 122, 0.12); box-shadow: inset 0 0 0 1px rgba(241, 194, 122, 0.4); }
 .ws-shapes button.on svg { color: var(--gold-2); }
 .ws-shapes button:disabled { opacity: 0.28; }
+/* "Tu dibujo" en el Taller: la vista previa del dibujo (se toca para editarlo) y el botón */
+.ws-draw { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.ws-dd { position: relative; flex: 0 0 auto; width: 120px; height: 84px; padding: 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(241, 194, 122, 0.3); background: radial-gradient(circle at 50% 40%, #0f1b38, #04060f 75%); }
+.ws-dd canvas { display: block; }
+.ws-dd .dd-empty { font-size: 10px; }
+.ws-dd .dd-empty[hidden] { display: none; }
+.ws-draw .sbtn { flex: 1; }
 .ws-sw { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; padding: 2px; }
 .ws-sw button { aspect-ratio: 1; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); opacity: 0.85; transition: transform 0.2s var(--ease), box-shadow 0.2s ease; }
 .ws-sw button.on { opacity: 1; transform: scale(1.12); box-shadow: 0 0 0 2px #04060f, 0 0 0 3.5px var(--c), 0 0 14px var(--c); }
@@ -508,7 +515,6 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
   <!-- Selector de cohete: un botón chico abajo al centro; al tocarlo se abre una cuadrícula con todos -->
   <nav id="picker" class="picker" aria-label="Fireworks">
     <div id="pick-pop" class="pick-pop" role="menu" hidden><div class="pick-grid"></div>
-      <button id="pick-draw" class="pick-draw" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17c2-5 4-6 5.5-3s3 3.5 5-1 3.5-5.5 5.5-4"/><path d="M15.5 4.5l3 3M17 3l3 3-1.5 1.5-3-3z"/></svg><span data-i18n="ddMine">Draw my firework</span></button>
       <button id="pick-ws" class="pick-draw" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5l4 4M4 20l5.2-1.2L19.6 8.4a1.8 1.8 0 0 0 0-2.6l-1.4-1.4a1.8 1.8 0 0 0-2.6 0L5.2 14.8z"/><path d="M5 4.5v2M4 5.5h2M19 15.5v2M18 16.5h2"/></svg><span data-i18n="wsOpen">Workshop</span></button>
     </div>
     <button id="pick-btn" class="pick-btn glass" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="pick-pop">
@@ -891,8 +897,10 @@ const STR = {
   ddEmpty: ["Draw here", "Dibuja aquí"],
   ddUndo: ["Undo", "Deshacer"],
   ddClear: ["Clear", "Borrar"],
-  ddDraw: ["Draw", "Dibujar"],
-  ddMine: ["Draw my firework", "Dibujar mi cohete"],
+  ddInWs: ["Draw in the Workshop", "Dibujar en el Taller"],
+  wsInside: ["A shape in the Workshop", "Una forma del Taller"],
+  wsDraw: ["Draw", "Dibujar"],
+  wsRedraw: ["Edit drawing", "Editar dibujo"],
   realMoon: ["Real moon", "Luna real"],
   specialDates: ["Special dates", "Fechas especiales"],
   demo: ["Preview", "Ver demo"],
@@ -3675,12 +3683,16 @@ const Ambient = (() => {
 
 /* ---------- js/doodle.js ---------- */
 "use strict";
-/* doodle.js: el cohete "Tu dibujo". La persona dibuja una forma con el dedo (uno o varios trazos) y la explosión la
-   reproduce en el cielo: cada estrella sale con una velocidad proporcional a un punto del dibujo y, como todas frenan
-   igual, la forma se conserva (igual que el corazón y la estrella).
-   - El dibujo se guarda normalizado (centrado, de -1 a 1, y hacia abajo) en Save.doodle, remuestreado y ligero.
-   - Mientras no haya dibujo, explota como una carita feliz.
-   - sample(n) reparte n puntos a lo largo de todos los trazos según su largo (cada trazo alterna color). */
+/* doodle.js: la forma "Tu dibujo". La persona dibuja con el dedo (uno o varios trazos) y la explosión la reproduce en
+   el cielo: cada estrella sale con una velocidad proporcional a un punto del dibujo y, como todas frenan igual, la forma
+   se conserva (igual que el corazón y la estrella).
+   - Desde el 18 oct 2026 se dibuja SOLO en el Taller (workshop.js): es una forma más, con su final, cola, silbido,
+     colores y tamaño, y cada diseño guarda su propio dibujo (spec.doodle). Antes había un solo dibujo en Save.doodle;
+     el Taller lo convierte en un diseño la primera vez (Workshop.register).
+   - El dibujo se guarda normalizado (centrado, de -1 a 1, y hacia abajo), remuestreado y ligero.
+   - Sin dibujo, explota como una carita feliz.
+   - sample(n, strokes) reparte n puntos a lo largo de todos los trazos según su largo (cada trazo alterna color).
+   - icon(strokes) lo dibuja chiquito como ícono de línea (para el selector y la lista del Taller). */
 
 const Doodle = (() => {
   // Carita feliz: el dibujo de fábrica
@@ -3690,13 +3702,14 @@ const Doodle = (() => {
     for (let i = 0; i <= 16; i++) { const a = 0.2 * Math.PI + (i / 16) * 0.6 * Math.PI; smile.push([Math.cos(a) * 0.55, Math.sin(a) * 0.55 + 0.05]); }
     return [ring, [[-0.33, -0.32], [-0.33, -0.2]], [[0.33, -0.32], [0.33, -0.2]], smile];
   })();
-  const get = () => (Array.isArray(Save.doodle) && Save.doodle.length ? Save.doodle : DEFAULT);
+  const valid = (s) => Array.isArray(s) && s.length > 0;
+  const get = (src) => (valid(src) ? src : valid(Save.doodle) ? Save.doodle : DEFAULT);
 
   const segLen = (st) => { let L = 0; for (let i = 1; i < st.length; i++) L += Math.hypot(st[i][0] - st[i - 1][0], st[i][1] - st[i - 1][1]); return L; };
 
   // n puntos repartidos a lo largo de todos los trazos (un punto suelto cuenta como un trazo cortito)
-  function sample(n) {
-    const strokes = get(), lens = strokes.map((st) => Math.max(0.08, segLen(st))), total = lens.reduce((a, b) => a + b, 0);
+  function sample(n, src) {
+    const strokes = get(src), lens = strokes.map((st) => Math.max(0.08, segLen(st))), total = lens.reduce((a, b) => a + b, 0);
     const out = [];
     strokes.forEach((st, si) => {
       const k = Math.max(st.length > 1 ? 3 : 2, Math.round((n * lens[si]) / total));
@@ -3716,7 +3729,7 @@ const Doodle = (() => {
   }
 
   /* ---------- Pantalla para dibujar ---------- */
-  let strokes = [], cur = null, cv, g, size = 300, dpr = 1, open = false, onClose = null;
+  let strokes = [], cur = null, cv, g, size = 300, dpr = 1, open = false, onDone = null;
   const el = (id) => document.getElementById(id);
 
   function init() {
@@ -3742,29 +3755,27 @@ const Doodle = (() => {
   const tick = () => { Sound.tap(); Haptics.tap(); };
   function pos(e) { const r = cv.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * size, ((e.clientY - r.top) / r.height) * size]; }
 
-  function show(after) {
-    onClose = after || null;
+  // Abre la pantalla para dibujar con un dibujo de partida (normalizado, o nada); done(trazos normalizados | null si se cancela)
+  function edit(initial, done) {
+    onDone = done || null;
     open = true;
     el("doodle").hidden = false;
     size = Math.round(Math.min(VW - 64, 330));
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     cv.style.width = cv.style.height = size + "px";
     cv.width = cv.height = Math.round(size * dpr);
-    // el dibujo guardado aparece para seguir editándolo
-    strokes = Array.isArray(Save.doodle) ? Save.doodle.map((st) => st.map(([x, y]) => [(x * 0.42 + 0.5) * size, (y * 0.42 + 0.5) * size])) : [];
+    // el dibujo de partida aparece para seguir editándolo
+    strokes = valid(initial) ? initial.map((st) => st.map(([x, y]) => [(x * 0.42 + 0.5) * size, (y * 0.42 + 0.5) * size])) : [];
     Input.enabled = false;
     draw();
   }
   function close(save) {
-    if (save && strokes.some((st) => st.length)) {
-      Save.doodle = normalize(strokes);
-      Save.selected.type = "doodle";
-      persist();
-    }
+    const out = save && strokes.some((st) => st.length) ? normalize(strokes) : null;
     open = false; cur = null;
     el("doodle").hidden = true;
     Input.enabled = Game.mode !== "home" && !UI.sheet;
-    if (onClose) onClose(save);
+    const cb = onDone; onDone = null;
+    if (cb) cb(out);
   }
 
   // Centra, escala a [-1, 1] (conservando la proporción) y remuestrea cada trazo a pasos parejos
@@ -3808,7 +3819,18 @@ const Doodle = (() => {
     el("dd-empty").hidden = strokes.length > 0;
   }
 
-  return { init, sample, show, get ready() { return Array.isArray(Save.doodle) && Save.doodle.length > 0; } };
+  // El dibujo como ícono de línea (contenido de un <svg viewBox="0 0 24 24">, igual que ICON)
+  function icon(src) {
+    const strokes = get(src), f = (v) => (12 + v * 8.6).toFixed(1);
+    return strokes.map((st) => {
+      if (st.length < 2) return `<path d="M${f(st[0][0])} ${f(st[0][1])}h.01"/>`;
+      const step = Math.max(1, Math.floor(st.length / 40));
+      const pts = st.filter((p, i) => i % step === 0 || i === st.length - 1);
+      return `<path d="M${pts.map(([x, y]) => f(x) + " " + f(y)).join("L")}"/>`;
+    }).join("");
+  }
+
+  return { init, sample, edit, icon, valid };
 })();
 
 /* ---------- js/fireworks.js ---------- */
@@ -4494,11 +4516,11 @@ const TYPES = {
 
   // Tu dibujo: la explosión dibuja en el cielo la forma que la persona trazó con el dedo (doodle.js)
   doodle: {
-    cost: 1000, name: ["Your Drawing", "Tu dibujo"], desc: ["Bursts into a shape you draw.", "Explota con la forma que dibujes."],
+    cost: 1000, name: ["Your Drawing", "Tu dibujo"], desc: ["Draw your own shape in the Workshop.", "Dibuja tu propia forma en el Taller."],
     rise: { air: 0.04, whistle: 0.04, f0: 740, f1: 1150 },
     burst(x, y, o) {
       const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.1, drag = 2.0;
-      const pts = Doodle.sample(count(130, o, true));
+      const pts = Doodle.sample(count(130, o, true), o.strokes);   // o.strokes: el dibujo del diseño del Taller
       for (const [px, py, st] of pts) {
         star(x, y, px * R * drag, py * R * drag, rand(1.9, 2.2), 2.6 * U, st % 2 ? b : a, { drag, grav: 18, trail: 3, trailLife: 0.5, to: o.flair >= 2 ? C.white : null, at: 0.7 });
       }
@@ -4607,7 +4629,8 @@ const Game = (() => {
 
   const scoring = () => mode === "free";
   const palette = () => PALETTES[Save.selected.palette] || PALETTES.classic;
-  const owned = () => TYPE_ORDER.filter((k) => Save.unlocked.types.includes(k));
+  // "Tu dibujo" no entra en la Mezcla: se usa desde el Taller, con el dibujo de cada diseño
+  const owned = () => TYPE_ORDER.filter((k) => k !== "doodle" && Save.unlocked.types.includes(k));
   function chooseType() {
     const s = Save.selected.type;
     if (s !== "mix" && (Save.unlocked.types.includes(s) || (TYPES[s] && TYPES[s].custom))) return s;
@@ -5349,11 +5372,14 @@ const Special = (() => {
    dos colores, el final (simple, crepitante, brillos, se divide o cambia de color), la cola (dorada, plateada,
    crepitante, tenue o en espiral), silbido y tamaño, con su nombre. "Probar" lo lanza en el cielo mientras se diseña.
    Cada creación se registra como un tipo más (TYPES["c…"]) y aparece en el selector, en "Mis fuegos".
-   Se guardan en Save.customs. */
+   Se guardan en Save.customs.
+   - "Tu dibujo" es una forma más (si ya se desbloqueó): cada diseño guarda su propio dibujo (spec.doodle) y lo combina
+     con el final, la cola, el silbido, los colores y el tamaño. Solo se dibuja aquí (pedido del usuario, 18 oct 2026:
+     antes había un botón aparte y confundía). El ícono del diseño es su dibujo. */
 
 const Workshop = (() => {
   const MAX = 6;
-  const SHAPES = ["classic", "ring", "willow", "palm", "chrysanthemum", "dahlia", "ghost", "spiral", "crossette", "horsetail", "strobe", "fish", "flowers", "heart", "star", "saturn", "jelly"];
+  const SHAPES = ["classic", "ring", "willow", "palm", "chrysanthemum", "dahlia", "ghost", "spiral", "crossette", "horsetail", "strobe", "fish", "flowers", "heart", "star", "saturn", "jelly", "doodle"];
   const COLORS = ["red", "coral", "orange", "amber", "gold", "yellow", "lime", "green", "mint", "teal", "cyan", "ice", "blue", "violet", "purple", "magenta", "pink", "rosegold", "warm", "silver", "white"];
   const ENDS = ["none", "crackle", "glitter", "split", "shift"];
   const TAILS = ["gold", "glitter", "crackle", "dim", "spiral"];
@@ -5388,17 +5414,31 @@ const Workshop = (() => {
       rise: spec.whistle ? { air: 0.035, whistle: 0.04, f0: 760, f1: 1200, tone: spec.tail === "spiral" } : { air: 0.05, whistle: 0 },
       burst(x, y, o, pan) {
         const n0 = P.n;
-        const res = base.burst(x, y, { ...o, power: o.power * size, colors: [c1, c2], pal, tip: spec.end }, pan);
+        const res = base.burst(x, y, { ...o, power: o.power * size, colors: [c1, c2], pal, tip: spec.end, strokes: spec.doodle }, pan);
         applyEnd(n0, spec.end, c2, pan);
         return res;
       },
       sound(p, pan) { base.sound(p * size, pan); },
     };
   }
+  const iconFor = (spec) => (spec.shape === "doodle" ? Doodle.icon(spec.doodle) : ICON[spec.shape] || ICON.classic);
   // Registra (o vuelve a registrar) todas las creaciones guardadas como tipos
   function register() {
+    migrate();
     for (const k of Object.keys(TYPES)) if (TYPES[k].custom) { delete TYPES[k]; delete ICON[k]; }
-    (Save.customs || []).forEach((spec) => { TYPES[spec.id] = makeType(spec); ICON[spec.id] = ICON[spec.shape] || ICON.classic; });
+    (Save.customs || []).forEach((spec) => { TYPES[spec.id] = makeType(spec); ICON[spec.id] = iconFor(spec); });
+  }
+  // Antes "Tu dibujo" era un solo dibujo (Save.doodle) que se elegía en el selector: la primera vez se vuelve un diseño
+  function migrate() {
+    if (Save.doodleMoved) return;
+    Save.doodleMoved = true;
+    if (Doodle.valid(Save.doodle) && (Save.customs || []).length < MAX) {
+      const spec = { id: "c" + Date.now().toString(36), name: ["My drawing", "Mi dibujo"][LANG], shape: "doodle", doodle: Save.doodle,
+        c1: "gold", c2: "warm", end: "none", tail: "gold", whistle: true, size: "m" };
+      Save.customs = [...(Save.customs || []), spec];
+      if (Save.selected.type === "doodle") Save.selected.type = spec.id;
+    }
+    persist();
   }
   const ids = () => (Save.customs || []).map((s) => s.id);
   const color = (k) => { const s = (Save.customs || []).find((x) => x.id === k); return s ? css(C[s.c1] || C.gold) : ""; };
@@ -5417,7 +5457,7 @@ const Workshop = (() => {
       const list = Save.customs || [];
       body.innerHTML = `<p class="ws-hint">${t("wsHint")}</p><div class="grid">${list.map((s) => `
         <button class="card ws-item" data-id="${s.id}" type="button">
-          <span class="ci" style="color:${css(C[s.c1] || C.gold)}">${iconSVG(s.shape)}</span><h4></h4>
+          <span class="ci" style="color:${css(C[s.c1] || C.gold)}">${iconSVG(s.id)}</span><h4></h4>
           <span class="swatches"><i style="background:${css(C[s.c1] || C.gold)}"></i><i style="background:${css(C[s.c2] || C.silver)}"></i></span>
         </button>`).join("")}
         ${list.length < MAX ? `<button class="card ws-new" type="button"><span class="ci">${PLUS}</span><h4>${t("wsNew")}</h4><p>${t("wsUpTo")}</p></button>` : ""}
@@ -5437,6 +5477,8 @@ const Workshop = (() => {
       <input id="ws-name" class="ws-name" type="text" maxlength="18" autocomplete="off" spellcheck="false">
       <label class="ws-lbl">${t("wsShape")}</label>
       <div class="ws-shapes">${SHAPES.map((k) => `<button type="button" data-v="${k}" class="${e.shape === k ? "on" : ""}" ${owned(k) ? "" : "disabled"}>${iconSVG(k)}<span>${TYPES[k].name[LANG]}</span></button>`).join("")}</div>
+      ${e.shape === "doodle" ? `<div class="ws-draw"><button class="ws-dd" id="ws-dd" type="button" aria-label="${t("wsDraw")}"><canvas></canvas><span class="dd-empty"${Doodle.valid(e.doodle) ? " hidden" : ""}>${t("ddEmpty")}</span></button>
+        <button class="sbtn" id="ws-draw" type="button">${PENCIL}<span>${t(Doodle.valid(e.doodle) ? "wsRedraw" : "wsDraw")}</span></button></div>` : ""}
       <label class="ws-lbl">${t("wsColor1")}</label>${sw("c1")}
       <label class="ws-lbl">${t("wsColor2")}</label>${sw("c2")}
       <label class="ws-lbl">${t("wsEnd")}</label>${seg("end", ENDS, "wsE_")}
@@ -5451,7 +5493,19 @@ const Workshop = (() => {
     const name = el("ws-name");
     name.value = e.name;
     name.addEventListener("input", () => { e.name = name.value; });
-    body.querySelectorAll(".ws-shapes button").forEach((b) => b.addEventListener("click", () => { tap(); e.shape = b.dataset.v; mark(b); tryIt(); }));
+    body.querySelectorAll(".ws-shapes button").forEach((b) => b.addEventListener("click", () => {
+      tap();
+      const was = e.shape;
+      e.shape = b.dataset.v;
+      if ((was === "doodle") !== (e.shape === "doodle")) rerender(); else mark(b);
+      if (e.shape === "doodle" && !Doodle.valid(e.doodle)) draw();   // la primera vez, directo a dibujar
+      else tryIt();
+    }));
+    if (e.shape === "doodle") {
+      preview(body.querySelector(".ws-dd canvas"), e.doodle);
+      el("ws-dd").addEventListener("click", () => { tap(); draw(); });
+      el("ws-draw").addEventListener("click", () => { tap(); draw(); });
+    }
     body.querySelectorAll(".ws-sw").forEach((row) => row.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { tap(); e[row.dataset.key] = b.dataset.v; mark(b); })));
     body.querySelectorAll(".ws-seg").forEach((row) => row.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { tap(); e[row.dataset.key] = b.dataset.v; mark(b); })));
     el("ws-whistle").addEventListener("click", () => { tap(); e.whistle = !e.whistle; el("ws-whistle").setAttribute("aria-checked", String(e.whistle)); });
@@ -5460,13 +5514,51 @@ const Workshop = (() => {
     el("ws-del")?.addEventListener("click", () => { tap(); remove(); });
   }
   function mark(b) { b.parentElement.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); }
+  // Volver a pintar el editor sin perder dónde iba el scroll
+  function rerender() { const sc = el("ws-body").closest(".sheet-body") || el("ws-body"), top = sc.scrollTop; render(); sc.scrollTop = top; }
+  // Dibujar (o editar el dibujo) del diseño; al terminar se ve en la vista previa y se prueba en el cielo
+  function draw() {
+    const e = edit;
+    Doodle.edit(e.doodle, (strokes) => {
+      if (edit !== e) return;
+      if (strokes) e.doodle = strokes;
+      rerender();
+      if (Doodle.valid(e.doodle)) tryIt();
+    });
+  }
+  // La vista previa del dibujo: luz dorada sobre noche, como la pantalla para dibujar
+  function preview(cv, strokes) {
+    if (!cv) return;
+    const w = 120, h = 84, dpr = Math.min(window.devicePixelRatio || 1, 3), g = cv.getContext("2d");
+    cv.width = w * dpr; cv.height = h * dpr; cv.style.width = w + "px"; cv.style.height = h + "px";
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!Doodle.valid(strokes)) return;
+    const s = h * 0.4;
+    g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = 2;
+    strokes.forEach((st, i) => {
+      const col = i % 2 ? "255,214,150" : "255,236,200";
+      g.shadowColor = `rgba(${col},0.9)`; g.shadowBlur = 6; g.strokeStyle = `rgba(${col},0.95)`;
+      g.beginPath();
+      st.forEach(([x, y], j) => (j ? g.lineTo(w / 2 + x * s, h / 2 + y * s) : g.moveTo(w / 2 + x * s, h / 2 + y * s)));
+      if (st.length === 1) g.lineTo(w / 2 + st[0][0] * s + 0.1, h / 2 + st[0][1] * s);
+      g.stroke();
+    });
+  }
+  // Desde la Colección ("Dibujar en el Taller") o al comprar "Tu dibujo": un diseño nuevo con esa forma, directo a dibujar
+  function startDoodle() {
+    if ((Save.customs || []).length >= MAX) { edit = null; render(); return; }
+    edit = { ...fresh(), shape: "doodle", name: ["My drawing", "Mi dibujo"][LANG] };
+    render();
+    el("ws-back").hidden = false;
+    draw();
+  }
   const tap = () => { Sound.tap(); Haptics.tap(); };
 
   // Probar: se lanza arriba, donde se ve encima del panel
   function tryIt() {
     if (!edit) return;
     TYPES.c_try = makeType({ ...edit, name: edit.name || "" });
-    ICON.c_try = ICON[edit.shape];
+    ICON.c_try = iconFor(edit);
     Game.launch(VW * rand(0.4, 0.6), VH * 0.17, "c_try", 1.05, { auto: true });
   }
   function save() {
@@ -5497,9 +5589,10 @@ const Workshop = (() => {
 
   const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg>';
   const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l.8 12h8.4L17 7"/></svg>';
+  const PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17c2-5 4-6 5.5-3s3 3.5 5-1 3.5-5.5 5.5-4"/><path d="M15.5 4.5l3 3M17 3l3 3-1.5 1.5-3-3z"/></svg>';
   const SPARKLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l1.9 6.2 6.3 1.9-6.3 2-1.9 6.3-1.9-6.3-6.3-2 6.3-1.9z" fill="currentColor"/></svg>';
 
-  return { register, render, back, ids, color, open() { edit = null; render(); }, get editing() { return !!edit; } };
+  return { register, render, back, ids, color, startDoodle, open() { edit = null; render(); }, get editing() { return !!edit; } };
 })();
 
 /* ---------- js/input.js ---------- */
@@ -5656,7 +5749,6 @@ const UI = (() => {
     $("#b-home").addEventListener("click", () => { press(); goHome(); });
     $("#sparks").addEventListener("click", () => { press(); colTab = "fw"; open("collection"); });
     $("#pick-btn").addEventListener("click", () => { press(); togglePicker(); });
-    $("#pick-draw").addEventListener("click", () => { press(); togglePicker(false); Doodle.show(() => buildPicker()); });
     $("#pick-ws").addEventListener("click", () => { press(); togglePicker(false); open("workshop"); });
     $("#ws-back").addEventListener("click", () => { press(); Workshop.back(); });
     $("#ws-body").addEventListener("click", () => { $("#ws-back").hidden = !Workshop.editing; });
@@ -5757,7 +5849,8 @@ const UI = (() => {
   // Selector de cohete: el botón muestra el elegido; la cuadrícula se abre encima y se cierra al elegir o al tocar fuera
   let pickOpen = false;
   function buildPicker() {
-    const owned = TYPE_ORDER.filter((k) => Save.unlocked.types.includes(k)), mine = Workshop.ids();
+    // "Tu dibujo" no sale suelto: es una forma del Taller (sus diseños salen en "Mis fuegos")
+    const owned = TYPE_ORDER.filter((k) => k !== "doodle" && Save.unlocked.types.includes(k)), mine = Workshop.ids();
     const items = [...(owned.length > 1 ? ["mix", ...owned] : owned), ...mine];
     if (!items.includes(Save.selected.type)) Save.selected.type = owned.length > 1 ? "mix" : owned[0];
     const cur = Save.selected.type, name = (k) => (k === "mix" ? t("mix") : TYPES[k].name[LANG]);
@@ -5769,7 +5862,6 @@ const UI = (() => {
     const item = (k) => `<button class="pick-it${k === cur ? " on" : ""}" data-k="${k}" type="button" role="menuitemradio" aria-checked="${k === cur}"${TYPES[k] && TYPES[k].custom ? ` style="--c:${Workshop.color(k)}"` : ""}>${iconSVG(k)}<span></span></button>`;
     grid.innerHTML = items.filter((k) => !mine.includes(k)).map(item).join("") + (mine.length ? `<div class="pick-head">${t("wsMine")}</div>` + mine.map(item).join("") : "");
     grid.querySelectorAll(".pick-it").forEach((b) => { b.querySelector("span").textContent = name(b.dataset.k); });
-    $("#pick-draw").hidden = !owned.includes("doodle");
     grid.querySelectorAll(".pick-it").forEach((b) => b.addEventListener("click", () => {
       Save.selected.type = b.dataset.k; persist();
       Sound.tap(); Haptics.tap();
@@ -5940,19 +6032,20 @@ const UI = (() => {
         const T = TYPES[k], own = Save.unlocked.types.includes(k), sel = Save.selected.type === k, n = Save.stats.byType[k] || 0;
         return `<div class="card${own ? "" : " locked"}${sel ? " sel" : ""}" data-k="${k}">
           ${own ? "" : LOCK}<span class="ci">${iconSVG(k)}</span><h4>${T.name[LANG]}</h4><p>${T.desc[LANG]}</p>
-          ${own ? `<span class="meta">${t("launched")} ${fmt(n)}</span>${k === "doodle"
-            ? `<div class="card-row"><button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button><button class="card-btn" data-draw type="button">${t("ddDraw")}</button></div>`
-            : `<button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button>`}` : buyBtn(T.cost)}
+          ${own ? (k === "doodle"
+            ? `<span class="meta">${t("wsInside")}</span><button class="card-btn" data-draw type="button">${t("ddInWs")}</button>`
+            : `<span class="meta">${t("launched")} ${fmt(n)}</span><button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button>`) : buyBtn(T.cost)}
         </div>`;
       }).join("")}</div>`;
       el.querySelectorAll(".card").forEach((c) => {
         const k = c.dataset.k;
         c.querySelector("[data-use]")?.addEventListener("click", () => { press(); Save.selected.type = k; persist(); buildPicker(); renderCollection(); });
         c.querySelector("[data-buy]")?.addEventListener("click", () => buy("types", k, TYPES[k].cost, TYPES[k].name[LANG], k, () => {
+          // "Tu dibujo" se usa en el Taller: recién comprado, se abre ahí con un diseño nuevo, directo a dibujar
+          if (k === "doodle") { setTimeout(() => { open("workshop"); Workshop.startDoodle(); }, 500); return; }
           Save.selected.type = k; buildPicker();
-          if (k === "doodle") setTimeout(() => Doodle.show(() => { buildPicker(); renderCollection(); }), 500);  // recién comprado: a dibujar
         }));
-        c.querySelector("[data-draw]")?.addEventListener("click", () => { press(); Doodle.show(() => { buildPicker(); renderCollection(); }); });
+        c.querySelector("[data-draw]")?.addEventListener("click", () => { press(); open("workshop"); Workshop.startDoodle(); });
       });
       $("#col-ws").addEventListener("click", () => { press(); open("workshop"); });
     } else if (colTab === "pal") {
