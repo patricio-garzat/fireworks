@@ -12,10 +12,14 @@ const Sound = (() => {
 
   const now = () => ac.currentTime;
 
-  function build() {
+  // Abierto dentro de la landing (blubergames.com/play/fireworks/, mismo dominio): el toque en "Play" ya desbloqueó un
+  // audio en la página de afuera (window.bluberAudio). Se usa ese, así el juego suena desde que abre, intro incluida
+  // (igual que Cube Swipe y SMUSH!). Al cerrar el reproductor, la landing lo cierra y todo se calla.
+  function sharedAC() { try { const p = window.parent, s = p !== window && p.bluberAudio; return s && s.state !== "closed" ? s : null; } catch (e) { return null; } }
+  function build(fresh) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
-    ac = new AC({ latencyHint: "interactive" });
+    ac = (!fresh && sharedAC()) || new AC({ latencyHint: "interactive" });
 
     // Compresor suave (sin "bombeo" cuando hay muchas explosiones) y un paso bajo de calidez al final
     comp = ac.createDynamicsCompressor();
@@ -465,10 +469,10 @@ const Sound = (() => {
     if (!ac) { setSession(); build(); if (!ac) return; }
     const p = performance.now(), ct = ac.currentTime;
     if (ac.state === "running" && lastPerf && p - lastPerf > 800 && ct - lastTime < 0.02) {
-      // Se quedó colgado tras una interrupción (llamada, Siri…): se arma uno nuevo
-      try { ac.close(); } catch (e) {}
+      // Se quedó colgado tras una interrupción (llamada, Siri…): se arma uno nuevo (el de la landing no se cierra aquí)
+      try { if (ac !== sharedAC()) ac.close(); } catch (e) {}
       ac = null; musicOn = false; clearTimeout(musicTimer); windNode = null;
-      setSession(); build();
+      setSession(); build(true);
     } else if (ac.state !== "running") {
       ac.resume().catch(() => {});
     }
@@ -500,5 +504,6 @@ const Sound = (() => {
     wake, suspend, resume, applyVolumes, whenRunning, studio,
     ignite, rise, boom, crackle, sizzle, mallet, melody, tap,
     get ready() { return !!ac && ac.state === "running"; },
+    get shared() { return !!sharedAC(); },
   };
 })();

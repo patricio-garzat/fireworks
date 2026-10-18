@@ -77,7 +77,7 @@ const Main = (() => {
     applyQuality();
     UI.showHome(true);
     run();
-    if (isNative()) Sound.wake();
+    if (isNative() || Sound.shared) Sound.wake();   // la app, o dentro de la landing (audio ya desbloqueado)
     playStudio($("#studio"), gameIntro);
 
     let rt = 0;
@@ -148,7 +148,7 @@ function playStudio(el, next) {
     const t0 = performance.now();
     let sounded = false;
     const sound = () => { if (sounded || !el.isConnected) return; sounded = true; Sound.studio((performance.now() - t0) / 1000); };
-    if (isNative()) Sound.whenRunning(sound);
+    if (isNative() || Sound.shared) Sound.whenRunning(sound);
     else document.addEventListener("pointerdown", () => Sound.whenRunning(sound), { once: true, capture: true });
     if (reduceMotion || !el.animate) { el.classList.add("go"); setTimeout(finish, 1600); return; }
     const ws = q("bb-word-shape");
