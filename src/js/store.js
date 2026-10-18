@@ -41,6 +41,12 @@ function deepMerge(base, over) {
 }
 
 const Save = loadJSON(SAVE_KEY, freshSave);
+// La Playa tropical se quitó (18 oct 2026): quien la compró recupera sus Sparks
+if (Save.unlocked.scenes.includes("beach")) {
+  Save.unlocked.scenes = Save.unlocked.scenes.filter((k) => k !== "beach");
+  Save.sparks += 2900;
+}
+if (Save.selected.scene === "beach") Save.selected.scene = "alpine";
 const Settings = loadJSON(SETTINGS_KEY, freshSettings);
 LANG = Settings.lang | 0;
 

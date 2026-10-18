@@ -380,6 +380,22 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
 }
 #home.intro .mode > *, #home.hide .mode > *, #home.intro .home-sparks, #home.hide .home-sparks, #home.intro .home-foot, #home.hide .home-foot,
 #home.hide .brand, #hud.off .glass > *, body.idle #hud .glass > *, #hud.off .mid, body.idle #hud .mid { opacity: 0; }
+
+/* ---------- "Tu dibujo" ---------- */
+.pick-draw { width: 100%; margin-top: 6px; height: 40px; border-radius: 13px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 13.5px; font-weight: 500; color: var(--gold-2); background: rgba(241, 194, 122, 0.1); border: 1px solid rgba(241, 194, 122, 0.25); }
+.pick-draw svg { width: 18px; height: 18px; }
+.doodle { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 16px; background: rgba(2, 3, 9, 0.62); touch-action: none; }  /* sin fundido de opacidad: el vidrio de adentro no difuminaría */
+.dd-card { width: min(380px, 100%); border-radius: 24px; padding: 18px 16px 14px; display: flex; flex-direction: column; align-items: center; gap: 12px;
+  background: var(--glass-strong); border: 1px solid var(--line-2); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); }
+.dd-card h3 { margin: 0; font-size: 18px; font-weight: 600; }
+.dd-hint { margin: 0; font-size: 13px; line-height: 1.35; color: var(--ink-2); text-align: center; }
+.dd-pad { position: relative; border-radius: 18px; overflow: hidden; background: radial-gradient(circle at 50% 40%, #0f1b38, #04060f 75%); border: 1px solid var(--line); }
+.dd-pad canvas { display: block; touch-action: none; }
+.dd-empty { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); pointer-events: none; }
+.dd-row { width: 100%; display: flex; gap: 8px; justify-content: space-between; }
+.dd-row .sbtn { flex: 1; }
+.dd-row .ph-btn { flex: 1; }
 </style>
 </head>
 <body>
@@ -433,7 +449,9 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
 
   <!-- Selector de cohete: un botón chico abajo al centro; al tocarlo se abre una cuadrícula con todos -->
   <nav id="picker" class="picker" aria-label="Fireworks">
-    <div id="pick-pop" class="pick-pop" role="menu" hidden><div class="pick-grid"></div></div>
+    <div id="pick-pop" class="pick-pop" role="menu" hidden><div class="pick-grid"></div>
+      <button id="pick-draw" class="pick-draw" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17c2-5 4-6 5.5-3s3 3.5 5-1 3.5-5.5 5.5-4"/><path d="M15.5 4.5l3 3M17 3l3 3-1.5 1.5-3-3z"/></svg><span data-i18n="ddMine">Draw my rocket</span></button>
+    </div>
     <button id="pick-btn" class="pick-btn glass" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="pick-pop">
       <span class="ci"></span><span class="nm"></span>
       <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 14.5l5-5 5 5"/></svg>
@@ -574,6 +592,23 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
   </div>
   <div id="ph-hz" class="ph-hz" aria-hidden="true"><span class="ph-line"></span><span class="ph-grip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg><span data-i18n="phHorizon">Horizon</span></span></div>
   <input type="file" id="ph-file" accept="image/*" hidden>
+</section>
+
+<!-- "Tu dibujo": se dibuja con el dedo la forma en que explotará el cohete -->
+<section id="doodle" class="doodle" role="dialog" aria-modal="true" aria-labelledby="dd-h" hidden>
+  <div class="dd-card">
+    <h3 id="dd-h" data-i18n="ddTitle">Draw your firework</h3>
+    <p class="dd-hint" data-i18n="ddHint">Draw a shape with your finger. Your rocket will burst into it.</p>
+    <div class="dd-pad"><canvas id="dd-cv" aria-label="Drawing pad"></canvas><span id="dd-empty" class="dd-empty" data-i18n="ddEmpty">Draw here</span></div>
+    <div class="dd-row">
+      <button class="sbtn" id="dd-undo" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7L4.5 11.5 9 16"/><path d="M5 11.5h9a5 5 0 0 1 0 10h-2"/></svg><span data-i18n="ddUndo">Undo</span></button>
+      <button class="sbtn" id="dd-clear" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l.8 12h8.4L17 7"/></svg><span data-i18n="ddClear">Clear</span></button>
+    </div>
+    <div class="dd-row">
+      <button class="ph-btn" id="dd-cancel" type="button" data-i18n="cancel">Cancel</button>
+      <button class="ph-btn gold" id="dd-save" type="button" data-i18n="phDone">Done</button>
+    </div>
+  </div>
 </section>
 
 <div id="confirm" class="dialog" hidden>
@@ -774,6 +809,13 @@ const STR = {
   phWater: ["Water", "Agua"],
   phChange: ["Choose another photo", "Elegir otra foto"],
   phReady: ["Your sky is ready", "Tu cielo está listo"],
+  ddTitle: ["Draw your firework", "Dibuja tu cohete"],
+  ddHint: ["Draw a shape with your finger. Your rocket will burst into it.", "Dibuja una forma con el dedo. Tu cohete explotará con esa forma."],
+  ddEmpty: ["Draw here", "Dibuja aquí"],
+  ddUndo: ["Undo", "Deshacer"],
+  ddClear: ["Clear", "Borrar"],
+  ddDraw: ["Draw", "Dibujar"],
+  ddMine: ["Draw my rocket", "Dibujar mi cohete"],
 };
 
 let LANG = 0; // 0 = inglés, 1 = español
@@ -829,6 +871,12 @@ function deepMerge(base, over) {
 }
 
 const Save = loadJSON(SAVE_KEY, freshSave);
+// La Playa tropical se quitó (18 oct 2026): quien la compró recupera sus Sparks
+if (Save.unlocked.scenes.includes("beach")) {
+  Save.unlocked.scenes = Save.unlocked.scenes.filter((k) => k !== "beach");
+  Save.sparks += 2900;
+}
+if (Save.selected.scene === "beach") Save.selected.scene = "alpine";
 const Settings = loadJSON(SETTINGS_KEY, freshSettings);
 LANG = Settings.lang | 0;
 
@@ -1413,9 +1461,11 @@ let KILL_Y = 900;       // debajo de esto las partículas se apagan (suelo o sup
 let WIND = 6;           // brisa: deriva horizontal suave (px/s²)
 
 // Tipos de partícula
-const K_STAR = 0, K_EMBER = 1, K_SPARK = 2, K_GLITTER = 3, K_FLASH = 4, K_DUST = 5;
+const K_STAR = 0, K_EMBER = 1, K_SPARK = 2, K_GLITTER = 3, K_FLASH = 4, K_DUST = 5, K_FLY = 6;
 // Banderas
-const F_CRACKLE = 1, F_FLICKER = 2, F_STROBE = 4, F_SPLIT = 8, F_SHIFT = 16, F_NOWIND = 32;
+// F_WIGGLE: la dirección se mece (peces en zigzag, linternas que se balancean, tentáculos que ondulan)
+// F_GLITTRAIL: su estela es de brillitos plateados que titilan (no de brasas que se enfrían)
+const F_CRACKLE = 1, F_FLICKER = 2, F_STROBE = 4, F_SPLIT = 8, F_SHIFT = 16, F_NOWIND = 32, F_WIGGLE = 64, F_GLITTRAIL = 128;
 
 const P = (() => {
   const MAX = 20000;
@@ -1423,8 +1473,9 @@ const P = (() => {
   const x = F(), y = F(), vx = F(), vy = F(), age = F(), life = F(), drag = F(), grav = F(), size = F();
   const r = F(), g = F(), b = F(), r2 = F(), g2 = F(), b2 = F(), tchg = F(), heat = F(), bright = F();
   const spin = F(), emit = F(), acc = F(), seed = F(), er = F(), eg = F(), eb = F(), elife = F(), ev = F(), egrav = F();
+  const wig = F(), wf = F();   // vaivén: amplitud (rad/s) y frecuencia (rad/s)
   const kind = new Uint8Array(MAX), flags = new Uint8Array(MAX);
-  const ALL = [x, y, vx, vy, age, life, drag, grav, size, r, g, b, r2, g2, b2, tchg, heat, bright, spin, emit, acc, seed, er, eg, eb, elife, ev, egrav, kind, flags];
+  const ALL = [x, y, vx, vy, age, life, drag, grav, size, r, g, b, r2, g2, b2, tchg, heat, bright, spin, emit, acc, seed, er, eg, eb, elife, ev, egrav, wig, wf, kind, flags];
   let n = 0, cap = 14000;
 
   // Instancias extra (cabezas de cohete, brillos del toque): se dibujan solo este cuadro
@@ -1437,7 +1488,7 @@ const P = (() => {
     x[i] = px; y[i] = py; vx[i] = pvx; vy[i] = pvy; age[i] = 0; life[i] = plife; size[i] = psize;
     r[i] = r2[i] = cr; g[i] = g2[i] = cg; b[i] = b2[i] = cb;
     drag[i] = 2; grav[i] = 55 * U; tchg[i] = 2; heat[i] = 0; bright[i] = 1; spin[i] = 0;
-    emit[i] = 0; acc[i] = 0; seed[i] = Math.random(); kind[i] = K_STAR; flags[i] = 0; ev[i] = 0;
+    emit[i] = 0; acc[i] = 0; seed[i] = Math.random(); kind[i] = K_STAR; flags[i] = 0; ev[i] = 0; wig[i] = 0;
     return i;
   }
   function kill(i) {
@@ -1479,7 +1530,7 @@ const P = (() => {
     const j = add(x[i] + rand(-0.6, 0.6), y[i] + rand(-0.6, 0.6), vx[i] * 0.06 + rand(-5, 5) * U, vy[i] * 0.06 + rand(-3, 7) * U,
       elife[i] * rand(0.7, 1.2), size[i] * rand(0.38, 0.58), er[i] * fade, eg[i] * fade, eb[i] * fade);
     if (j < 0) return;
-    kind[j] = K_EMBER; drag[j] = 3.4; grav[j] = egrav[i]; seed[j] = Math.random();
+    kind[j] = flags[i] & F_GLITTRAIL ? K_GLITTER : K_EMBER; drag[j] = 3.4; grav[j] = egrav[i]; seed[j] = Math.random();
   }
 
   // Microexplosión al final de una estrella crepitante
@@ -1520,6 +1571,15 @@ const P = (() => {
       if (spin[i] !== 0) {
         const s = spin[i] * dt, c = Math.cos(s), sn = Math.sin(s), tx = ux * c - uy * sn;
         uy = ux * sn + uy * c; ux = tx;
+      }
+      if (flags[i] & F_WIGGLE) {
+        const s = wig[i] * Math.sin(a * wf[i] + seed[i] * 50) * dt, c = Math.cos(s), sn = Math.sin(s), tx = ux * c - uy * sn;
+        uy = ux * sn + uy * c; ux = tx;
+      }
+      // luciérnagas: flotan dando vueltas suaves, sin caer
+      if (kind[i] === K_FLY) {
+        ux += Math.sin(a * 0.9 + seed[i] * 40) * 16 * U * dt;
+        uy += Math.cos(a * 0.7 + seed[i] * 25) * 12 * U * dt;
       }
       if (!(flags[i] & F_NOWIND)) ux += wind * (kind[i] === K_EMBER ? 1.6 : 1);
       vx[i] = ux; vy[i] = uy;
@@ -1573,6 +1633,11 @@ const P = (() => {
         ht = 0.6; ex = 0;
       } else if (kd === K_DUST) {
         br *= Math.sin(Math.PI * t); ex = 0;
+      } else if (kd === K_FLY) {
+        // parpadeo lento de luciérnaga: se enciende, brilla un momento y se apaga
+        const per = 1.3 + seed[i] * 1.4, pulse = Math.pow(Math.max(0, Math.sin((age[i] * TAU) / per + seed[i] * TAU)), 3);
+        br *= (0.14 + 1.1 * pulse) * (t < 0.08 ? t / 0.08 : t > 0.85 ? (1 - t) / 0.15 : 1);
+        ht = 0.35 * pulse; ex = 0.004;
       }
       if (br <= 0.004) continue;
       out[o++] = x[i] * scale; out[o++] = y[i] * scale;
@@ -1595,7 +1660,7 @@ const P = (() => {
 
   return {
     add, addSure, evict, room, setTrail, update, write, extra, clear,
-    x, y, vx, vy, drag, grav, size, r2, g2, b2, tchg, heat, bright, spin, kind, flags, ev, seed,
+    x, y, vx, vy, drag, grav, size, r2, g2, b2, tchg, heat, bright, spin, kind, flags, ev, seed, wig, wf,
     get n() { return n; },
     get cap() { return cap; }, set cap(v) { cap = Math.min(MAX, v); },
     MAX,
@@ -2296,18 +2361,13 @@ const SCENES = {
     sky: ["#04040d", "#0e0c25", "#211837", "#43293d"], launch: 1.02, water: 0,
     mist: 0.45, cloud: 0.3, life: { birds: "hawk", birdY: [0.34, 0.5] },
   },
-  beach: {
-    cost: 2900, name: ["Tropical Beach", "Playa tropical"],
-    sky: ["#02050d", "#071330", "#0f2650", "#1f4166"], launch: 0.77, water: 0.77,
-    mist: 0.35, cloud: 0.45, life: { birds: "gull", birdY: [0.45, 0.65] },
-  },
   bridge: {
     cost: 3600, name: ["River Bridge", "Puente del río"],
     sky: ["#04050f", "#0b0f28", "#191b3c", "#352c48"], launch: 0.8, water: 0.8,
     mist: 0.45, cloud: 0.4, life: { birds: "gull", birdY: [0.45, 0.66] },
   },
 };
-const SCENE_ORDER = ["alpine", "lake", "country", "desert", "city", "canyon", "bay", "beach", "snow", "bridge"];
+const SCENE_ORDER = ["alpine", "lake", "country", "desert", "city", "canyon", "bay", "snow", "bridge"];
 
 const Scene = (() => {
   let id = "alpine";
@@ -2809,73 +2869,6 @@ const Scene = (() => {
     fillRidge(g, m, floor, h, "#07040a", 1);
   }
 
-  // Palmera (silueta): tronco curvo con anillos y hojas que se arquean y caen, cada una con sus hojitas
-  function palmTree(g, m, x, y, s, hgt, lean, color) {
-    const tx = x + lean * hgt * 0.35, ty = y - hgt;
-    for (const ctx of [g, m]) {
-      ctx.strokeStyle = ctx === g ? color : "rgb(255,0,0)"; ctx.fillStyle = ctx.strokeStyle; ctx.lineCap = "round"; ctx.lineJoin = "round";
-      // tronco: más grueso abajo
-      for (let i = 0; i < 12; i++) {
-        const t0 = i / 12, t1 = (i + 1) / 12, q = (t) => [lerp(x, tx, t) + Math.sin(t * Math.PI) * lean * hgt * 0.08, lerp(y + 3 * s, ty, t)];
-        const [x0, y0] = q(t0), [x1, y1] = q(t1);
-        ctx.lineWidth = (5.2 - 2.4 * t0) * s; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-      }
-      // hojas
-      const n = 9;
-      for (let k = 0; k < n; k++) {
-        const a = -Math.PI / 2 + lean * 0.25 + ((k / (n - 1)) - 0.5) * 3.3, L = hgt * (0.42 + 0.08 * Math.cos(k * 2.1));
-        const ex = tx + Math.cos(a) * L, ey = ty + Math.abs(Math.cos(a)) * L * 0.35 + L * 0.12 + Math.sin(a) * L * 0.25;
-        const cx = tx + Math.cos(a) * L * 0.5, cy = ty + Math.sin(a) * L * 0.55 - L * 0.12;
-        const pt = (t) => [(1 - t) * (1 - t) * tx + 2 * (1 - t) * t * cx + t * t * ex, (1 - t) * (1 - t) * ty + 2 * (1 - t) * t * cy + t * t * ey];
-        ctx.lineWidth = 1.5 * s; ctx.beginPath(); ctx.moveTo(tx, ty);
-        for (let t = 0.05; t <= 1.001; t += 0.05) { const [px, py] = pt(t); ctx.lineTo(px, py); }
-        ctx.stroke();
-        ctx.lineWidth = 1.1 * s; ctx.beginPath();
-        for (let t = 0.12; t < 0.98; t += 0.07) {
-          const [px, py] = pt(t), [qx, qy] = pt(t + 0.02), dx = qx - px, dy = qy - py, dl = Math.hypot(dx, dy) || 1;
-          const nx = -dy / dl, ny = dx / dl, ll = (8 - 5 * t) * s * (hgt / (180 * s));
-          for (const side of [1, -1]) { ctx.moveTo(px, py); ctx.lineTo(px + (nx * side * 0.8 + dx / dl * 0.4) * ll, py + (ny * side * 0.8 + 0.7) * ll); }
-        }
-        ctx.stroke();
-      }
-      ctx.beginPath(); ctx.arc(tx, ty + 1.5 * s, 2.6 * s, 0, TAU); ctx.fill();
-    }
-  }
-  function paintBeach(g, m, w, h, s, rng) {
-    const S = SCENES.beach, wy = h * S.water, sand = h * 0.9;
-    sky(g, w, wy + 2, S.sky);
-    milkyWay(g, w, wy, rng, s);
-    // luna creciente baja, con su halo (su camino de luz lo pinta el agua)
-    const mx = w * 0.3, my = h * 0.27, mr = 9 * s;
-    lights.moon = { x: mx / pw, y: my / ph };
-    // la "mordida" de la luna creciente toma el color real del cielo en ese punto (antes de pintar la luna y su halo)
-    const bx = mx + mr * 0.45, by = my - mr * 0.2, sp = g.getImageData(Math.round(bx + mr * 1.6), Math.round(by), 1, 1).data;
-    g.fillStyle = "rgba(236,240,252,0.92)"; g.beginPath(); g.arc(mx, my, mr, 0, TAU); g.fill();
-    g.fillStyle = `rgb(${sp[0]},${sp[1]},${sp[2]})`; g.beginPath(); g.arc(bx, by, mr * 0.9, 0, TAU); g.fill();
-    const halo = g.createRadialGradient(mx, my, 0, mx, my, mr * 8);
-    halo.addColorStop(0, "rgba(215,228,255,0.14)"); halo.addColorStop(1, "rgba(215,228,255,0)");
-    g.fillStyle = halo; g.fillRect(mx - mr * 8, my - mr * 8, mr * 16, mr * 16);
-    // isla lejana
-    const isle = ridge(rng, w * 0.4, 32, wy - h * 0.012, h * 0.012, 0.5).map(([x, y]) => [x + w * 0.55, Math.min(y, wy)]);
-    for (const ctx of [g, m]) { ctx.beginPath(); ctx.moveTo(w * 0.55, wy); isle.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(w * 0.95, wy); ctx.closePath(); ctx.fillStyle = ctx === g ? "#0b1530" : "rgb(90,0,0)"; ctx.fill(); }
-    // el mar
-    const wg = g.createLinearGradient(0, wy, 0, sand);
-    wg.addColorStop(0, "#0d2142"); wg.addColorStop(1, "#04101f");
-    g.fillStyle = wg; g.fillRect(0, wy, w, sand - wy);
-    m.fillStyle = "rgb(0,255,0)"; m.fillRect(0, wy, w, sand - wy);
-    // la orilla: espuma suave y arena
-    const shore = dunes(rng, w, 64, sand, h * 0.006);
-    for (const ctx of [g, m]) {
-      ctx.beginPath(); ctx.moveTo(0, h + 2); shore.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(w, h + 2); ctx.closePath();
-      if (ctx === g) { const sg = ctx.createLinearGradient(0, sand, 0, h); sg.addColorStop(0, "#1a1d2e"); sg.addColorStop(1, "#090a12"); ctx.fillStyle = sg; } else ctx.fillStyle = "rgb(255,0,0)";
-      ctx.fill();
-    }
-    crest(g, shore.map(([x, y]) => [x, y - 1.5 * s]), s, "rgba(200,220,255,0.18)");
-    palmTree(g, m, w * 0.08, h * 0.97, s, h * 0.3, 0.7, "#03050b");
-    palmTree(g, m, w * 0.2, h * 0.99, s, h * 0.22, 0.4, "#03050b");
-    palmTree(g, m, w * 0.92, h * 0.98, s, h * 0.26, -0.8, "#03050b");
-  }
-
   function paintBridge(g, m, w, h, s, rng) {
     const S = SCENES.bridge, wy = h * S.water;
     sky(g, w, wy + 2, S.sky);
@@ -2920,7 +2913,7 @@ const Scene = (() => {
     // (los reflejos ya no se pintan: el shader refleja de verdad lo que hay arriba, con olas)
   }
 
-  const PAINT = { alpine: paintAlpine, lake: paintLake, city: paintCity, desert: paintDesert, bay: paintBay, snow: paintSnow, country: paintCountry, canyon: paintCanyon, beach: paintBeach, bridge: paintBridge };
+  const PAINT = { alpine: paintAlpine, lake: paintLake, city: paintCity, desert: paintDesert, bay: paintBay, snow: paintSnow, country: paintCountry, canyon: paintCanyon, bridge: paintBridge };
 
   function paint(sceneId, w, h, s, cColor, cMask) {
     lights = { blink: [], beam: null, moon: null, wins: [], deck: null }; pw = w; ph = h;
@@ -2936,7 +2929,7 @@ const Scene = (() => {
       }
       sceneId = "alpine";
     }
-    const seed = { alpine: 7, lake: 21, city: 33, desert: 45, bay: 58, snow: 64, country: 71, canyon: 83, beach: 92, bridge: 105 }[sceneId] || 7;
+    const seed = { alpine: 7, lake: 21, city: 33, desert: 45, bay: 58, snow: 64, country: 71, canyon: 83, bridge: 105 }[sceneId] || 7;
     PAINT[sceneId](g, m, w, h, s, mulberry(seed * 977 + 13));
   }
 
@@ -3536,6 +3529,144 @@ const Ambient = (() => {
   return { init, resize, setScene, update };
 })();
 
+/* ---------- js/doodle.js ---------- */
+"use strict";
+/* doodle.js: el cohete "Tu dibujo". La persona dibuja una forma con el dedo (uno o varios trazos) y la explosión la
+   reproduce en el cielo: cada estrella sale con una velocidad proporcional a un punto del dibujo y, como todas frenan
+   igual, la forma se conserva (igual que el corazón y la estrella).
+   - El dibujo se guarda normalizado (centrado, de -1 a 1, y hacia abajo) en Save.doodle, remuestreado y ligero.
+   - Mientras no haya dibujo, explota como una carita feliz.
+   - sample(n) reparte n puntos a lo largo de todos los trazos según su largo (cada trazo alterna color). */
+
+const Doodle = (() => {
+  // Carita feliz: el dibujo de fábrica
+  const DEFAULT = (() => {
+    const ring = [], smile = [];
+    for (let i = 0; i <= 40; i++) { const a = (i / 40) * TAU; ring.push([Math.cos(a) * 0.95, Math.sin(a) * 0.95]); }
+    for (let i = 0; i <= 16; i++) { const a = 0.2 * Math.PI + (i / 16) * 0.6 * Math.PI; smile.push([Math.cos(a) * 0.55, Math.sin(a) * 0.55 + 0.05]); }
+    return [ring, [[-0.33, -0.32], [-0.33, -0.2]], [[0.33, -0.32], [0.33, -0.2]], smile];
+  })();
+  const get = () => (Array.isArray(Save.doodle) && Save.doodle.length ? Save.doodle : DEFAULT);
+
+  const segLen = (st) => { let L = 0; for (let i = 1; i < st.length; i++) L += Math.hypot(st[i][0] - st[i - 1][0], st[i][1] - st[i - 1][1]); return L; };
+
+  // n puntos repartidos a lo largo de todos los trazos (un punto suelto cuenta como un trazo cortito)
+  function sample(n) {
+    const strokes = get(), lens = strokes.map((st) => Math.max(0.08, segLen(st))), total = lens.reduce((a, b) => a + b, 0);
+    const out = [];
+    strokes.forEach((st, si) => {
+      const k = Math.max(st.length > 1 ? 3 : 2, Math.round((n * lens[si]) / total));
+      if (st.length < 2) { for (let j = 0; j < k; j++) out.push([st[0][0] + rand(-0.02, 0.02), st[0][1] + rand(-0.02, 0.02), si]); return; }
+      const L = segLen(st);
+      let seg = 1, acc = 0;
+      for (let j = 0; j < k; j++) {
+        const d = (j / (k - 1)) * L;
+        while (seg < st.length - 1 && acc + Math.hypot(st[seg][0] - st[seg - 1][0], st[seg][1] - st[seg - 1][1]) < d) {
+          acc += Math.hypot(st[seg][0] - st[seg - 1][0], st[seg][1] - st[seg - 1][1]); seg++;
+        }
+        const a = st[seg - 1], b = st[seg], sl = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, f = clamp((d - acc) / sl, 0, 1);
+        out.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, si]);
+      }
+    });
+    return out;
+  }
+
+  /* ---------- Pantalla para dibujar ---------- */
+  let strokes = [], cur = null, cv, g, size = 300, dpr = 1, open = false, onClose = null;
+  const el = (id) => document.getElementById(id);
+
+  function init() {
+    cv = el("dd-cv"); g = cv.getContext("2d");
+    cv.addEventListener("pointerdown", (e) => {
+      if (strokes.length >= 14) return;
+      try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+      cur = [pos(e)]; strokes.push(cur); draw(); Haptics.tap();
+    });
+    cv.addEventListener("pointermove", (e) => {
+      if (!cur) return;
+      const p = pos(e), q = cur[cur.length - 1];
+      if (Math.hypot(p[0] - q[0], p[1] - q[1]) > 2.5) { cur.push(p); draw(); }
+    });
+    const up = () => { cur = null; };
+    cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+    el("dd-undo").addEventListener("click", () => { tick(); strokes.pop(); draw(); });
+    el("dd-clear").addEventListener("click", () => { tick(); strokes = []; draw(); });
+    el("dd-cancel").addEventListener("click", () => { tick(); close(false); });
+    el("dd-save").addEventListener("click", () => { tick(); close(true); });
+    el("doodle").addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+  const tick = () => { Sound.tap(); Haptics.tap(); };
+  function pos(e) { const r = cv.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * size, ((e.clientY - r.top) / r.height) * size]; }
+
+  function show(after) {
+    onClose = after || null;
+    open = true;
+    el("doodle").hidden = false;
+    size = Math.round(Math.min(VW - 64, 330));
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.style.width = cv.style.height = size + "px";
+    cv.width = cv.height = Math.round(size * dpr);
+    // el dibujo guardado aparece para seguir editándolo
+    strokes = Array.isArray(Save.doodle) ? Save.doodle.map((st) => st.map(([x, y]) => [(x * 0.42 + 0.5) * size, (y * 0.42 + 0.5) * size])) : [];
+    Input.enabled = false;
+    draw();
+  }
+  function close(save) {
+    if (save && strokes.some((st) => st.length)) {
+      Save.doodle = normalize(strokes);
+      Save.selected.type = "doodle";
+      persist();
+    }
+    open = false; cur = null;
+    el("doodle").hidden = true;
+    Input.enabled = Game.mode !== "home" && !UI.sheet;
+    if (onClose) onClose(save);
+  }
+
+  // Centra, escala a [-1, 1] (conservando la proporción) y remuestrea cada trazo a pasos parejos
+  function normalize(src) {
+    const all = src.flat();
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of all) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, half = Math.max(x1 - x0, y1 - y0) / 2 || 1;
+    const norm = src.filter((st) => st.length).map((st) => st.map(([x, y]) => [(x - cx) / half, (y - cy) / half]));
+    const total = norm.reduce((a, st) => a + segLen(st), 0), step = Math.max(0.035, total / 420);
+    return norm.map((st) => {
+      if (st.length < 2) return [st[0].map((v) => +v.toFixed(3))];
+      const out = [st[0]];
+      let acc = 0;
+      for (let i = 1; i < st.length; i++) {
+        acc += Math.hypot(st[i][0] - st[i - 1][0], st[i][1] - st[i - 1][1]);
+        if (acc >= step || i === st.length - 1) { out.push(st[i]); acc = 0; }
+      }
+      return out.map(([x, y]) => [+x.toFixed(3), +y.toFixed(3)]);
+    });
+  }
+
+  // El dibujo se ve como luz dorada sobre el cielo de noche
+  function draw() {
+    if (!open) return;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, size, size);
+    g.fillStyle = "rgba(255,255,255,0.07)";
+    for (let y = 12; y < size; y += 22) for (let x = 12; x < size; x += 22) g.fillRect(x, y, 1.2, 1.2);
+    g.lineCap = "round"; g.lineJoin = "round";
+    strokes.forEach((st, i) => {
+      const col = i % 2 ? "255,214,150" : "255,236,200";
+      g.shadowColor = `rgba(${col},0.9)`; g.shadowBlur = 12;
+      g.strokeStyle = `rgba(${col},0.95)`; g.lineWidth = 3.2;
+      g.beginPath();
+      st.forEach(([x, y], j) => (j ? g.lineTo(x, y) : g.moveTo(x, y)));
+      if (st.length === 1) g.lineTo(st[0][0] + 0.1, st[0][1]);
+      g.stroke();
+    });
+    g.shadowBlur = 0;
+    el("dd-empty").hidden = strokes.length > 0;
+  }
+
+  return { init, sample, show, get ready() { return Array.isArray(Save.doodle) && Save.doodle.length > 0; } };
+})();
+
 /* ---------- js/fireworks.js ---------- */
 "use strict";
 /* fireworks.js: paletas de color y las recetas de cada fuego artificial.
@@ -3577,6 +3708,7 @@ function star(x, y, vx, vy, life, sz, c, o = {}) {
   let f = o.flags || 0;
   if (o.to) { P.r2[i] = o.to[0]; P.g2[i] = o.to[1]; P.b2[i] = o.to[2]; P.tchg[i] = o.at ?? 0.5; f |= F_SHIFT; }
   if (o.spin) P.spin[i] = o.spin;
+  if (o.wiggle) { P.wig[i] = o.wiggle[0]; P.wf[i] = o.wiggle[1]; f |= F_WIGGLE; }
   if (o.split) { f |= F_SPLIT; P.ev[i] = o.split; }
   P.flags[i] = f;
   return i;
@@ -4067,6 +4199,171 @@ const TYPES = {
     sound(p, pan) { Sound.boom(p, pan, { low: 86, body: 1250, crack: 0.6 }); Sound.sizzle(1.8, pan, 0.4, 0.7); },
   },
 
+  // Peces: chispas que salen nadando en zigzag, cada una por su lado
+  fish: {
+    cost: 600, name: ["Fish", "Peces"], desc: ["Sparks that swim away in zigzags.", "Chispas que salen nadando en zigzag."],
+    rise: { air: 0.05, whistle: 0 },
+    burst(x, y, o) {
+      const [a] = o.colors || two(o.pal), R = radius(o) * 0.85, m = Math.round((34 + 10 * o.power) * P.room());
+      for (let k = 0; k < m; k++) {
+        const d = sphereDir(), s = R * 1.7 * rand(0.55, 1.05), c = k % 3 === 0 ? C.silver : a;
+        star(x, y, d.x * s, d.y * s, rand(1.6, 2.3), 2.0 * U, c,
+          { drag: 1.5, grav: 20, heat: 1, trail: 26, trailC: c, trailLife: 0.35, trailGrav: 6, wiggle: [rand(5, 8), rand(9, 13)], flags: F_FLICKER });
+      }
+      flair(x, y, R, o, a);
+      return { light: a, R };
+    },
+    sound(p, pan) { Sound.boom(p * 0.8, pan, { crack: 0.6 }); Sound.sizzle(2.2, pan, 0.55, 0.15); Sound.crackle(0.5, pan, 1.6); },
+  },
+
+  // Fantasma: el color cambia en una onda que va del centro hacia afuera
+  ghost: {
+    cost: 750, name: ["Ghost", "Fantasma"], desc: ["Its color changes in a wave, center out.", "Su color cambia en una onda, del centro hacia afuera."],
+    rise: { air: 0.045, whistle: 0 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o), drag = 2.1, n = count(170, o);
+      for (let k = 0; k < n; k++) {
+        const d = sphereDir(), f = Math.pow(Math.random(), 0.6), s = R * drag * (0.25 + 0.78 * f);
+        star(x, y, d.x * s, d.y * s, rand(1.9, 2.3), 2.4 * U, a, { drag, grav: 35, trail: 3, trailLife: 0.4, to: b, at: 0.18 + 0.45 * f });
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { body: 1350 }); Sound.sizzle(1.8, pan, 0.35, 0.9); },
+  },
+
+  // Mil flores: un estallido que de pronto revienta en docenas de florecitas de colores
+  flowers: {
+    cost: 900, name: ["Thousand Flowers", "Mil flores"], desc: ["Pops into dozens of tiny flowers.", "Revienta en docenas de florecitas."],
+    rise: { air: 0.05, whistle: 0 },
+    burst(x, y, o, pan) {
+      const R = radius(o) * 0.9, drag = 2.0, g = 45 * U, m = Math.round((26 + 8 * o.power) * P.room());
+      let first = 9, last = 0;
+      for (let k = 0; k < m; k++) {
+        const d = sphereDir(), s = R * drag * rand(0.5, 1.0), vx = d.x * s, vy = d.y * s, T0 = rand(0.55, 0.95);
+        star(x, y, vx, vy, T0, 1.8 * U, C.warm, { drag, grav: 45, trail: 8, trailC: C.gold, trailLife: 0.4 });
+        const e = Math.exp(-drag * T0), px = x + (vx / drag) * (1 - e), py = y + ((vy - g / drag) / drag) * (1 - e) + (g * T0) / drag;
+        first = Math.min(first, T0); last = Math.max(last, T0);
+        // donde se apaga cada estrella, nace una florecita
+        Timers.after(T0, () => {
+          const c = pick(o.pal.colors), sp = rand(38, 56) * U * Math.pow(o.power, 0.3), q = randi(8, 11), rot = rand(TAU);
+          for (let j = 0; j < q; j++) {
+            const th = rot + (j / q) * TAU;
+            star(px, py, Math.cos(th) * sp, Math.sin(th) * sp, rand(0.5, 0.8), 1.8 * U, c, { drag: 3, grav: 30, flags: F_FLICKER });
+          }
+        });
+      }
+      // el crepitar suave de las florecitas, en dos tandas
+      Timers.after(first, () => Sound.crackle(1.5, pan, 0));
+      Timers.after((first + last) / 2, () => Sound.crackle(1.0, pan, 0));
+      return { light: C.warm, R };
+    },
+    sound(p, pan) { Sound.boom(p * 0.85, pan, { crack: 0.7 }); },
+  },
+
+  // Luciérnagas: lucecitas que se quedan flotando y parpadeando despacio
+  fireflies: {
+    cost: 1100, name: ["Fireflies", "Luciérnagas"], desc: ["Little lights that hover and blink.", "Lucecitas que flotan y parpadean."],
+    rise: { air: 0.035, whistle: 0 },
+    burst(x, y, o) {
+      const m = Math.round(24 + 8 * o.power), R = radius(o) * 0.65;
+      const cols = [[0.78, 1.0, 0.36], [0.95, 1.0, 0.5], [0.66, 1.0, 0.45]];
+      for (let k = 0; k < m; k++) {
+        const d = sphereDir(), s = R * rand(0.4, 1.1), c = pick(cols);
+        const i = P.addSure(x, y, d.x * s, d.y * s, rand(5.5, 7.5), rand(2.4, 3.1) * U, c[0] * 1.3, c[1] * 1.3, c[2] * 1.3);
+        if (i < 0) break;
+        P.kind[i] = K_FLY; P.drag[i] = 2.2; P.grav[i] = -2 * U; P.heat[i] = 0.3;
+      }
+      return { light: [0.7, 1, 0.4], R: R * 0.8 };
+    },
+    sound(p, pan) { Sound.boom(p * 0.45, pan, { crack: 0, gain: 0.5, low: 80, body: 800 }); },
+  },
+
+  // Linternas: luces cálidas que bajan flotando y se balancean, como farolitos en paracaídas
+  lanterns: {
+    cost: 1250, name: ["Lanterns", "Linternas"], desc: ["Warm lights that float down slowly.", "Luces cálidas que bajan flotando."],
+    rise: { air: 0.04, whistle: 0 },
+    burst(x, y, o) {
+      const R = radius(o) * 0.7, m = Math.round(9 + 3 * o.power);
+      const warm = [[1.0, 0.72, 0.38], [1.0, 0.62, 0.3], [1.0, 0.8, 0.5]];
+      for (let k = 0; k < m; k++) {
+        const th = rand(TAU), s = R * rand(0.6, 1.4);
+        star(x, y, Math.cos(th) * s, Math.sin(th) * s * 0.7 - R * 0.3, rand(6, 8), rand(5.6, 6.8) * U, pick(warm),
+          { drag: 1.6, grav: 16, heat: 0.35, bright: 1.25, wiggle: [rand(0.8, 1.3), rand(1.4, 2.2)] });
+      }
+      return { light: [1, 0.7, 0.4], R };
+    },
+    sound(p, pan) { Sound.boom(p * 0.6, pan, { crack: 0, gain: 0.7, low: 76, body: 900 }); Sound.crackle(0.3, pan, 0.4); },
+  },
+
+  // Medusa: una campana de luz (arco, arcos interiores y la orilla ondulada) y tentáculos que cuelgan de la orilla,
+  // caen ondulando y cambian de color. Todas las estrellas frenan igual, así que la forma se conserva.
+  jelly: {
+    cost: 1500, name: ["Jellyfish", "Medusa"], desc: ["A glowing bell with drifting tentacles.", "Una campana de luz con tentáculos que caen."],
+    rise: { air: 0.04, whistle: 0.03, f0: 720, f1: 1100 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.05, drag = 2.1, k = R * drag;
+      const bell = (rx, ry, n, size, life) => {
+        for (let i = 0; i < n; i++) {
+          const th = Math.PI + (i / (n - 1)) * Math.PI;   // de izquierda a derecha por arriba
+          star(x, y, Math.cos(th) * rx * k, Math.sin(th) * ry * k, life * rand(0.95, 1.05), size * U, a, { drag, grav: 12, trail: 3, trailLife: 0.4, to: b, at: 0.65, flags: F_FLICKER });
+        }
+      };
+      bell(1, 0.78, count(52, o, true), 2.6, 2.7);
+      bell(0.7, 0.5, count(30, o, true), 2.1, 2.5);
+      bell(0.4, 0.26, count(16, o, true), 1.8, 2.3);
+      // la orilla de la campana, un poco ondulada
+      const nr = count(30, o, true);
+      for (let i = 0; i < nr; i++) {
+        const f = (i / (nr - 1)) * 2 - 1;
+        star(x, y, f * k, (0.06 * Math.sin(f * 9)) * k, rand(2.5, 2.8), 2.2 * U, a, { drag, grav: 12, trail: 3, trailLife: 0.4, to: b, at: 0.65 });
+      }
+      // tentáculos: salen de la orilla y caen ondulando, con estelas largas
+      const T = 12 + Math.round(3 * o.power);
+      for (let t = 0; t < T; t++) {
+        const f = ((t + 0.5) / T) * 1.8 - 0.9;
+        star(x, y, f * k, R * rand(0.18, 0.4), rand(3.6, 4.4), 2.0 * U, b,
+          { drag, grav: 95, heat: 0.8, trail: 52 * (Q.level === 0 ? 0.6 : 1), trailC: avg(a, b), trailLife: 2.2, trailGrav: 2, wiggle: [rand(1.8, 2.6), rand(2.5, 4)], to: a, at: 0.75 });
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { body: 1300, crack: 0.6 }); Sound.sizzle(3, pan, 0.5, 0.5); },
+  },
+
+  // Cortina de plata: una lluvia ancha de plata que cae dejando brillitos
+  curtain: {
+    cost: 1650, name: ["Silver Curtain", "Cortina de plata"], desc: ["A wide rain of twinkling silver.", "Una lluvia ancha de plata que brilla."],
+    rise: { air: 0.06, whistle: 0 },
+    burst(x, y, o) {
+      const R = radius(o), m = count(46, o);
+      for (let k = 0; k < m; k++) {
+        const f = (k / (m - 1)) * 2 - 1 + rand(-0.04, 0.04);
+        star(x, y, f * R * 2.2, -R * rand(0.15, 0.45) * (1 - Math.abs(f) * 0.5), rand(3.6, 4.6), 2.2 * U, C.silver,
+          { drag: 1.5, grav: 55, heat: 1, trail: 36 * (Q.level === 0 ? 0.6 : 1), trailC: [0.92, 0.95, 1], trailLife: 1.8, trailGrav: 30, flags: F_GLITTRAIL | F_FLICKER });
+      }
+      glitterCrown(x, y, R * 0.4, Math.round(30 * P.room()), C.silver);
+      return { light: C.silver, R: R * 1.4 };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { low: 82, body: 1150, crack: 0.7 }); Sound.sizzle(4.5, pan, 0.85, 0.2); },
+  },
+
+  // Tu dibujo: la explosión dibuja en el cielo la forma que la persona trazó con el dedo (doodle.js)
+  doodle: {
+    cost: 1000, name: ["Your Drawing", "Tu dibujo"], desc: ["Bursts into a shape you draw.", "Explota con la forma que dibujes."],
+    rise: { air: 0.04, whistle: 0.04, f0: 740, f1: 1150 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.1, drag = 2.0;
+      const pts = Doodle.sample(count(130, o, true));
+      for (const [px, py, st] of pts) {
+        star(x, y, px * R * drag, py * R * drag, rand(1.9, 2.2), 2.6 * U, st % 2 ? b : a, { drag, grav: 18, trail: 3, trailLife: 0.5, to: o.flair >= 2 ? C.white : null, at: 0.7 });
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { low: 86, body: 1250, crack: 0.6 }); Sound.sizzle(1.8, pan, 0.4, 0.7); },
+  },
+
   // El gran cierre de la Gran Final (no se elige: es la recompensa)
   grand: {
     cost: -1, name: ["Grand Shell", "Gran carcasa"], desc: ["", ""],
@@ -4096,7 +4393,7 @@ const TYPES = {
     sound(p, pan) { Sound.boom(3, pan, { low: 70, body: 1000, gain: 1.15 }); Sound.boom(1.5, -0.4, { crack: 0 }); Sound.sizzle(5.5, pan, 1, 0.3); },
   },
 };
-const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "whirl", "spiral", "chrysanthemum", "strobe", "dahlia", "comet", "crossette", "horsetail", "heart", "swarm", "saturn", "triple", "star"];
+const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "whirl", "spiral", "chrysanthemum", "fish", "strobe", "dahlia", "ghost", "comet", "flowers", "crossette", "horsetail", "doodle", "fireflies", "heart", "lanterns", "swarm", "saturn", "jelly", "triple", "curtain", "star"];
 
 // Íconos de línea (SVG, sin emojis), uno por tipo
 const ICON = {
@@ -4115,6 +4412,14 @@ const ICON = {
   saturn: '<circle cx="12" cy="12" r="4.2"/><ellipse cx="12" cy="12" rx="9.5" ry="3" transform="rotate(-18 12 12)"/>',
   star: '<path d="M12 3.8l2.4 5.1 5.5.6-4.1 3.8 1.1 5.5L12 16l-4.9 2.8 1.1-5.5-4.1-3.8 5.5-.6z"/>',
   whirl: '<path d="M12 21c-2.4-1.2-2.4-2.8 0-4s2.4-2.8 0-4-2.4-2.8 0-4 2.4-2.8 0-4"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor"/><path d="M16.5 6.5c.9.6 1.4 1.4 1.4 2.2M18.8 4.8c1.4.9 2.2 2.2 2.2 3.6" opacity=".7"/>',
+  fish: '<path d="M3.5 12c2.6-3.2 6.2-3.2 9.2 0-3 3.2-6.6 3.2-9.2 0zM12.7 12l3.6-2.6v5.2z"/><circle cx="7" cy="11.4" r=".75" fill="currentColor"/><path d="M17.5 6.5c1-.8 2.1-.8 3.1 0M17.5 17.5c1 .8 2.1.8 3.1 0"/>',
+  ghost: '<circle cx="12" cy="12" r="8.2" stroke-dasharray="1.8 2.2"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>',
+  flowers: '<circle cx="7" cy="8" r="1" fill="currentColor"/><path d="M7 5v1.4M7 9.6V11M4 8h1.4M8.6 8H10"/><circle cx="16.5" cy="9.5" r="1" fill="currentColor"/><path d="M16.5 6.5v1.4M16.5 11.1v1.4M13.5 9.5h1.4M18.1 9.5h1.4"/><circle cx="10.5" cy="16.5" r="1" fill="currentColor"/><path d="M10.5 13.5v1.4M10.5 18.1v1.4M7.5 16.5h1.4M12.1 16.5h1.4"/>',
+  fireflies: '<circle cx="7" cy="9" r="1.3" fill="currentColor"/><circle cx="15.5" cy="6.5" r="1" fill="currentColor"/><circle cx="12.5" cy="15" r="1.4" fill="currentColor"/><circle cx="18.5" cy="16.5" r=".9" fill="currentColor"/><path d="M7 5.8v-1M7 13.2v-1M3.8 9h1M10.2 9h-1M12.5 11.4v-1M12.5 19.6v-1" opacity=".6"/>',
+  lanterns: '<path d="M6.5 6h3.2l.7 5H5.8zM14.5 9.5h3.2l.7 5h-4.6z"/><path d="M8.1 11v1.8M16.1 14.5v1.8M8.1 4.2V6M16.1 7.7v1.8"/>',
+  jelly: '<path d="M5.5 11.5a6.5 6.5 0 0 1 13 0z"/><path d="M8 11.5c-.6 2.5.8 4 0 6.5M12 11.5c.6 3-.6 5 .2 8M16 11.5c.6 2.5-.8 4 0 6.5"/>',
+  curtain: '<path d="M4 6.2c5-1.6 11-1.6 16 0"/><path d="M5 8v9M8 7.4v11M11 7v8.5M14 7v10M17 7.4v8M19.5 8v9.5" stroke-dasharray="1.2 2"/>',
+  doodle: '<path d="M4 17c2-5 4-6 5.5-3s3 3.5 5-1 3.5-5.5 5.5-4"/><path d="M15.5 4.5l3 3M17 3l3 3-1.5 1.5-3-3z"/>',
   chrysanthemum: '<circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 9.5V3.5M12 14.5v6M9.5 12h-6M14.5 12h6M10.2 10.2L6 6M13.8 13.8L18 18M13.8 10.2L18 6M10.2 13.8L6 18" stroke-dasharray="1.2 1.6"/>',
   dahlia: '<circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="19" r="1.9"/><circle cx="5" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/><circle cx="7" cy="7" r="1.5"/><circle cx="17" cy="17" r="1.5"/><circle cx="17" cy="7" r="1.5"/><circle cx="7" cy="17" r="1.5"/>',
   horsetail: '<circle cx="12" cy="5" r="1.4" fill="currentColor"/><path d="M12 6.5c-1.5 2-2.5 6-2.5 13M12 6.5c1.5 2 2.5 6 2.5 13M12 6.5c-3 1.5-5.5 5-6.5 11M12 6.5c3 1.5 5.5 5 6.5 11"/>',
@@ -4816,6 +5121,7 @@ const UI = (() => {
     $("#b-home").addEventListener("click", () => { press(); goHome(); });
     $("#sparks").addEventListener("click", () => { press(); colTab = "fw"; open("collection"); });
     $("#pick-btn").addEventListener("click", () => { press(); togglePicker(); });
+    $("#pick-draw").addEventListener("click", () => { press(); togglePicker(false); Doodle.show(() => buildPicker()); });
     document.addEventListener("pointerdown", (e) => { if (pickOpen && !e.target.closest("#picker")) togglePicker(false); }, true);
     document.addEventListener("keydown", (e) => { if (pickOpen && e.key === "Escape") togglePicker(false); });
     $("#finale").addEventListener("click", () => { if (Game.startFinale()) { Haptics.success(); finaleBar(); } });
@@ -4922,6 +5228,7 @@ const UI = (() => {
     $("#picker").classList.toggle("solo", items.length < 2);
     const grid = $("#pick-pop .pick-grid");
     grid.innerHTML = items.map((k) => `<button class="pick-it${k === cur ? " on" : ""}" data-k="${k}" type="button" role="menuitemradio" aria-checked="${k === cur}">${iconSVG(k)}<span>${name(k)}</span></button>`).join("");
+    $("#pick-draw").hidden = !owned.includes("doodle");
     grid.querySelectorAll(".pick-it").forEach((b) => b.addEventListener("click", () => {
       Save.selected.type = b.dataset.k; persist();
       Sound.tap(); Haptics.tap();
@@ -5084,13 +5391,19 @@ const UI = (() => {
         const T = TYPES[k], own = Save.unlocked.types.includes(k), sel = Save.selected.type === k, n = Save.stats.byType[k] || 0;
         return `<div class="card${own ? "" : " locked"}${sel ? " sel" : ""}" data-k="${k}">
           ${own ? "" : LOCK}<span class="ci">${iconSVG(k)}</span><h4>${T.name[LANG]}</h4><p>${T.desc[LANG]}</p>
-          ${own ? `<span class="meta">${t("launched")} ${fmt(n)}</span><button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button>` : buyBtn(T.cost)}
+          ${own ? `<span class="meta">${t("launched")} ${fmt(n)}</span>${k === "doodle"
+            ? `<div class="card-row"><button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button><button class="card-btn" data-draw type="button">${t("ddDraw")}</button></div>`
+            : `<button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button>`}` : buyBtn(T.cost)}
         </div>`;
       }).join("")}</div>`;
       el.querySelectorAll(".card").forEach((c) => {
         const k = c.dataset.k;
         c.querySelector("[data-use]")?.addEventListener("click", () => { press(); Save.selected.type = k; persist(); buildPicker(); renderCollection(); });
-        c.querySelector("[data-buy]")?.addEventListener("click", () => buy("types", k, TYPES[k].cost, TYPES[k].name[LANG], k, () => { Save.selected.type = k; buildPicker(); }));
+        c.querySelector("[data-buy]")?.addEventListener("click", () => buy("types", k, TYPES[k].cost, TYPES[k].name[LANG], k, () => {
+          Save.selected.type = k; buildPicker();
+          if (k === "doodle") setTimeout(() => Doodle.show(() => { buildPicker(); renderCollection(); }), 500);  // recién comprado: a dibujar
+        }));
+        c.querySelector("[data-draw]")?.addEventListener("click", () => { press(); Doodle.show(() => { buildPicker(); renderCollection(); }); });
       });
     } else if (colTab === "pal") {
       el.innerHTML = `<div class="grid">${PALETTE_ORDER.map((k) => {
@@ -5278,6 +5591,7 @@ const Main = (() => {
     if (!R.init(cv)) { $("#nogl").hidden = false; $("#home").hidden = true; return; }
     UI.init();
     Photo.init();
+    Doodle.init();
     // "Tu foto" vive en IndexedDB: se carga sin bloquear el arranque y, si es el escenario elegido, se pinta
     Photo.load().then((ok) => { if (ok && Save.selected.scene === "photo") { Scene.apply("photo"); R.clearTrails(); } });
     Input.init($("#surface"), ov);

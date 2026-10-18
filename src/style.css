@@ -351,3 +351,19 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
 }
 #home.intro .mode > *, #home.hide .mode > *, #home.intro .home-sparks, #home.hide .home-sparks, #home.intro .home-foot, #home.hide .home-foot,
 #home.hide .brand, #hud.off .glass > *, body.idle #hud .glass > *, #hud.off .mid, body.idle #hud .mid { opacity: 0; }
+
+/* ---------- "Tu dibujo" ---------- */
+.pick-draw { width: 100%; margin-top: 6px; height: 40px; border-radius: 13px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 13.5px; font-weight: 500; color: var(--gold-2); background: rgba(241, 194, 122, 0.1); border: 1px solid rgba(241, 194, 122, 0.25); }
+.pick-draw svg { width: 18px; height: 18px; }
+.doodle { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 16px; background: rgba(2, 3, 9, 0.62); touch-action: none; }  /* sin fundido de opacidad: el vidrio de adentro no difuminaría */
+.dd-card { width: min(380px, 100%); border-radius: 24px; padding: 18px 16px 14px; display: flex; flex-direction: column; align-items: center; gap: 12px;
+  background: var(--glass-strong); border: 1px solid var(--line-2); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); }
+.dd-card h3 { margin: 0; font-size: 18px; font-weight: 600; }
+.dd-hint { margin: 0; font-size: 13px; line-height: 1.35; color: var(--ink-2); text-align: center; }
+.dd-pad { position: relative; border-radius: 18px; overflow: hidden; background: radial-gradient(circle at 50% 40%, #0f1b38, #04060f 75%); border: 1px solid var(--line); }
+.dd-pad canvas { display: block; touch-action: none; }
+.dd-empty { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); pointer-events: none; }
+.dd-row { width: 100%; display: flex; gap: 8px; justify-content: space-between; }
+.dd-row .sbtn { flex: 1; }
+.dd-row .ph-btn { flex: 1; }

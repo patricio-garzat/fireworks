@@ -95,6 +95,13 @@ const STR = {
   phWater: ["Water", "Agua"],
   phChange: ["Choose another photo", "Elegir otra foto"],
   phReady: ["Your sky is ready", "Tu cielo está listo"],
+  ddTitle: ["Draw your firework", "Dibuja tu cohete"],
+  ddHint: ["Draw a shape with your finger. Your rocket will burst into it.", "Dibuja una forma con el dedo. Tu cohete explotará con esa forma."],
+  ddEmpty: ["Draw here", "Dibuja aquí"],
+  ddUndo: ["Undo", "Deshacer"],
+  ddClear: ["Clear", "Borrar"],
+  ddDraw: ["Draw", "Dibujar"],
+  ddMine: ["Draw my rocket", "Dibujar mi cohete"],
 };
 
 let LANG = 0; // 0 = inglés, 1 = español

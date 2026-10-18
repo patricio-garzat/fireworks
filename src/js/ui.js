@@ -29,6 +29,7 @@ const UI = (() => {
     $("#b-home").addEventListener("click", () => { press(); goHome(); });
     $("#sparks").addEventListener("click", () => { press(); colTab = "fw"; open("collection"); });
     $("#pick-btn").addEventListener("click", () => { press(); togglePicker(); });
+    $("#pick-draw").addEventListener("click", () => { press(); togglePicker(false); Doodle.show(() => buildPicker()); });
     document.addEventListener("pointerdown", (e) => { if (pickOpen && !e.target.closest("#picker")) togglePicker(false); }, true);
     document.addEventListener("keydown", (e) => { if (pickOpen && e.key === "Escape") togglePicker(false); });
     $("#finale").addEventListener("click", () => { if (Game.startFinale()) { Haptics.success(); finaleBar(); } });
@@ -135,6 +136,7 @@ const UI = (() => {
     $("#picker").classList.toggle("solo", items.length < 2);
     const grid = $("#pick-pop .pick-grid");
     grid.innerHTML = items.map((k) => `<button class="pick-it${k === cur ? " on" : ""}" data-k="${k}" type="button" role="menuitemradio" aria-checked="${k === cur}">${iconSVG(k)}<span>${name(k)}</span></button>`).join("");
+    $("#pick-draw").hidden = !owned.includes("doodle");
     grid.querySelectorAll(".pick-it").forEach((b) => b.addEventListener("click", () => {
       Save.selected.type = b.dataset.k; persist();
       Sound.tap(); Haptics.tap();
@@ -297,13 +299,19 @@ const UI = (() => {
         const T = TYPES[k], own = Save.unlocked.types.includes(k), sel = Save.selected.type === k, n = Save.stats.byType[k] || 0;
         return `<div class="card${own ? "" : " locked"}${sel ? " sel" : ""}" data-k="${k}">
           ${own ? "" : LOCK}<span class="ci">${iconSVG(k)}</span><h4>${T.name[LANG]}</h4><p>${T.desc[LANG]}</p>
-          ${own ? `<span class="meta">${t("launched")} ${fmt(n)}</span><button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button>` : buyBtn(T.cost)}
+          ${own ? `<span class="meta">${t("launched")} ${fmt(n)}</span>${k === "doodle"
+            ? `<div class="card-row"><button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button><button class="card-btn" data-draw type="button">${t("ddDraw")}</button></div>`
+            : `<button class="card-btn${sel ? " on" : ""}" data-use type="button">${sel ? t("selected") : t("use")}</button>`}` : buyBtn(T.cost)}
         </div>`;
       }).join("")}</div>`;
       el.querySelectorAll(".card").forEach((c) => {
         const k = c.dataset.k;
         c.querySelector("[data-use]")?.addEventListener("click", () => { press(); Save.selected.type = k; persist(); buildPicker(); renderCollection(); });
-        c.querySelector("[data-buy]")?.addEventListener("click", () => buy("types", k, TYPES[k].cost, TYPES[k].name[LANG], k, () => { Save.selected.type = k; buildPicker(); }));
+        c.querySelector("[data-buy]")?.addEventListener("click", () => buy("types", k, TYPES[k].cost, TYPES[k].name[LANG], k, () => {
+          Save.selected.type = k; buildPicker();
+          if (k === "doodle") setTimeout(() => Doodle.show(() => { buildPicker(); renderCollection(); }), 500);  // recién comprado: a dibujar
+        }));
+        c.querySelector("[data-draw]")?.addEventListener("click", () => { press(); Doodle.show(() => { buildPicker(); renderCollection(); }); });
       });
     } else if (colTab === "pal") {
       el.innerHTML = `<div class="grid">${PALETTE_ORDER.map((k) => {

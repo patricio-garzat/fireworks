@@ -54,18 +54,13 @@ const SCENES = {
     sky: ["#04040d", "#0e0c25", "#211837", "#43293d"], launch: 1.02, water: 0,
     mist: 0.45, cloud: 0.3, life: { birds: "hawk", birdY: [0.34, 0.5] },
   },
-  beach: {
-    cost: 2900, name: ["Tropical Beach", "Playa tropical"],
-    sky: ["#02050d", "#071330", "#0f2650", "#1f4166"], launch: 0.77, water: 0.77,
-    mist: 0.35, cloud: 0.45, life: { birds: "gull", birdY: [0.45, 0.65] },
-  },
   bridge: {
     cost: 3600, name: ["River Bridge", "Puente del río"],
     sky: ["#04050f", "#0b0f28", "#191b3c", "#352c48"], launch: 0.8, water: 0.8,
     mist: 0.45, cloud: 0.4, life: { birds: "gull", birdY: [0.45, 0.66] },
   },
 };
-const SCENE_ORDER = ["alpine", "lake", "country", "desert", "city", "canyon", "bay", "beach", "snow", "bridge"];
+const SCENE_ORDER = ["alpine", "lake", "country", "desert", "city", "canyon", "bay", "snow", "bridge"];
 
 const Scene = (() => {
   let id = "alpine";
@@ -567,73 +562,6 @@ const Scene = (() => {
     fillRidge(g, m, floor, h, "#07040a", 1);
   }
 
-  // Palmera (silueta): tronco curvo con anillos y hojas que se arquean y caen, cada una con sus hojitas
-  function palmTree(g, m, x, y, s, hgt, lean, color) {
-    const tx = x + lean * hgt * 0.35, ty = y - hgt;
-    for (const ctx of [g, m]) {
-      ctx.strokeStyle = ctx === g ? color : "rgb(255,0,0)"; ctx.fillStyle = ctx.strokeStyle; ctx.lineCap = "round"; ctx.lineJoin = "round";
-      // tronco: más grueso abajo
-      for (let i = 0; i < 12; i++) {
-        const t0 = i / 12, t1 = (i + 1) / 12, q = (t) => [lerp(x, tx, t) + Math.sin(t * Math.PI) * lean * hgt * 0.08, lerp(y + 3 * s, ty, t)];
-        const [x0, y0] = q(t0), [x1, y1] = q(t1);
-        ctx.lineWidth = (5.2 - 2.4 * t0) * s; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-      }
-      // hojas
-      const n = 9;
-      for (let k = 0; k < n; k++) {
-        const a = -Math.PI / 2 + lean * 0.25 + ((k / (n - 1)) - 0.5) * 3.3, L = hgt * (0.42 + 0.08 * Math.cos(k * 2.1));
-        const ex = tx + Math.cos(a) * L, ey = ty + Math.abs(Math.cos(a)) * L * 0.35 + L * 0.12 + Math.sin(a) * L * 0.25;
-        const cx = tx + Math.cos(a) * L * 0.5, cy = ty + Math.sin(a) * L * 0.55 - L * 0.12;
-        const pt = (t) => [(1 - t) * (1 - t) * tx + 2 * (1 - t) * t * cx + t * t * ex, (1 - t) * (1 - t) * ty + 2 * (1 - t) * t * cy + t * t * ey];
-        ctx.lineWidth = 1.5 * s; ctx.beginPath(); ctx.moveTo(tx, ty);
-        for (let t = 0.05; t <= 1.001; t += 0.05) { const [px, py] = pt(t); ctx.lineTo(px, py); }
-        ctx.stroke();
-        ctx.lineWidth = 1.1 * s; ctx.beginPath();
-        for (let t = 0.12; t < 0.98; t += 0.07) {
-          const [px, py] = pt(t), [qx, qy] = pt(t + 0.02), dx = qx - px, dy = qy - py, dl = Math.hypot(dx, dy) || 1;
-          const nx = -dy / dl, ny = dx / dl, ll = (8 - 5 * t) * s * (hgt / (180 * s));
-          for (const side of [1, -1]) { ctx.moveTo(px, py); ctx.lineTo(px + (nx * side * 0.8 + dx / dl * 0.4) * ll, py + (ny * side * 0.8 + 0.7) * ll); }
-        }
-        ctx.stroke();
-      }
-      ctx.beginPath(); ctx.arc(tx, ty + 1.5 * s, 2.6 * s, 0, TAU); ctx.fill();
-    }
-  }
-  function paintBeach(g, m, w, h, s, rng) {
-    const S = SCENES.beach, wy = h * S.water, sand = h * 0.9;
-    sky(g, w, wy + 2, S.sky);
-    milkyWay(g, w, wy, rng, s);
-    // luna creciente baja, con su halo (su camino de luz lo pinta el agua)
-    const mx = w * 0.3, my = h * 0.27, mr = 9 * s;
-    lights.moon = { x: mx / pw, y: my / ph };
-    // la "mordida" de la luna creciente toma el color real del cielo en ese punto (antes de pintar la luna y su halo)
-    const bx = mx + mr * 0.45, by = my - mr * 0.2, sp = g.getImageData(Math.round(bx + mr * 1.6), Math.round(by), 1, 1).data;
-    g.fillStyle = "rgba(236,240,252,0.92)"; g.beginPath(); g.arc(mx, my, mr, 0, TAU); g.fill();
-    g.fillStyle = `rgb(${sp[0]},${sp[1]},${sp[2]})`; g.beginPath(); g.arc(bx, by, mr * 0.9, 0, TAU); g.fill();
-    const halo = g.createRadialGradient(mx, my, 0, mx, my, mr * 8);
-    halo.addColorStop(0, "rgba(215,228,255,0.14)"); halo.addColorStop(1, "rgba(215,228,255,0)");
-    g.fillStyle = halo; g.fillRect(mx - mr * 8, my - mr * 8, mr * 16, mr * 16);
-    // isla lejana
-    const isle = ridge(rng, w * 0.4, 32, wy - h * 0.012, h * 0.012, 0.5).map(([x, y]) => [x + w * 0.55, Math.min(y, wy)]);
-    for (const ctx of [g, m]) { ctx.beginPath(); ctx.moveTo(w * 0.55, wy); isle.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(w * 0.95, wy); ctx.closePath(); ctx.fillStyle = ctx === g ? "#0b1530" : "rgb(90,0,0)"; ctx.fill(); }
-    // el mar
-    const wg = g.createLinearGradient(0, wy, 0, sand);
-    wg.addColorStop(0, "#0d2142"); wg.addColorStop(1, "#04101f");
-    g.fillStyle = wg; g.fillRect(0, wy, w, sand - wy);
-    m.fillStyle = "rgb(0,255,0)"; m.fillRect(0, wy, w, sand - wy);
-    // la orilla: espuma suave y arena
-    const shore = dunes(rng, w, 64, sand, h * 0.006);
-    for (const ctx of [g, m]) {
-      ctx.beginPath(); ctx.moveTo(0, h + 2); shore.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(w, h + 2); ctx.closePath();
-      if (ctx === g) { const sg = ctx.createLinearGradient(0, sand, 0, h); sg.addColorStop(0, "#1a1d2e"); sg.addColorStop(1, "#090a12"); ctx.fillStyle = sg; } else ctx.fillStyle = "rgb(255,0,0)";
-      ctx.fill();
-    }
-    crest(g, shore.map(([x, y]) => [x, y - 1.5 * s]), s, "rgba(200,220,255,0.18)");
-    palmTree(g, m, w * 0.08, h * 0.97, s, h * 0.3, 0.7, "#03050b");
-    palmTree(g, m, w * 0.2, h * 0.99, s, h * 0.22, 0.4, "#03050b");
-    palmTree(g, m, w * 0.92, h * 0.98, s, h * 0.26, -0.8, "#03050b");
-  }
-
   function paintBridge(g, m, w, h, s, rng) {
     const S = SCENES.bridge, wy = h * S.water;
     sky(g, w, wy + 2, S.sky);
@@ -678,7 +606,7 @@ const Scene = (() => {
     // (los reflejos ya no se pintan: el shader refleja de verdad lo que hay arriba, con olas)
   }
 
-  const PAINT = { alpine: paintAlpine, lake: paintLake, city: paintCity, desert: paintDesert, bay: paintBay, snow: paintSnow, country: paintCountry, canyon: paintCanyon, beach: paintBeach, bridge: paintBridge };
+  const PAINT = { alpine: paintAlpine, lake: paintLake, city: paintCity, desert: paintDesert, bay: paintBay, snow: paintSnow, country: paintCountry, canyon: paintCanyon, bridge: paintBridge };
 
   function paint(sceneId, w, h, s, cColor, cMask) {
     lights = { blink: [], beam: null, moon: null, wins: [], deck: null }; pw = w; ph = h;
@@ -694,7 +622,7 @@ const Scene = (() => {
       }
       sceneId = "alpine";
     }
-    const seed = { alpine: 7, lake: 21, city: 33, desert: 45, bay: 58, snow: 64, country: 71, canyon: 83, beach: 92, bridge: 105 }[sceneId] || 7;
+    const seed = { alpine: 7, lake: 21, city: 33, desert: 45, bay: 58, snow: 64, country: 71, canyon: 83, bridge: 105 }[sceneId] || 7;
     PAINT[sceneId](g, m, w, h, s, mulberry(seed * 977 + 13));
   }
 

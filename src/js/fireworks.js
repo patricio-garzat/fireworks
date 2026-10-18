@@ -38,6 +38,7 @@ function star(x, y, vx, vy, life, sz, c, o = {}) {
   let f = o.flags || 0;
   if (o.to) { P.r2[i] = o.to[0]; P.g2[i] = o.to[1]; P.b2[i] = o.to[2]; P.tchg[i] = o.at ?? 0.5; f |= F_SHIFT; }
   if (o.spin) P.spin[i] = o.spin;
+  if (o.wiggle) { P.wig[i] = o.wiggle[0]; P.wf[i] = o.wiggle[1]; f |= F_WIGGLE; }
   if (o.split) { f |= F_SPLIT; P.ev[i] = o.split; }
   P.flags[i] = f;
   return i;
@@ -528,6 +529,171 @@ const TYPES = {
     sound(p, pan) { Sound.boom(p, pan, { low: 86, body: 1250, crack: 0.6 }); Sound.sizzle(1.8, pan, 0.4, 0.7); },
   },
 
+  // Peces: chispas que salen nadando en zigzag, cada una por su lado
+  fish: {
+    cost: 600, name: ["Fish", "Peces"], desc: ["Sparks that swim away in zigzags.", "Chispas que salen nadando en zigzag."],
+    rise: { air: 0.05, whistle: 0 },
+    burst(x, y, o) {
+      const [a] = o.colors || two(o.pal), R = radius(o) * 0.85, m = Math.round((34 + 10 * o.power) * P.room());
+      for (let k = 0; k < m; k++) {
+        const d = sphereDir(), s = R * 1.7 * rand(0.55, 1.05), c = k % 3 === 0 ? C.silver : a;
+        star(x, y, d.x * s, d.y * s, rand(1.6, 2.3), 2.0 * U, c,
+          { drag: 1.5, grav: 20, heat: 1, trail: 26, trailC: c, trailLife: 0.35, trailGrav: 6, wiggle: [rand(5, 8), rand(9, 13)], flags: F_FLICKER });
+      }
+      flair(x, y, R, o, a);
+      return { light: a, R };
+    },
+    sound(p, pan) { Sound.boom(p * 0.8, pan, { crack: 0.6 }); Sound.sizzle(2.2, pan, 0.55, 0.15); Sound.crackle(0.5, pan, 1.6); },
+  },
+
+  // Fantasma: el color cambia en una onda que va del centro hacia afuera
+  ghost: {
+    cost: 750, name: ["Ghost", "Fantasma"], desc: ["Its color changes in a wave, center out.", "Su color cambia en una onda, del centro hacia afuera."],
+    rise: { air: 0.045, whistle: 0 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o), drag = 2.1, n = count(170, o);
+      for (let k = 0; k < n; k++) {
+        const d = sphereDir(), f = Math.pow(Math.random(), 0.6), s = R * drag * (0.25 + 0.78 * f);
+        star(x, y, d.x * s, d.y * s, rand(1.9, 2.3), 2.4 * U, a, { drag, grav: 35, trail: 3, trailLife: 0.4, to: b, at: 0.18 + 0.45 * f });
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { body: 1350 }); Sound.sizzle(1.8, pan, 0.35, 0.9); },
+  },
+
+  // Mil flores: un estallido que de pronto revienta en docenas de florecitas de colores
+  flowers: {
+    cost: 900, name: ["Thousand Flowers", "Mil flores"], desc: ["Pops into dozens of tiny flowers.", "Revienta en docenas de florecitas."],
+    rise: { air: 0.05, whistle: 0 },
+    burst(x, y, o, pan) {
+      const R = radius(o) * 0.9, drag = 2.0, g = 45 * U, m = Math.round((26 + 8 * o.power) * P.room());
+      let first = 9, last = 0;
+      for (let k = 0; k < m; k++) {
+        const d = sphereDir(), s = R * drag * rand(0.5, 1.0), vx = d.x * s, vy = d.y * s, T0 = rand(0.55, 0.95);
+        star(x, y, vx, vy, T0, 1.8 * U, C.warm, { drag, grav: 45, trail: 8, trailC: C.gold, trailLife: 0.4 });
+        const e = Math.exp(-drag * T0), px = x + (vx / drag) * (1 - e), py = y + ((vy - g / drag) / drag) * (1 - e) + (g * T0) / drag;
+        first = Math.min(first, T0); last = Math.max(last, T0);
+        // donde se apaga cada estrella, nace una florecita
+        Timers.after(T0, () => {
+          const c = pick(o.pal.colors), sp = rand(38, 56) * U * Math.pow(o.power, 0.3), q = randi(8, 11), rot = rand(TAU);
+          for (let j = 0; j < q; j++) {
+            const th = rot + (j / q) * TAU;
+            star(px, py, Math.cos(th) * sp, Math.sin(th) * sp, rand(0.5, 0.8), 1.8 * U, c, { drag: 3, grav: 30, flags: F_FLICKER });
+          }
+        });
+      }
+      // el crepitar suave de las florecitas, en dos tandas
+      Timers.after(first, () => Sound.crackle(1.5, pan, 0));
+      Timers.after((first + last) / 2, () => Sound.crackle(1.0, pan, 0));
+      return { light: C.warm, R };
+    },
+    sound(p, pan) { Sound.boom(p * 0.85, pan, { crack: 0.7 }); },
+  },
+
+  // Luciérnagas: lucecitas que se quedan flotando y parpadeando despacio
+  fireflies: {
+    cost: 1100, name: ["Fireflies", "Luciérnagas"], desc: ["Little lights that hover and blink.", "Lucecitas que flotan y parpadean."],
+    rise: { air: 0.035, whistle: 0 },
+    burst(x, y, o) {
+      const m = Math.round(24 + 8 * o.power), R = radius(o) * 0.65;
+      const cols = [[0.78, 1.0, 0.36], [0.95, 1.0, 0.5], [0.66, 1.0, 0.45]];
+      for (let k = 0; k < m; k++) {
+        const d = sphereDir(), s = R * rand(0.4, 1.1), c = pick(cols);
+        const i = P.addSure(x, y, d.x * s, d.y * s, rand(5.5, 7.5), rand(2.4, 3.1) * U, c[0] * 1.3, c[1] * 1.3, c[2] * 1.3);
+        if (i < 0) break;
+        P.kind[i] = K_FLY; P.drag[i] = 2.2; P.grav[i] = -2 * U; P.heat[i] = 0.3;
+      }
+      return { light: [0.7, 1, 0.4], R: R * 0.8 };
+    },
+    sound(p, pan) { Sound.boom(p * 0.45, pan, { crack: 0, gain: 0.5, low: 80, body: 800 }); },
+  },
+
+  // Linternas: luces cálidas que bajan flotando y se balancean, como farolitos en paracaídas
+  lanterns: {
+    cost: 1250, name: ["Lanterns", "Linternas"], desc: ["Warm lights that float down slowly.", "Luces cálidas que bajan flotando."],
+    rise: { air: 0.04, whistle: 0 },
+    burst(x, y, o) {
+      const R = radius(o) * 0.7, m = Math.round(9 + 3 * o.power);
+      const warm = [[1.0, 0.72, 0.38], [1.0, 0.62, 0.3], [1.0, 0.8, 0.5]];
+      for (let k = 0; k < m; k++) {
+        const th = rand(TAU), s = R * rand(0.6, 1.4);
+        star(x, y, Math.cos(th) * s, Math.sin(th) * s * 0.7 - R * 0.3, rand(6, 8), rand(5.6, 6.8) * U, pick(warm),
+          { drag: 1.6, grav: 16, heat: 0.35, bright: 1.25, wiggle: [rand(0.8, 1.3), rand(1.4, 2.2)] });
+      }
+      return { light: [1, 0.7, 0.4], R };
+    },
+    sound(p, pan) { Sound.boom(p * 0.6, pan, { crack: 0, gain: 0.7, low: 76, body: 900 }); Sound.crackle(0.3, pan, 0.4); },
+  },
+
+  // Medusa: una campana de luz (arco, arcos interiores y la orilla ondulada) y tentáculos que cuelgan de la orilla,
+  // caen ondulando y cambian de color. Todas las estrellas frenan igual, así que la forma se conserva.
+  jelly: {
+    cost: 1500, name: ["Jellyfish", "Medusa"], desc: ["A glowing bell with drifting tentacles.", "Una campana de luz con tentáculos que caen."],
+    rise: { air: 0.04, whistle: 0.03, f0: 720, f1: 1100 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.05, drag = 2.1, k = R * drag;
+      const bell = (rx, ry, n, size, life) => {
+        for (let i = 0; i < n; i++) {
+          const th = Math.PI + (i / (n - 1)) * Math.PI;   // de izquierda a derecha por arriba
+          star(x, y, Math.cos(th) * rx * k, Math.sin(th) * ry * k, life * rand(0.95, 1.05), size * U, a, { drag, grav: 12, trail: 3, trailLife: 0.4, to: b, at: 0.65, flags: F_FLICKER });
+        }
+      };
+      bell(1, 0.78, count(52, o, true), 2.6, 2.7);
+      bell(0.7, 0.5, count(30, o, true), 2.1, 2.5);
+      bell(0.4, 0.26, count(16, o, true), 1.8, 2.3);
+      // la orilla de la campana, un poco ondulada
+      const nr = count(30, o, true);
+      for (let i = 0; i < nr; i++) {
+        const f = (i / (nr - 1)) * 2 - 1;
+        star(x, y, f * k, (0.06 * Math.sin(f * 9)) * k, rand(2.5, 2.8), 2.2 * U, a, { drag, grav: 12, trail: 3, trailLife: 0.4, to: b, at: 0.65 });
+      }
+      // tentáculos: salen de la orilla y caen ondulando, con estelas largas
+      const T = 12 + Math.round(3 * o.power);
+      for (let t = 0; t < T; t++) {
+        const f = ((t + 0.5) / T) * 1.8 - 0.9;
+        star(x, y, f * k, R * rand(0.18, 0.4), rand(3.6, 4.4), 2.0 * U, b,
+          { drag, grav: 95, heat: 0.8, trail: 52 * (Q.level === 0 ? 0.6 : 1), trailC: avg(a, b), trailLife: 2.2, trailGrav: 2, wiggle: [rand(1.8, 2.6), rand(2.5, 4)], to: a, at: 0.75 });
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { body: 1300, crack: 0.6 }); Sound.sizzle(3, pan, 0.5, 0.5); },
+  },
+
+  // Cortina de plata: una lluvia ancha de plata que cae dejando brillitos
+  curtain: {
+    cost: 1650, name: ["Silver Curtain", "Cortina de plata"], desc: ["A wide rain of twinkling silver.", "Una lluvia ancha de plata que brilla."],
+    rise: { air: 0.06, whistle: 0 },
+    burst(x, y, o) {
+      const R = radius(o), m = count(46, o);
+      for (let k = 0; k < m; k++) {
+        const f = (k / (m - 1)) * 2 - 1 + rand(-0.04, 0.04);
+        star(x, y, f * R * 2.2, -R * rand(0.15, 0.45) * (1 - Math.abs(f) * 0.5), rand(3.6, 4.6), 2.2 * U, C.silver,
+          { drag: 1.5, grav: 55, heat: 1, trail: 36 * (Q.level === 0 ? 0.6 : 1), trailC: [0.92, 0.95, 1], trailLife: 1.8, trailGrav: 30, flags: F_GLITTRAIL | F_FLICKER });
+      }
+      glitterCrown(x, y, R * 0.4, Math.round(30 * P.room()), C.silver);
+      return { light: C.silver, R: R * 1.4 };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { low: 82, body: 1150, crack: 0.7 }); Sound.sizzle(4.5, pan, 0.85, 0.2); },
+  },
+
+  // Tu dibujo: la explosión dibuja en el cielo la forma que la persona trazó con el dedo (doodle.js)
+  doodle: {
+    cost: 1000, name: ["Your Drawing", "Tu dibujo"], desc: ["Bursts into a shape you draw.", "Explota con la forma que dibujes."],
+    rise: { air: 0.04, whistle: 0.04, f0: 740, f1: 1150 },
+    burst(x, y, o) {
+      const [a, b] = o.colors || two(o.pal), R = radius(o) * 1.1, drag = 2.0;
+      const pts = Doodle.sample(count(130, o, true));
+      for (const [px, py, st] of pts) {
+        star(x, y, px * R * drag, py * R * drag, rand(1.9, 2.2), 2.6 * U, st % 2 ? b : a, { drag, grav: 18, trail: 3, trailLife: 0.5, to: o.flair >= 2 ? C.white : null, at: 0.7 });
+      }
+      flair(x, y, R, o, a);
+      return { light: avg(a, b), R };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { low: 86, body: 1250, crack: 0.6 }); Sound.sizzle(1.8, pan, 0.4, 0.7); },
+  },
+
   // El gran cierre de la Gran Final (no se elige: es la recompensa)
   grand: {
     cost: -1, name: ["Grand Shell", "Gran carcasa"], desc: ["", ""],
@@ -557,7 +723,7 @@ const TYPES = {
     sound(p, pan) { Sound.boom(3, pan, { low: 70, body: 1000, gain: 1.15 }); Sound.boom(1.5, -0.4, { crack: 0 }); Sound.sizzle(5.5, pan, 1, 0.3); },
   },
 };
-const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "whirl", "spiral", "chrysanthemum", "strobe", "dahlia", "comet", "crossette", "horsetail", "heart", "swarm", "saturn", "triple", "star"];
+const TYPE_ORDER = ["classic", "willow", "ring", "double", "crackle", "palm", "whirl", "spiral", "chrysanthemum", "fish", "strobe", "dahlia", "ghost", "comet", "flowers", "crossette", "horsetail", "doodle", "fireflies", "heart", "lanterns", "swarm", "saturn", "jelly", "triple", "curtain", "star"];
 
 // Íconos de línea (SVG, sin emojis), uno por tipo
 const ICON = {
@@ -576,6 +742,14 @@ const ICON = {
   saturn: '<circle cx="12" cy="12" r="4.2"/><ellipse cx="12" cy="12" rx="9.5" ry="3" transform="rotate(-18 12 12)"/>',
   star: '<path d="M12 3.8l2.4 5.1 5.5.6-4.1 3.8 1.1 5.5L12 16l-4.9 2.8 1.1-5.5-4.1-3.8 5.5-.6z"/>',
   whirl: '<path d="M12 21c-2.4-1.2-2.4-2.8 0-4s2.4-2.8 0-4-2.4-2.8 0-4 2.4-2.8 0-4"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor"/><path d="M16.5 6.5c.9.6 1.4 1.4 1.4 2.2M18.8 4.8c1.4.9 2.2 2.2 2.2 3.6" opacity=".7"/>',
+  fish: '<path d="M3.5 12c2.6-3.2 6.2-3.2 9.2 0-3 3.2-6.6 3.2-9.2 0zM12.7 12l3.6-2.6v5.2z"/><circle cx="7" cy="11.4" r=".75" fill="currentColor"/><path d="M17.5 6.5c1-.8 2.1-.8 3.1 0M17.5 17.5c1 .8 2.1.8 3.1 0"/>',
+  ghost: '<circle cx="12" cy="12" r="8.2" stroke-dasharray="1.8 2.2"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>',
+  flowers: '<circle cx="7" cy="8" r="1" fill="currentColor"/><path d="M7 5v1.4M7 9.6V11M4 8h1.4M8.6 8H10"/><circle cx="16.5" cy="9.5" r="1" fill="currentColor"/><path d="M16.5 6.5v1.4M16.5 11.1v1.4M13.5 9.5h1.4M18.1 9.5h1.4"/><circle cx="10.5" cy="16.5" r="1" fill="currentColor"/><path d="M10.5 13.5v1.4M10.5 18.1v1.4M7.5 16.5h1.4M12.1 16.5h1.4"/>',
+  fireflies: '<circle cx="7" cy="9" r="1.3" fill="currentColor"/><circle cx="15.5" cy="6.5" r="1" fill="currentColor"/><circle cx="12.5" cy="15" r="1.4" fill="currentColor"/><circle cx="18.5" cy="16.5" r=".9" fill="currentColor"/><path d="M7 5.8v-1M7 13.2v-1M3.8 9h1M10.2 9h-1M12.5 11.4v-1M12.5 19.6v-1" opacity=".6"/>',
+  lanterns: '<path d="M6.5 6h3.2l.7 5H5.8zM14.5 9.5h3.2l.7 5h-4.6z"/><path d="M8.1 11v1.8M16.1 14.5v1.8M8.1 4.2V6M16.1 7.7v1.8"/>',
+  jelly: '<path d="M5.5 11.5a6.5 6.5 0 0 1 13 0z"/><path d="M8 11.5c-.6 2.5.8 4 0 6.5M12 11.5c.6 3-.6 5 .2 8M16 11.5c.6 2.5-.8 4 0 6.5"/>',
+  curtain: '<path d="M4 6.2c5-1.6 11-1.6 16 0"/><path d="M5 8v9M8 7.4v11M11 7v8.5M14 7v10M17 7.4v8M19.5 8v9.5" stroke-dasharray="1.2 2"/>',
+  doodle: '<path d="M4 17c2-5 4-6 5.5-3s3 3.5 5-1 3.5-5.5 5.5-4"/><path d="M15.5 4.5l3 3M17 3l3 3-1.5 1.5-3-3z"/>',
   chrysanthemum: '<circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 9.5V3.5M12 14.5v6M9.5 12h-6M14.5 12h6M10.2 10.2L6 6M13.8 13.8L18 18M13.8 10.2L18 6M10.2 13.8L6 18" stroke-dasharray="1.2 1.6"/>',
   dahlia: '<circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="19" r="1.9"/><circle cx="5" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/><circle cx="7" cy="7" r="1.5"/><circle cx="17" cy="17" r="1.5"/><circle cx="17" cy="7" r="1.5"/><circle cx="7" cy="17" r="1.5"/>',
   horsetail: '<circle cx="12" cy="5" r="1.4" fill="currentColor"/><path d="M12 6.5c-1.5 2-2.5 6-2.5 13M12 6.5c1.5 2 2.5 6 2.5 13M12 6.5c-3 1.5-5.5 5-6.5 11M12 6.5c3 1.5 5.5 5 6.5 11"/>',

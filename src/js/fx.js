@@ -8,9 +8,11 @@ let KILL_Y = 900;       // debajo de esto las partículas se apagan (suelo o sup
 let WIND = 6;           // brisa: deriva horizontal suave (px/s²)
 
 // Tipos de partícula
-const K_STAR = 0, K_EMBER = 1, K_SPARK = 2, K_GLITTER = 3, K_FLASH = 4, K_DUST = 5;
+const K_STAR = 0, K_EMBER = 1, K_SPARK = 2, K_GLITTER = 3, K_FLASH = 4, K_DUST = 5, K_FLY = 6;
 // Banderas
-const F_CRACKLE = 1, F_FLICKER = 2, F_STROBE = 4, F_SPLIT = 8, F_SHIFT = 16, F_NOWIND = 32;
+// F_WIGGLE: la dirección se mece (peces en zigzag, linternas que se balancean, tentáculos que ondulan)
+// F_GLITTRAIL: su estela es de brillitos plateados que titilan (no de brasas que se enfrían)
+const F_CRACKLE = 1, F_FLICKER = 2, F_STROBE = 4, F_SPLIT = 8, F_SHIFT = 16, F_NOWIND = 32, F_WIGGLE = 64, F_GLITTRAIL = 128;
 
 const P = (() => {
   const MAX = 20000;
@@ -18,8 +20,9 @@ const P = (() => {
   const x = F(), y = F(), vx = F(), vy = F(), age = F(), life = F(), drag = F(), grav = F(), size = F();
   const r = F(), g = F(), b = F(), r2 = F(), g2 = F(), b2 = F(), tchg = F(), heat = F(), bright = F();
   const spin = F(), emit = F(), acc = F(), seed = F(), er = F(), eg = F(), eb = F(), elife = F(), ev = F(), egrav = F();
+  const wig = F(), wf = F();   // vaivén: amplitud (rad/s) y frecuencia (rad/s)
   const kind = new Uint8Array(MAX), flags = new Uint8Array(MAX);
-  const ALL = [x, y, vx, vy, age, life, drag, grav, size, r, g, b, r2, g2, b2, tchg, heat, bright, spin, emit, acc, seed, er, eg, eb, elife, ev, egrav, kind, flags];
+  const ALL = [x, y, vx, vy, age, life, drag, grav, size, r, g, b, r2, g2, b2, tchg, heat, bright, spin, emit, acc, seed, er, eg, eb, elife, ev, egrav, wig, wf, kind, flags];
   let n = 0, cap = 14000;
 
   // Instancias extra (cabezas de cohete, brillos del toque): se dibujan solo este cuadro
@@ -32,7 +35,7 @@ const P = (() => {
     x[i] = px; y[i] = py; vx[i] = pvx; vy[i] = pvy; age[i] = 0; life[i] = plife; size[i] = psize;
     r[i] = r2[i] = cr; g[i] = g2[i] = cg; b[i] = b2[i] = cb;
     drag[i] = 2; grav[i] = 55 * U; tchg[i] = 2; heat[i] = 0; bright[i] = 1; spin[i] = 0;
-    emit[i] = 0; acc[i] = 0; seed[i] = Math.random(); kind[i] = K_STAR; flags[i] = 0; ev[i] = 0;
+    emit[i] = 0; acc[i] = 0; seed[i] = Math.random(); kind[i] = K_STAR; flags[i] = 0; ev[i] = 0; wig[i] = 0;
     return i;
   }
   function kill(i) {
@@ -74,7 +77,7 @@ const P = (() => {
     const j = add(x[i] + rand(-0.6, 0.6), y[i] + rand(-0.6, 0.6), vx[i] * 0.06 + rand(-5, 5) * U, vy[i] * 0.06 + rand(-3, 7) * U,
       elife[i] * rand(0.7, 1.2), size[i] * rand(0.38, 0.58), er[i] * fade, eg[i] * fade, eb[i] * fade);
     if (j < 0) return;
-    kind[j] = K_EMBER; drag[j] = 3.4; grav[j] = egrav[i]; seed[j] = Math.random();
+    kind[j] = flags[i] & F_GLITTRAIL ? K_GLITTER : K_EMBER; drag[j] = 3.4; grav[j] = egrav[i]; seed[j] = Math.random();
   }
 
   // Microexplosión al final de una estrella crepitante
@@ -115,6 +118,15 @@ const P = (() => {
       if (spin[i] !== 0) {
         const s = spin[i] * dt, c = Math.cos(s), sn = Math.sin(s), tx = ux * c - uy * sn;
         uy = ux * sn + uy * c; ux = tx;
+      }
+      if (flags[i] & F_WIGGLE) {
+        const s = wig[i] * Math.sin(a * wf[i] + seed[i] * 50) * dt, c = Math.cos(s), sn = Math.sin(s), tx = ux * c - uy * sn;
+        uy = ux * sn + uy * c; ux = tx;
+      }
+      // luciérnagas: flotan dando vueltas suaves, sin caer
+      if (kind[i] === K_FLY) {
+        ux += Math.sin(a * 0.9 + seed[i] * 40) * 16 * U * dt;
+        uy += Math.cos(a * 0.7 + seed[i] * 25) * 12 * U * dt;
       }
       if (!(flags[i] & F_NOWIND)) ux += wind * (kind[i] === K_EMBER ? 1.6 : 1);
       vx[i] = ux; vy[i] = uy;
@@ -168,6 +180,11 @@ const P = (() => {
         ht = 0.6; ex = 0;
       } else if (kd === K_DUST) {
         br *= Math.sin(Math.PI * t); ex = 0;
+      } else if (kd === K_FLY) {
+        // parpadeo lento de luciérnaga: se enciende, brilla un momento y se apaga
+        const per = 1.3 + seed[i] * 1.4, pulse = Math.pow(Math.max(0, Math.sin((age[i] * TAU) / per + seed[i] * TAU)), 3);
+        br *= (0.14 + 1.1 * pulse) * (t < 0.08 ? t / 0.08 : t > 0.85 ? (1 - t) / 0.15 : 1);
+        ht = 0.35 * pulse; ex = 0.004;
       }
       if (br <= 0.004) continue;
       out[o++] = x[i] * scale; out[o++] = y[i] * scale;
@@ -190,7 +207,7 @@ const P = (() => {
 
   return {
     add, addSure, evict, room, setTrail, update, write, extra, clear,
-    x, y, vx, vy, drag, grav, size, r2, g2, b2, tchg, heat, bright, spin, kind, flags, ev, seed,
+    x, y, vx, vy, drag, grav, size, r2, g2, b2, tchg, heat, bright, spin, kind, flags, ev, seed, wig, wf,
     get n() { return n; },
     get cap() { return cap; }, set cap(v) { cap = Math.min(MAX, v); },
     MAX,
