@@ -78,7 +78,7 @@ const Main = (() => {
     UI.showHome(true);
     run();
     if (isNative() || Sound.shared) Sound.wake();   // la app, o dentro de la landing (audio ya desbloqueado)
-    playStudio($("#studio"), gameIntro);
+    playStudio($("#studio"), () => headphones(gameIntro));
 
     let rt = 0;
     window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(resize, 120); });
@@ -88,6 +88,23 @@ const Main = (() => {
     });
     cv.addEventListener("webglcontextlost", (e) => { e.preventDefault(); R.lose(); });
     cv.addEventListener("webglcontextrestored", () => { if (R.init(cv)) resize(); });
+  }
+
+  // Al abrir, entre la intro de BluBer y la del juego: una recomendación tranquila de usar audífonos (~3 s, cada vez que se abre;
+  // pedido del usuario, 18 oct 2026). Aparece sobre el cielo mientras se va el blanco del estudio.
+  function headphones(next) {
+    const el = $("#phones");
+    el.querySelector("b").textContent = t("phones");
+    el.querySelector("span").textContent = t("phonesSub");
+    el.hidden = false;
+    const frames = reduceMotion
+      ? [{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 1, offset: 0.8 }, { opacity: 0 }]
+      : [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none", offset: 0.22 }, { opacity: 1, transform: "none", offset: 0.8 }, { opacity: 0, transform: "translateY(-4px)" }];
+    let done = false;
+    const go = () => { if (done) return; done = true; el.hidden = true; next(); };
+    const a = el.animate ? el.animate(frames, { duration: 2900, delay: 350, easing: "ease-in-out", fill: "both" }) : null;
+    if (a) a.onfinish = go;
+    setTimeout(go, 3600);   // por si la animación no termina (pestaña en segundo plano)
   }
 
   // Intro de Fireworks: un cohete sube al centro y, al abrirse, aparece el título

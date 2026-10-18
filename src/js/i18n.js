@@ -3,6 +3,8 @@
 
 const STR = {
   tagline: ["Paint the night sky", "Pinta el cielo de noche"],
+  phones: ["Best with headphones", "Mejor con audífonos"],
+  phonesSub: ["Feel every burst up close.", "Siente cada explosión de cerca."],
   by: ["by BluBer Games", "por BluBer Games"],
   play: ["Free Play", "Juego libre"],
   playSub: ["Launch, earn Sparks, unlock", "Lanza, gana Sparks, desbloquea"],

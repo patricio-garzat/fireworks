@@ -327,6 +327,12 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border: 0; bo
 #nogl { position: fixed; inset: 0; display: grid; place-items: center; padding: 30px; text-align: center; color: var(--ink-2); }
 
 /* ---------- Intro del estudio (BluBer Games): igual que en Cube Swipe y SMUSH!, sin cambios al logo ---------- */
+/* "Best with headphones": al abrir, entre la intro de BluBer y la del juego. Sin vidrio (se desvanece con opacidad) */
+.phones { position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 12px; padding: 24px; text-align: center; pointer-events: none; opacity: 0; }
+.phones[hidden] { display: none; }
+.phones svg { width: 40px; height: 40px; color: var(--gold-2); filter: drop-shadow(0 0 10px rgba(241, 194, 122, 0.45)); margin-bottom: 4px; }
+.phones b { font-size: 13px; font-weight: 400; letter-spacing: 0.32em; margin-right: -0.32em; text-transform: uppercase; color: var(--ink); }
+.phones span { font-size: 13px; color: var(--ink-2); }
 #studio { position: fixed; inset: 0; z-index: 210; display: grid; place-items: center; background: var(--sky); padding: 16px; overflow: hidden; transition: background-color 0.45s ease, box-shadow 0.45s ease; box-shadow: 0 50vh 0 0 var(--sky); }
 #studio.paper { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; }
 html.studio-paper .fixed-off { visibility: hidden !important; }
@@ -730,6 +736,11 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
 <div id="nogl" hidden><p>This device can't draw the sky (WebGL is off).</p></div>
 
 <!-- Intro del estudio: logo oficial de BluBer (copiado de Cube Swipe, sin modificar) -->
+<!-- Al abrir, después de la intro de BluBer: "Best with headphones" -->
+<div id="phones" class="phones" aria-live="polite" hidden>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><path d="M4 15a2 2 0 0 1 2-2h1.5v7H6a2 2 0 0 1-2-2zM20 15a2 2 0 0 0-2-2h-1.5v7H18a2 2 0 0 0 2-2z"/></svg>
+  <b></b><span></span>
+</div>
 <div id="studio" role="img" aria-label="BluBer Games">
   <svg id="bb-logo" viewBox="286.5 335.9 1449.5 1247.3" aria-hidden="true">
     <!-- Logo oficial de BluBer (brand/source/BluBer Games.ai), sin modificar: solo agrupado para animarlo -->
@@ -826,6 +837,8 @@ function fmt(n) { return Math.floor(n).toLocaleString("en-US"); }
 
 const STR = {
   tagline: ["Paint the night sky", "Pinta el cielo de noche"],
+  phones: ["Best with headphones", "Mejor con audífonos"],
+  phonesSub: ["Feel every burst up close.", "Siente cada explosión de cerca."],
   by: ["by BluBer Games", "por BluBer Games"],
   play: ["Free Play", "Juego libre"],
   playSub: ["Launch, earn Sparks, unlock", "Lanza, gana Sparks, desbloquea"],
@@ -6355,7 +6368,7 @@ const Main = (() => {
     UI.showHome(true);
     run();
     if (isNative() || Sound.shared) Sound.wake();   // la app, o dentro de la landing (audio ya desbloqueado)
-    playStudio($("#studio"), gameIntro);
+    playStudio($("#studio"), () => headphones(gameIntro));
 
     let rt = 0;
     window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(resize, 120); });
@@ -6365,6 +6378,23 @@ const Main = (() => {
     });
     cv.addEventListener("webglcontextlost", (e) => { e.preventDefault(); R.lose(); });
     cv.addEventListener("webglcontextrestored", () => { if (R.init(cv)) resize(); });
+  }
+
+  // Al abrir, entre la intro de BluBer y la del juego: una recomendación tranquila de usar audífonos (~3 s, cada vez que se abre;
+  // pedido del usuario, 18 oct 2026). Aparece sobre el cielo mientras se va el blanco del estudio.
+  function headphones(next) {
+    const el = $("#phones");
+    el.querySelector("b").textContent = t("phones");
+    el.querySelector("span").textContent = t("phonesSub");
+    el.hidden = false;
+    const frames = reduceMotion
+      ? [{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 1, offset: 0.8 }, { opacity: 0 }]
+      : [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none", offset: 0.22 }, { opacity: 1, transform: "none", offset: 0.8 }, { opacity: 0, transform: "translateY(-4px)" }];
+    let done = false;
+    const go = () => { if (done) return; done = true; el.hidden = true; next(); };
+    const a = el.animate ? el.animate(frames, { duration: 2900, delay: 350, easing: "ease-in-out", fill: "both" }) : null;
+    if (a) a.onfinish = go;
+    setTimeout(go, 3600);   // por si la animación no termina (pestaña en segundo plano)
   }
 
   // Intro de Fireworks: un cohete sube al centro y, al abrirse, aparece el título

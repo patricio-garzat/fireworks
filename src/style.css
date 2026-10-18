@@ -296,6 +296,12 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border: 0; bo
 #nogl { position: fixed; inset: 0; display: grid; place-items: center; padding: 30px; text-align: center; color: var(--ink-2); }
 
 /* ---------- Intro del estudio (BluBer Games): igual que en Cube Swipe y SMUSH!, sin cambios al logo ---------- */
+/* "Best with headphones": al abrir, entre la intro de BluBer y la del juego. Sin vidrio (se desvanece con opacidad) */
+.phones { position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 12px; padding: 24px; text-align: center; pointer-events: none; opacity: 0; }
+.phones[hidden] { display: none; }
+.phones svg { width: 40px; height: 40px; color: var(--gold-2); filter: drop-shadow(0 0 10px rgba(241, 194, 122, 0.45)); margin-bottom: 4px; }
+.phones b { font-size: 13px; font-weight: 400; letter-spacing: 0.32em; margin-right: -0.32em; text-transform: uppercase; color: var(--ink); }
+.phones span { font-size: 13px; color: var(--ink-2); }
 #studio { position: fixed; inset: 0; z-index: 210; display: grid; place-items: center; background: var(--sky); padding: 16px; overflow: hidden; transition: background-color 0.45s ease, box-shadow 0.45s ease; box-shadow: 0 50vh 0 0 var(--sky); }
 #studio.paper { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; }
 html.studio-paper .fixed-off { visibility: hidden !important; }

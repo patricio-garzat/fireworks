@@ -113,7 +113,7 @@ async function capture(shot, lang, dir, [w, h]) {
   await send("Page.addScriptToEvaluateOnNewDocument", { source: `(() => { let s = 20261018; Math.random = () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     localStorage.setItem("fireworks-save-v1", ${JSON.stringify(JSON.stringify(save))}); localStorage.setItem("fireworks-settings-v1", ${JSON.stringify(JSON.stringify({ sfx: 0, music: 0, haptics: false, realMoon: true, quality: "high", lang: lang === "es" ? 1 : 0 }))}); })();` });
   await send("Page.navigate", { url: GAME });
-  await sleep(9500);   // las dos intros
+  await sleep(12500);   // las intros (BluBer, "Best with headphones" y la del juego)
   const r = await send("Runtime.evaluate", { expression: PAGE_JS(shot, lang), awaitPromise: true, returnByValue: true });
   if (r.result?.exceptionDetails) errs.push(r.result.exceptionDetails.exception?.description || r.result.exceptionDetails.text);
   const shotRes = await send("Page.captureScreenshot", { format: "png" });
