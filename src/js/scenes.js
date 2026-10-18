@@ -12,57 +12,57 @@ const SCENES = {
   photo: {
     cost: 0, name: ["Your Photo", "Tu foto"], photo: true,
     sky: ["#03060f", "#071027", "#0f1d3e", "#1d2f55"], launch: 0.82, water: 0,
-    mist: 0, life: {},
+    mist: 0, cloud: 0, life: {},
   },
   alpine: {
     cost: 0, name: ["Alpine Night", "Noche alpina"],
     sky: ["#03060f", "#071027", "#0f1d3e", "#1d2f55"], launch: 1.02, water: 0,
-    mist: 1, life: { birds: "geese", birdY: [0.42, 0.58] },
+    mist: 1, cloud: 0.5, life: { birds: "geese", birdY: [0.42, 0.58] },
   },
   lake: {
     cost: 1000, name: ["Still Lake", "Lago en calma"],
     sky: ["#02050d", "#061229", "#0c2142", "#18375a"], launch: 0.735, water: 0.735,
-    mist: 0.9, life: { birds: "geese", birdY: [0.42, 0.6] },
+    mist: 0.9, cloud: 0.45, life: { birds: "geese", birdY: [0.42, 0.6] },
   },
   city: {
     cost: 2000, name: ["City Lights", "Luces de la ciudad"],
     sky: ["#04050f", "#0b0e26", "#1a1838", "#3a2a40"], launch: 1.02, water: 0,
-    mist: 0.3, life: {},
+    mist: 0.3, cloud: 0.35, life: {},
   },
   desert: {
     cost: 1500, name: ["Desert Dunes", "Dunas del desierto"],
     sky: ["#05040e", "#100c27", "#25193b", "#4a2d46"], launch: 1.02, water: 0,
-    mist: 0.22, life: { birds: "hawk", birdY: [0.36, 0.55] },
+    mist: 0.22, cloud: 0.2, life: { birds: "hawk", birdY: [0.36, 0.55] },
   },
   bay: {
     cost: 2600, name: ["Moonlit Bay", "Bahía de luna"],
     sky: ["#02040c", "#07112a", "#11244b", "#2b4068"], launch: 0.74, water: 0.74,
-    mist: 0.55, life: { birds: "gull", birdY: [0.42, 0.62] },
+    mist: 0.55, cloud: 0.4, life: { birds: "gull", birdY: [0.42, 0.62] },
   },
   snow: {
     cost: 3200, name: ["Snowy Village", "Pueblo nevado"],
     sky: ["#03050d", "#0a1428", "#16264a", "#2c3f62"], launch: 1.02, water: 0,
-    mist: 0.6, life: { snow: true },
+    mist: 0.6, cloud: 0.6, life: { snow: true },
   },
   country: {
     cost: 1200, name: ["Countryside", "Campo"],
     sky: ["#03060e", "#0a1328", "#152446", "#26385a"], launch: 1.02, water: 0,
-    mist: 0.8, life: { birds: "geese", birdY: [0.45, 0.65] },
+    mist: 0.8, cloud: 0.5, life: { birds: "geese", birdY: [0.45, 0.65] },
   },
   canyon: {
     cost: 2300, name: ["Red Canyon", "Cañón rojo"],
     sky: ["#04040d", "#0e0c25", "#211837", "#43293d"], launch: 1.02, water: 0,
-    mist: 0.45, life: { birds: "hawk", birdY: [0.34, 0.5] },
+    mist: 0.45, cloud: 0.3, life: { birds: "hawk", birdY: [0.34, 0.5] },
   },
   beach: {
     cost: 2900, name: ["Tropical Beach", "Playa tropical"],
     sky: ["#02050d", "#071330", "#0f2650", "#1f4166"], launch: 0.77, water: 0.77,
-    mist: 0.35, life: { birds: "gull", birdY: [0.45, 0.65] },
+    mist: 0.35, cloud: 0.45, life: { birds: "gull", birdY: [0.45, 0.65] },
   },
   bridge: {
     cost: 3600, name: ["River Bridge", "Puente del río"],
     sky: ["#04050f", "#0b0f28", "#191b3c", "#352c48"], launch: 0.8, water: 0.8,
-    mist: 0.45, life: { birds: "gull", birdY: [0.45, 0.66] },
+    mist: 0.45, cloud: 0.4, life: { birds: "gull", birdY: [0.45, 0.66] },
   },
 };
 const SCENE_ORDER = ["alpine", "lake", "country", "desert", "city", "canyon", "bay", "beach", "snow", "bridge"];
@@ -70,7 +70,7 @@ const SCENE_ORDER = ["alpine", "lake", "country", "desert", "city", "canyon", "b
 const Scene = (() => {
   let id = "alpine";
   // Lo que cada escenario deja para la capa de vida (ambient.js): luces que parpadean y el faro (en fracción de pantalla)
-  let lights = { blink: [], beam: null }, pw = 1, ph = 1;
+  let lights = { blink: [], beam: null, moon: null, wins: [], deck: null }, pw = 1, ph = 1;
   const blink = (x, y, period = 1.6) => lights.blink.push({ x: x / pw, y: y / ph, period, ph: rand(TAU) });
 
   // Línea de cresta con desplazamiento de punto medio (montañas creíbles, siempre las mismas por la semilla)
@@ -97,6 +97,67 @@ const Scene = (() => {
       } else ctx.fillStyle = `rgb(${Math.round(maskV * 255)},0,0)`;
       ctx.fill();
     }
+  }
+  /* Relieve: la luna (arriba a la derecha) ilumina las laderas que miran hacia ella y deja en sombra las otras;
+     surcos que bajan desde la cresta y un borde de luz fino en la cresta. Todo recortado a la forma de la montaña. */
+  function relief(g, pts, base, s, rng, o = {}) {
+    const lit = o.lit || "160,185,235", amt = o.amt === undefined ? 1 : o.amt;
+    const top = Math.min(...pts.map((p) => p[1])), span = base - top;
+    g.save();
+    g.beginPath(); g.moveTo(0, base + 2); pts.forEach(([x, y]) => g.lineTo(x, y)); g.lineTo(pts[pts.length - 1][0], base + 2); g.closePath(); g.clip();
+    // laderas: cada tramo baja una banda de luz (mira a la luna) o de sombra (le da la espalda).
+    // La pendiente se promedia con los vecinos para que la luz siga a la ladera y no forme rayas.
+    const sl = pts.map((_, i) => {
+      const a = pts[Math.max(0, i - 3)], b = pts[Math.min(pts.length - 1, i + 4)];
+      return (b[1] - a[1]) / ((b[0] - a[0]) || 1);
+    });
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], slope = sl[i];
+      const k = clamp(Math.abs(slope) * 1.4, 0, 1) * amt;
+      if (k < 0.05) continue;
+      const yt = Math.min(y0, y1), D = Math.min(span * 0.6, 26 * s + Math.abs(slope) * 30 * s);
+      const gr = g.createLinearGradient(0, yt, 0, yt + D);
+      if (slope > 0) { gr.addColorStop(0, `rgba(${lit},${(0.1 * k).toFixed(3)})`); gr.addColorStop(1, `rgba(${lit},0)`); }
+      else { gr.addColorStop(0, `rgba(0,0,0,${(0.14 * k).toFixed(3)})`); gr.addColorStop(1, "rgba(0,0,0,0)"); }
+      g.fillStyle = gr;
+      g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.lineTo(x1 + 0.5, y1 + D); g.lineTo(x0 - 0.5, y0 + D); g.closePath(); g.fill();
+    }
+    // surcos: líneas que bajan desde la cresta, con un zigzag suave
+    const n = Math.round(pts.length * 0.35 * amt);
+    g.lineWidth = Math.max(1, 0.9 * s); g.lineCap = "round";
+    for (let k = 0; k < n; k++) {
+      let [x, y] = pts[Math.floor(rng() * pts.length)];
+      const len = (10 + rng() * 30) * s;
+      g.strokeStyle = `rgba(0,0,0,${(0.04 + rng() * 0.06).toFixed(3)})`;
+      g.beginPath(); g.moveTo(x, y);
+      for (let d = 0; d < len; d += 5 * s) { x += (rng() - 0.5) * 4 * s; y += 5 * s; g.lineTo(x, y); }
+      g.stroke();
+    }
+    // borde de luz en la cresta (más fuerte donde mira a la luna)
+    g.lineWidth = 1.1 * s;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], f = clamp(((y1 - y0) / ((x1 - x0) || 1)) * 2 + 0.3, 0, 1);
+      g.strokeStyle = `rgba(${lit},${(0.04 + 0.2 * f * amt).toFixed(3)})`;
+      g.beginPath(); g.moveTo(x0, y0 + 0.7 * s); g.lineTo(x1, y1 + 0.7 * s); g.stroke();
+    }
+    g.restore();
+  }
+  // Nieve solo en las cumbres más altas, con una orilla irregular pero suave (más abajo en las laderas que miran a la luna)
+  function snowcaps(g, pts, base, rng, level = 0.45, alpha = 0.4) {
+    const ys = pts.map((p) => p[1]), top = Math.min(...ys), low = Math.max(...ys), lim = top + (low - top) * level;
+    // la línea de nieve es casi horizontal (depende de la altura), con una ondulación suave
+    const p1 = rng() * 10, p2 = rng() * 10, r = low - top;
+    const line = pts.map(([x, y], i) => {
+      const a = pts[Math.max(0, i - 4)], b = pts[Math.min(pts.length - 1, i + 4)], face = (b[1] - a[1]) > 0 ? 0.05 : -0.03;
+      return [x, Math.max(y, lim + r * (0.07 * Math.sin(i * 0.33 + p1) + 0.04 * Math.sin(i * 0.95 + p2) + face))];
+    });
+    const gr = g.createLinearGradient(0, top, 0, lim + (base - top) * 0.1);
+    gr.addColorStop(0, `rgba(215,228,250,${alpha})`); gr.addColorStop(1, `rgba(200,215,245,${(alpha * 0.25).toFixed(3)})`);
+    g.fillStyle = gr;
+    g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+    pts.forEach(([x, y]) => g.lineTo(x, y));
+    for (let i = line.length - 1; i >= 0; i--) g.lineTo(line[i][0], line[i][1]);
+    g.closePath(); g.fill();
   }
   // Aclara u oscurece un color hex
   function shade(hex, k) {
@@ -167,13 +228,13 @@ const Scene = (() => {
     const n = 128;
     const far = ridge(rng, w, n, h * 0.7, h * 0.09, 0.55);
     haze(g, h * 0.72, h * 0.12, w, "60,90,150", 0.16);
-    fillRidge(g, m, far, h, "#0f1a33", 0.35);
+    fillRidge(g, m, far, h, "#0f1a33", 0.35); snowcaps(g, far, h, rng, 0.5, 0.22); relief(g, far, h, s, rng, { amt: 0.6 });
     haze(g, h * 0.8, h * 0.08, w, "40,60,110", 0.18);
     const mid = ridge(rng, w, n, h * 0.8, h * 0.06, 0.52);
-    fillRidge(g, m, mid, h, "#0a1226", 0.6);
+    fillRidge(g, m, mid, h, "#0a1226", 0.6); snowcaps(g, mid, h, rng, 0.32, 0.12); relief(g, mid, h, s, rng, { amt: 0.7 });
     haze(g, h * 0.88, h * 0.06, w, "30,45,85", 0.2);
     const near = ridge(rng, w, 64, h * 0.9, h * 0.035, 0.5);
-    fillRidge(g, m, near, h, "#04070f", 1);
+    fillRidge(g, m, near, h, "#04070f", 1); relief(g, near, h, s, rng, { amt: 0.45 });
     pines(g, m, rng, near, s, "#04070f", Math.round(w / s / 9));
   }
 
@@ -183,40 +244,22 @@ const Scene = (() => {
     milkyWay(g, w, wy, rng, s);
     const far = ridge(rng, w, 128, wy - h * 0.07, h * 0.06, 0.55);
     haze(g, wy - h * 0.05, h * 0.1, w, "70,100,150", 0.14);
-    fillRidge(g, m, far, wy, "#0d1830", 0.4);
+    fillRidge(g, m, far, wy, "#0d1830", 0.4); snowcaps(g, far, wy, rng, 0.45, 0.18); relief(g, far, wy, s, rng, { amt: 0.6 });
     const mid = ridge(rng, w, 128, wy - h * 0.02, h * 0.025, 0.5);
-    fillRidge(g, m, mid, wy, "#070d1d", 0.75);
+    fillRidge(g, m, mid, wy, "#070d1d", 0.75); relief(g, mid, wy, s, rng, { amt: 0.6 });
     pines(g, m, rng, mid.map(([x, y]) => [x, Math.min(y, wy)]), s * 0.55, "#070d1d", Math.round(w / s / 5));
     // agua: degradado y el reflejo de las montañas, más oscuro y movido
     const wg = g.createLinearGradient(0, wy, 0, h);
     wg.addColorStop(0, "#0a1830"); wg.addColorStop(0.25, "#060f22"); wg.addColorStop(1, "#02050c");
     g.fillStyle = wg; g.fillRect(0, wy, w, h - wy);
     m.fillStyle = "rgb(0,255,0)"; m.fillRect(0, wy, w, h - wy);
-    g.save();
-    g.beginPath(); g.rect(0, wy, w, h - wy); g.clip();
-    g.globalAlpha = 0.55;
-    for (const [pts, col] of [[far, "#0b1529"], [mid, "#050a17"]]) {
-      g.beginPath(); g.moveTo(0, wy);
-      pts.forEach(([x, y]) => g.lineTo(x, wy + (wy - y) * 0.9));
-      g.lineTo(w, wy); g.closePath(); g.fillStyle = col; g.fill();
-    }
-    g.globalAlpha = 1;
-    // rayitas horizontales del agua
-    for (let i = 0; i < 260; i++) {
-      const y = wy + Math.pow(rng(), 1.6) * (h - wy), x = rng() * w, l = (8 + rng() * 40) * s * (0.4 + (y - wy) / (h - wy));
-      g.fillStyle = `rgba(140,170,220,${(0.02 + rng() * 0.04).toFixed(3)})`;
-      g.fillRect(x, y, l, Math.max(1, 0.6 * s));
-    }
-    g.restore();
+    // (los reflejos ya no se pintan: el shader refleja de verdad lo que hay arriba, con olas)
     // la orilla: una línea de luz muy tenue
     g.fillStyle = "rgba(120,150,200,0.12)"; g.fillRect(0, wy - 0.5 * s, w, 1 * s);
-    // lucecitas cálidas de cabañas a lo lejos (y su reflejo)
+    // lucecitas cálidas de cabañas a lo lejos (el agua las refleja sola)
     for (let i = 0; i < 5; i++) {
       const x = w * (0.08 + rng() * 0.84), y = wy - (1.5 + rng() * 4) * s;
       g.fillStyle = "rgba(255,196,120,0.75)"; g.fillRect(x, y, 1.6 * s, 1.6 * s);
-      const rg = g.createLinearGradient(0, wy, 0, wy + 22 * s);
-      rg.addColorStop(0, "rgba(255,190,110,0.22)"); rg.addColorStop(1, "rgba(255,190,110,0)");
-      g.fillStyle = rg; g.fillRect(x - 0.3 * s, wy + 1, 2.2 * s, 22 * s);
     }
   }
 
@@ -233,30 +276,45 @@ const Scene = (() => {
       { base: 0.9, hmin: 0.03, hmax: 0.12, wmin: 22, wmax: 54, col: "#080a18", mask: 0.7, win: 0.32 },
       { base: 0.975, hmin: 0.02, hmax: 0.065, wmin: 30, wmax: 70, col: "#030409", mask: 1, win: 0.5 },
     ];
-    for (const L of layers) {
+    for (const [li, L] of layers.entries()) {
       let x = -rng() * 20 * s;
       while (x < w) {
         const bw = (L.wmin + rng() * (L.wmax - L.wmin)) * s, bh = h * (L.hmin + rng() * (L.hmax - L.hmin));
-        const top = h * L.base - bh;
-        const antenna = rng() < 0.18;
+        const top = h * L.base - bh, mk = `rgb(${Math.round(L.mask * 255)},0,0)`;
+        // remate de la azotea: tanque de agua, corona escalonada, aguja o cajas de aire acondicionado
+        const r = rng(), roof = r < 0.12 ? "tank" : r < 0.22 ? "crown" : r < 0.3 ? "spire" : r < 0.42 ? "boxes" : "";
         for (const ctx of [g, m]) {
-          ctx.fillStyle = ctx === g ? L.col : `rgb(${Math.round(L.mask * 255)},0,0)`;
+          ctx.fillStyle = ctx === g ? L.col : mk;
           ctx.fillRect(x, top, bw + 1, h - top);
-          if (antenna) ctx.fillRect(x + bw * 0.45, top - bh * 0.18, Math.max(1, 1.2 * s), bh * 0.18);
+          if (roof === "tank") { ctx.fillRect(x + bw * 0.62, top - 7 * s, 6 * s, 5 * s); ctx.fillRect(x + bw * 0.62 + 0.5 * s, top - 2 * s, 1 * s, 2 * s); ctx.fillRect(x + bw * 0.62 + 4.5 * s, top - 2 * s, 1 * s, 2 * s); }
+          if (roof === "crown") { ctx.fillRect(x + bw * 0.12, top - bh * 0.06, bw * 0.76, bh * 0.06 + 1); ctx.fillRect(x + bw * 0.28, top - bh * 0.11, bw * 0.44, bh * 0.05 + 1); }
+          if (roof === "spire") { ctx.beginPath(); ctx.moveTo(x + bw * 0.42, top); ctx.lineTo(x + bw * 0.5, top - bh * 0.28); ctx.lineTo(x + bw * 0.58, top); ctx.closePath(); ctx.fill(); }
+          if (roof === "boxes") for (let k = 0; k < 3; k++) ctx.fillRect(x + bw * (0.15 + 0.25 * k), top - 3 * s, 4 * s, 3 * s);
         }
-        if (antenna && L.mask > 0.5) blink(x + bw * 0.45 + 0.6 * s, top - bh * 0.18, rand(1.4, 2.2));
-        // ventanas: pocas encendidas, cálidas y tenues
+        if (roof === "spire" && L.mask > 0.5) blink(x + bw * 0.5, top - bh * 0.28, rand(1.4, 2.2));
+        // canto iluminado por la luna (derecha) y sombra suave (izquierda)
+        g.fillStyle = `rgba(150,170,220,${(0.05 + 0.03 * li).toFixed(3)})`; g.fillRect(x + bw - 1.2 * s, top, 1.2 * s, h * L.base - top);
+        g.fillStyle = "rgba(0,0,0,0.12)"; g.fillRect(x, top, 1.5 * s, h * L.base - top);
+        // ventanas por pisos: algunos pisos encendidos casi completos, otros apagados; unas cuantas se prenden y apagan solas
         const cw = 4 * s, ch = 5 * s;
         for (let yy = top + 4 * s; yy < h * L.base - 3 * s; yy += ch + 3 * s) {
+          const floorOn = rng() < L.win * 0.55, warm = rng() < 0.82;
           for (let xx = x + 3 * s; xx < x + bw - cw; xx += cw + 3 * s) {
-            if (rng() < L.win * 0.35) {
-              g.fillStyle = rng() < 0.8 ? `rgba(255,200,130,${(0.18 + rng() * 0.35).toFixed(2)})` : `rgba(180,210,255,${(0.15 + rng() * 0.25).toFixed(2)})`;
+            const on = floorOn ? rng() < 0.7 : rng() < L.win * 0.12;
+            if (on) {
+              g.fillStyle = warm ? `rgba(255,200,130,${(0.2 + rng() * 0.35).toFixed(2)})` : `rgba(180,210,255,${(0.16 + rng() * 0.25).toFixed(2)})`;
               g.fillRect(xx, yy, cw * 0.7, ch * 0.7);
+            } else if (li > 0 && rng() < 0.05 && lights.wins.length < 26) {
+              lights.wins.push({ x: xx / pw, y: yy / ph, w: (cw * 0.7) / pw, h: (ch * 0.7) / ph });
             }
           }
         }
         x += bw + rng() * 4 * s;
       }
+      // luz de la calle entre los edificios, al pie de cada fila
+      const st = g.createLinearGradient(0, h * L.base - h * 0.02, 0, h * L.base);
+      st.addColorStop(0, "rgba(255,170,100,0)"); st.addColorStop(1, `rgba(255,170,100,${(0.05 + 0.03 * li).toFixed(3)})`);
+      g.fillStyle = st; g.fillRect(0, h * L.base - h * 0.02, w, h * 0.02);
       haze(g, h * L.base, h * 0.05, w, "70,60,100", 0.1);
     }
   }
@@ -308,7 +366,7 @@ const Scene = (() => {
     // mesetas lejanas: crestas con la cima aplanada
     const mesa = ridge(rng, w, 64, h * 0.775, h * 0.11, 0.42).map(([x, y]) => [x, Math.max(y, h * 0.715)]);
     haze(g, h * 0.76, h * 0.1, w, "130,80,120", 0.12);
-    fillRidge(g, m, mesa, h, "#1b1530", 0.3);
+    fillRidge(g, m, mesa, h, "#1b1530", 0.3); relief(g, mesa, h, s, rng, { amt: 0.8, lit: "225,175,190" });
     haze(g, h * 0.8, h * 0.07, w, "100,60,100", 0.12);
     const d1 = dunes(rng, w, 120, h * 0.81, h * 0.03);
     fillRidge(g, m, d1, h, "#141024", 0.55); crest(g, d1, s, "rgba(210,175,210,0.10)");
@@ -325,6 +383,7 @@ const Scene = (() => {
     milkyWay(g, w, wy, rng, s);
     // luna llena baja, con su halo
     const mx = w * 0.78, my = h * 0.2, mr = 11 * s;
+    lights.moon = { x: mx / pw, y: my / ph };
     const halo = g.createRadialGradient(mx, my, 0, mx, my, mr * 9);
     halo.addColorStop(0, "rgba(215,228,255,0.16)"); halo.addColorStop(1, "rgba(215,228,255,0)");
     g.fillStyle = halo; g.fillRect(mx - mr * 9, my - mr * 9, mr * 18, mr * 18);
@@ -334,7 +393,7 @@ const Scene = (() => {
     // colinas al otro lado de la bahía
     const far = ridge(rng, w, 64, wy - h * 0.022, h * 0.018, 0.5);
     haze(g, wy - h * 0.01, h * 0.06, w, "80,110,160", 0.12);
-    fillRidge(g, m, far, wy, "#0c1630", 0.35);
+    fillRidge(g, m, far, wy, "#0c1630", 0.35); relief(g, far, wy, s, rng, { amt: 0.5 });
     // acantilado a la izquierda
     const cw = w * 0.42, cliff = [];
     for (let i = 0; i <= 48; i++) {
@@ -342,7 +401,7 @@ const Scene = (() => {
       cliff.push([t * cw, wy - h * (0.15 * (1 - smooth(0.5, 1, t)) + 0.012) + (rng() - 0.5) * h * 0.006 * (1 - t)]);
     }
     cliff.push([cw + 6 * s, wy + 1]);
-    fillRidge(g, m, cliff, wy, "#060b18", 1);
+    fillRidge(g, m, cliff, wy, "#060b18", 1); relief(g, cliff, wy, s, rng, { amt: 0.9 });
     // faro en la orilla del acantilado, con su luz cálida y un haz muy suave
     const [lx, ly0] = cliff[14], ly = ly0 + 1 * s, th = 26 * s;
     for (const ctx of [g, m]) {
@@ -362,34 +421,7 @@ const Scene = (() => {
     wg.addColorStop(0, "#0b1a34"); wg.addColorStop(0.3, "#061024"); wg.addColorStop(1, "#02050c");
     g.fillStyle = wg; g.fillRect(0, wy, w, h - wy);
     m.fillStyle = "rgb(0,255,0)"; m.fillRect(0, wy, w, h - wy);
-    g.save();
-    g.beginPath(); g.rect(0, wy, w, h - wy); g.clip();
-    g.globalAlpha = 0.6;
-    for (const [pts, col] of [[far, "#0a1429"], [cliff, "#03070f"]]) {
-      g.beginPath(); g.moveTo(0, wy);
-      pts.forEach(([x, y]) => g.lineTo(x, wy + (wy - y) * 0.9));
-      g.lineTo(pts[pts.length - 1][0], wy); g.closePath(); g.fillStyle = col; g.fill();
-    }
-    g.globalAlpha = 1;
-    // el camino de la luna sobre el agua: rayitas que se abren hacia abajo
-    for (let i = 0; i < 160; i++) {
-      const f = Math.pow(rng(), 0.8), y = wy + 2 * s + f * (h - wy) * 0.9, spread = (6 + f * 60) * s;
-      const x = mx + gauss() * spread, l = (4 + rng() * 18) * s * (0.5 + f);
-      g.fillStyle = `rgba(220,230,255,${(0.05 + rng() * 0.14 * (1 - f * 0.6)).toFixed(3)})`;
-      g.fillRect(x - l / 2, y, l, Math.max(1, 0.7 * s));
-    }
-    // y el del faro, cálido y corto
-    for (let i = 0; i < 26; i++) {
-      const f = rng(), y = wy + 2 * s + f * h * 0.08, l = (3 + rng() * 9) * s;
-      g.fillStyle = `rgba(255,215,150,${(0.05 + rng() * 0.12 * (1 - f)).toFixed(3)})`;
-      g.fillRect(lx + gauss() * 4 * s - l / 2, y, l, Math.max(1, 0.6 * s));
-    }
-    for (let i = 0; i < 200; i++) {
-      const y = wy + Math.pow(rng(), 1.6) * (h - wy), x = rng() * w, l = (8 + rng() * 40) * s * (0.4 + (y - wy) / (h - wy));
-      g.fillStyle = `rgba(140,170,220,${(0.02 + rng() * 0.035).toFixed(3)})`;
-      g.fillRect(x, y, l, Math.max(1, 0.6 * s));
-    }
-    g.restore();
+    // (los reflejos ya no se pintan: el shader refleja de verdad lo que hay arriba, con olas)
     g.fillStyle = "rgba(120,150,200,0.12)"; g.fillRect(cw, wy - 0.5 * s, w - cw, 1 * s);
   }
 
@@ -427,10 +459,10 @@ const Scene = (() => {
     milkyWay(g, w, h, rng, s);
     const far = ridge(rng, w, 128, h * 0.69, h * 0.1, 0.55);
     haze(g, h * 0.7, h * 0.12, w, "90,120,170", 0.14);
-    fillRidge(g, m, far, h, "#26365a", 0.3); snowcap(g, far, h, h * 0.06, 0.28);
+    fillRidge(g, m, far, h, "#26365a", 0.3); snowcaps(g, far, h, rng, 0.75, 0.3); relief(g, far, h, s, rng, { amt: 0.6, lit: "200,215,245" });
     haze(g, h * 0.78, h * 0.08, w, "70,100,150", 0.16);
     const mid = ridge(rng, w, 96, h * 0.8, h * 0.04, 0.5);
-    fillRidge(g, m, mid, h, "#1a2742", 0.6); snowcap(g, mid, h, h * 0.035, 0.2);
+    fillRidge(g, m, mid, h, "#1a2742", 0.6); snowcaps(g, mid, h, rng, 0.6, 0.18); relief(g, mid, h, s, rng, { amt: 0.5, lit: "200,215,245" });
     pines(g, m, rng, mid, s * 0.7, "#0d1528", Math.round(w / s / 8));
     haze(g, h * 0.88, h * 0.05, w, "60,85,130", 0.14);
     const near = ridge(rng, w, 64, h * 0.905, h * 0.018, 0.45);
@@ -457,7 +489,7 @@ const Scene = (() => {
     milkyWay(g, w, h, rng, s);
     const far = dunes(rng, w, 96, h * 0.79, h * 0.025);
     haze(g, h * 0.8, h * 0.08, w, "60,90,140", 0.16);
-    fillRidge(g, m, far, h, "#101b30", 0.4);
+    fillRidge(g, m, far, h, "#101b30", 0.4); relief(g, far, h, s, rng, { amt: 0.35 });
     // hileras de árboles lejanos
     for (let i = 0; i < Math.round(w / s / 14); i++) {
       const [x, y] = far[Math.floor(rng() * far.length)];
@@ -465,7 +497,7 @@ const Scene = (() => {
     }
     const mid = dunes(rng, w, 96, h * 0.875, h * 0.03);
     haze(g, h * 0.86, h * 0.06, w, "50,75,120", 0.14);
-    fillRidge(g, m, mid, h, "#0a1222", 0.7);
+    fillRidge(g, m, mid, h, "#0a1222", 0.7); relief(g, mid, h, s, rng, { amt: 0.3 });
     // granero con una ventana cálida
     const [bx, by] = mid[Math.floor(mid.length * (0.22 + rng() * 0.12))], bw = 30 * s, bh = 18 * s;
     for (const ctx of [g, m]) {
@@ -571,6 +603,16 @@ const Scene = (() => {
     const S = SCENES.beach, wy = h * S.water, sand = h * 0.9;
     sky(g, w, wy + 2, S.sky);
     milkyWay(g, w, wy, rng, s);
+    // luna creciente baja, con su halo (su camino de luz lo pinta el agua)
+    const mx = w * 0.3, my = h * 0.27, mr = 9 * s;
+    lights.moon = { x: mx / pw, y: my / ph };
+    // la "mordida" de la luna creciente toma el color real del cielo en ese punto (antes de pintar la luna y su halo)
+    const bx = mx + mr * 0.45, by = my - mr * 0.2, sp = g.getImageData(Math.round(bx + mr * 1.6), Math.round(by), 1, 1).data;
+    g.fillStyle = "rgba(236,240,252,0.92)"; g.beginPath(); g.arc(mx, my, mr, 0, TAU); g.fill();
+    g.fillStyle = `rgb(${sp[0]},${sp[1]},${sp[2]})`; g.beginPath(); g.arc(bx, by, mr * 0.9, 0, TAU); g.fill();
+    const halo = g.createRadialGradient(mx, my, 0, mx, my, mr * 8);
+    halo.addColorStop(0, "rgba(215,228,255,0.14)"); halo.addColorStop(1, "rgba(215,228,255,0)");
+    g.fillStyle = halo; g.fillRect(mx - mr * 8, my - mr * 8, mr * 16, mr * 16);
     // isla lejana
     const isle = ridge(rng, w * 0.4, 32, wy - h * 0.012, h * 0.012, 0.5).map(([x, y]) => [x + w * 0.55, Math.min(y, wy)]);
     for (const ctx of [g, m]) { ctx.beginPath(); ctx.moveTo(w * 0.55, wy); isle.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(w * 0.95, wy); ctx.closePath(); ctx.fillStyle = ctx === g ? "#0b1530" : "rgb(90,0,0)"; ctx.fill(); }
@@ -579,10 +621,6 @@ const Scene = (() => {
     wg.addColorStop(0, "#0d2142"); wg.addColorStop(1, "#04101f");
     g.fillStyle = wg; g.fillRect(0, wy, w, sand - wy);
     m.fillStyle = "rgb(0,255,0)"; m.fillRect(0, wy, w, sand - wy);
-    for (let i = 0; i < 240; i++) {
-      const y = wy + Math.pow(rng(), 1.5) * (sand - wy), x = rng() * w, l = (6 + rng() * 34) * s * (0.4 + (y - wy) / (sand - wy));
-      g.fillStyle = `rgba(150,190,235,${(0.025 + rng() * 0.04).toFixed(3)})`; g.fillRect(x, y, l, Math.max(1, 0.6 * s));
-    }
     // la orilla: espuma suave y arena
     const shore = dunes(rng, w, 64, sand, h * 0.006);
     for (const ctx of [g, m]) {
@@ -630,27 +668,20 @@ const Scene = (() => {
       ctx.stroke();
     }
     for (let i = 0; i <= 40; i++) { const lx = (i / 40) * w; g.fillStyle = "rgba(255,215,150,0.85)"; g.fillRect(lx - 0.8 * s, deck - 1.4 * s, 1.6 * s, 1.6 * s); }
+    lights.deck = { y: (deck + 1.6 * s) / ph, water: wy / ph };   // por aquí pasan los autos (ambient.js)
     for (const tx of [t1, t2]) { g.fillStyle = "rgba(255,90,80,0.9)"; g.fillRect(tx - 1 * s, top - 2 * s, 2 * s, 2 * s); blink(tx, top - 1 * s, 1.8); }
     // el río: reflejo del puente y de sus luces, movido
     const wg = g.createLinearGradient(0, wy, 0, h);
     wg.addColorStop(0, "#0b1530"); wg.addColorStop(1, "#02040b");
     g.fillStyle = wg; g.fillRect(0, wy, w, h - wy);
     m.fillStyle = "rgb(0,255,0)"; m.fillRect(0, wy, w, h - wy);
-    g.save(); g.beginPath(); g.rect(0, wy, w, h - wy); g.clip();
-    g.globalAlpha = 0.5; g.fillStyle = "#03050c";
-    for (const tx of [t1, t2]) g.fillRect(tx - 3 * s, wy, 6 * s, (wy - top) * 0.9);
-    g.globalAlpha = 1;
-    for (let i = 0; i < 260; i++) {
-      const lx = rng() * w, f = Math.pow(rng(), 0.7), y = wy + 2 * s + f * (h - wy) * 0.5, l = (3 + rng() * 10) * s;
-      g.fillStyle = `rgba(255,205,140,${(0.04 + rng() * 0.1 * (1 - f)).toFixed(3)})`; g.fillRect(lx - l / 2, y, l, Math.max(1, 0.6 * s));
-    }
-    g.restore();
+    // (los reflejos ya no se pintan: el shader refleja de verdad lo que hay arriba, con olas)
   }
 
   const PAINT = { alpine: paintAlpine, lake: paintLake, city: paintCity, desert: paintDesert, bay: paintBay, snow: paintSnow, country: paintCountry, canyon: paintCanyon, beach: paintBeach, bridge: paintBridge };
 
   function paint(sceneId, w, h, s, cColor, cMask) {
-    lights = { blink: [], beam: null }; pw = w; ph = h;
+    lights = { blink: [], beam: null, moon: null, wins: [], deck: null }; pw = w; ph = h;
     cColor.width = cMask.width = w; cColor.height = cMask.height = h;
     const g = cColor.getContext("2d"), m = cMask.getContext("2d");
     m.fillStyle = "#000"; m.fillRect(0, 0, w, h);
@@ -673,8 +704,9 @@ const Scene = (() => {
     const sc = R.scale, w = Math.round(VW * sc), h = Math.round(VH * sc);
     paint(id, w, h, sc * Math.max(0.85, U), cColor, cMask);
     const S = SCENES[id];
-    R.setBackground(cColor, cMask, S.water ? VH * S.water : -1, 1, S.mist || 0);
+    R.setBackground(cColor, cMask, S.water ? VH * S.water : -1, 1, S.mist || 0, S.cloud || 0);
     Ambient.setScene({ ...(S.life || {}), ...lights });
+    R.setMoon(lights.moon ? [lights.moon.x * VW, lights.moon.y * VH] : null);
     // en "Tu foto" las chispas se apagan al llegar al horizonte (caen detrás de la tierra)
     KILL_Y = S.water ? VH * S.water : S.photo ? VH * S.launch : VH + 30;
   }

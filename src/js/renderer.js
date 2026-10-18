@@ -14,10 +14,10 @@ const R = (() => {
   let quad, ibuf, sbuf;
   const idata = new Float32Array(20000 * 9 + 1024 * 9), sdata = new Float32Array(420 * 9);
   let tPart, tHalf, tA, tB, tC, tD;
-  let bgTex = null, maskTex = null, smokeTex = null;
+  let bgTex = null, maskTex = null, smokeTex = null, noiseTex = null;
   const prog = {};
   const L4 = new Float32Array(32), L3 = new Float32Array(24);
-  let water = -1, starAmt = 1, mistAmt = 0, ok = false;
+  let water = -1, starAmt = 1, mistAmt = 0, cloudAmt = 0, moon = [0, 0, 0], ok = false;
 
   /* ---------- Shaders ---------- */
   const VS_FULL = `attribute vec2 a_c; varying vec2 v_uv; void main(){ v_uv = a_c*0.5+0.5; gl_Position = vec4(a_c,0.0,1.0); }`;
@@ -79,14 +79,10 @@ const R = (() => {
   const FS_BG = `
   precision highp float;
   varying vec2 v_uv;
-  uniform sampler2D u_bg, u_mask;
-  uniform vec2 u_res; uniform float u_time, u_dpr, u_water, u_stars, u_mist;
+  uniform sampler2D u_bg, u_mask, u_noise;
+  uniform vec2 u_res; uniform float u_time, u_dpr, u_water, u_stars, u_mist, u_cloud; uniform vec3 u_moon;
   uniform vec4 u_L[8]; uniform vec3 u_LC[8]; uniform vec3 u_flash;
   float h21(vec2 p){ p = fract(p*vec2(233.34, 851.73)); p += dot(p, p+23.45); return fract(p.x*p.y); }
-  // ruido suave (para la neblina)
-  float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0 - 2.0*f);
-    return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
-  float fbm(vec2 p){ return vn(p)*0.55 + vn(p*2.03 + 1.7)*0.3 + vn(p*4.07 + 3.1)*0.15; }
   float starLayer(vec2 px, float cell, float dens, float rmin, float rmax, float seed){
     vec2 q = px/cell; vec2 g = floor(q); vec2 f = q - g;
     float h = h21(g + seed);
@@ -104,50 +100,87 @@ const R = (() => {
   void main(){
     vec2 px = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y);
     vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
+    vec2 css = px/u_dpr, scr = u_res/u_dpr;
     vec3 col = texture2D(u_bg, uv).rgb;
     vec4 m = texture2D(u_mask, uv);
     float land = m.r, wat = m.g, sky = (1.0 - smoothstep(0.0, 0.05, land)) * (1.0 - wat);
-    // Agua viva: ondas que mueven lo pintado encima (reflejos, luces, el camino de la luna)
-    float depth = 0.0, glint = 0.0;
+
+    /* Agua: refleja de verdad lo que hay arriba (cielo, montañas, luces, la luna), movido por olas en perspectiva:
+       chiquitas y apretadas en el horizonte, grandes cerca. Cerca del horizonte refleja casi todo (espejo);
+       cerca de ti se ve más oscura. Las olas estiran los reflejos en columnas temblorosas. */
+    float p = 0.0, glint = 0.0;
+    vec2 wn = vec2(0.0);
     if (u_water > 0.0 && wat > 0.5) {
-      depth = clamp((px.y - u_water)/(u_res.y - u_water + 1.0), 0.0, 1.0);
-      float gx = px.x/u_dpr, gy = (px.y - u_water)/u_dpr;
-      float wob = sin(gy*0.42 + u_time*1.25 + sin(gx*0.018 + u_time*0.35)*2.2)*(0.6 + 1.6*depth) + sin(gy*0.13 - u_time*0.7)*0.8;
-      vec2 wuv = uv + vec2(wob*u_dpr/u_res.x, 0.0);
-      if (texture2D(u_mask, wuv).g > 0.5) col = texture2D(u_bg, wuv).rgb;
-      // destellos de luna que se mueven sobre la superficie
-      float g = sin(gx*0.11 + u_time*0.8 + sin(gy*0.21 + u_time*0.5)*2.5) * sin(gy*0.9 - u_time*1.9 + sin(gx*0.05)*3.0);
-      glint = pow(max(g, 0.0), 18.0) * (1.0 - depth*0.7);
-      col += vec3(0.75, 0.82, 1.0) * glint * 0.07;
+      float d = css.y - u_water/u_dpr, H = scr.y - u_water/u_dpr;
+      p = clamp(d/H, 0.0, 1.0);
+      // proyección sobre el plano del agua: X = x·k/d, profundidad = k·f/d (cerca: olas anchas y planas; lejos: un espejo liso)
+      float zi = 1.0/(d + 4.0);
+      vec2 w = vec2((css.x - scr.x*0.5)*9.0, 7200.0)*zi;
+      vec2 n1 = texture2D(u_noise, w*vec2(0.044, 0.064) + vec2(u_time*0.010, u_time*0.034)).gb;
+      vec2 n2 = texture2D(u_noise, w*vec2(0.076, 0.108) + vec2(-u_time*0.014, u_time*0.052)).gb;
+      wn = (n1 + n2 - 1.0);
+      float amp = 1.2 + 16.0*p;                                    // en px de pantalla
+      vec2 ofs = vec2(wn.x*amp*0.35, wn.y*amp*2.2);                // las olas estiran los reflejos en vertical
+      vec2 rp = vec2(css.x + ofs.x, u_water/u_dpr - d - 1.0 - abs(ofs.y)*0.6 + ofs.y*0.4);
+      rp.y = min(rp.y, u_water/u_dpr - 1.0);
+      vec3 refl = texture2D(u_bg, clamp(rp/scr, 0.001, 0.999)).rgb;
+      // Fresnel: rasante (lejos) refleja casi todo; cada ola refleja más o menos según hacia dónde mira
+      float fres = clamp(mix(0.92, 0.32, pow(p, 0.55)) + wn.y*0.22*smoothstep(0.0, 0.25, p), 0.08, 0.98);
+      vec3 base = col * (0.75 + 0.25*p);
+      col = mix(base, refl*vec3(0.82, 0.88, 0.98), fres);
+      col *= 0.9 + 0.22*wn.y;                                      // crestas y valles
+      // destellos en las crestas (dos ruidos mezclados: nada de filas ordenadas)
+      float ga = texture2D(u_noise, w*vec2(0.17, 0.24) + vec2(u_time*0.02, -u_time*0.07)).r;
+      float gb = texture2D(u_noise, w*vec2(0.31, 0.43) + vec2(-u_time*0.03, -u_time*0.11)).g;
+      float gsp = ga*0.55 + gb*0.45;
+      glint = smoothstep(0.66, 0.86, gsp) * (1.0 - p*0.6);
+      col += vec3(0.7, 0.78, 0.95) * glint * 0.05;
+      // el camino de la luna: destellos sobre las olas, angosto en el horizonte y más ancho cerca
+      if (u_moon.z > 0.0) {
+        float mw = 3.0 + 75.0*p, k = exp(-pow((css.x - u_moon.x)/mw, 2.0));
+        col += vec3(0.86, 0.89, 0.97) * k * (smoothstep(0.5, 0.82, gsp)*0.55 + 0.05) * (0.45 + 0.55*(1.0 - p)) * u_moon.z;
+      }
     }
+
+    // Nubes tenues que avanzan muy despacio, tapan estrellas y se iluminan con los fuegos
+    float cloud = 0.0;
+    if (u_cloud > 0.0 && sky > 0.0) {
+      vec2 cq = vec2(css.x/scr.x*1.3 + u_time*0.0035, css.y/scr.x*2.6 - u_time*0.0008);
+      float c1 = texture2D(u_noise, cq).r, c2 = texture2D(u_noise, cq*2.3 + vec2(0.37, u_time*0.002)).r;
+      cloud = smoothstep(0.5, 0.82, c1*0.72 + c2*0.28) * u_cloud * smoothstep(0.02, 0.22, uv.y) * sky;
+    }
+
     float alt = smoothstep(0.92, 0.35, uv.y);
-    col += vec3(0.86, 0.9, 1.0) * stars(px) * sky * mix(0.35, 1.0, alt) * u_stars;
+    col += vec3(0.86, 0.9, 1.0) * stars(px) * sky * mix(0.35, 1.0, alt) * u_stars * (1.0 - cloud*0.9);
     vec3 glow = vec3(0.0), wglow = vec3(0.0);
     for (int i = 0; i < 8; i++) {
       vec4 L = u_L[i];
       if (L.w <= 0.0) continue;
-      vec2 d = px - L.xy;
-      float r2 = dot(d, d)/(L.z*L.z);
+      vec2 dd = px - L.xy;
+      float r2 = dot(dd, dd)/(L.z*L.z);
       glow += u_LC[i] * L.w / (1.0 + r2*2.5);
       if (u_water > 0.0) {
-        vec2 dm = vec2(d.x*2.2, (px.y - (u_water + (u_water - L.y)/1.8))*0.8);
+        vec2 dm = vec2(dd.x*2.2, (px.y - (u_water + (u_water - L.y)/1.8))*0.8);
         wglow += u_LC[i] * L.w / (1.0 + dot(dm, dm)/(L.z*L.z)*3.0);
       }
     }
     col += glow * (sky*0.17 + land*0.3 + wat*0.05) + u_flash * (sky*0.10 + land*0.16 + wat*0.08);
-    // Neblina que se desplaza despacio entre cerros y valles; las explosiones la iluminan con su color
+    // las nubes: un poco más claras que el cielo, con la luz de las explosiones encima
+    col = mix(col, vec3(0.09, 0.11, 0.17) + col*0.4, cloud*0.55) + (glow*0.55 + u_flash*0.35)*cloud;
+
+    // Neblina que se desplaza entre cerros y valles; las explosiones la iluminan
     if (u_mist > 0.0) {
       float band = smoothstep(0.52, 0.76, uv.y) * (1.0 - smoothstep(0.9, 1.0, uv.y));
       if (band > 0.0) {
-        vec2 q = vec2(px.x/u_dpr*0.006 + u_time*0.013, px.y/u_dpr*0.02 - u_time*0.004);
-        float mist = smoothstep(0.42, 0.85, fbm(q)) * band * u_mist;
+        vec2 q = vec2(css.x/scr.x*0.9 + u_time*0.004, css.y/scr.x*3.2 - u_time*0.0012);
+        float mist = smoothstep(0.42, 0.8, texture2D(u_noise, q).r) * band * u_mist;
         col = mix(col, vec3(0.13, 0.17, 0.26), mist*0.3) + (glow*0.22 + u_flash*0.12)*mist;
       }
     }
     if (wat > 0.0) {
-      vec2 rp = vec2(px.x + sin(px.y*0.11/u_dpr + u_time*1.3)*1.6*u_dpr*(0.4+depth), u_water - (px.y - u_water)*1.8);
-      col += vec3(0.8,0.86,1.0) * stars(rp) * 0.28 * (1.0 - depth) * wat * u_stars;
-      col += wglow * (0.16 + glint*2.5) * wat * (1.0 - depth*0.6);
+      vec2 rs = vec2(px.x + wn.x*(1.0 + 8.0*p)*u_dpr, u_water - (px.y - u_water) + wn.y*(1.0 + 10.0*p)*u_dpr);
+      col += vec3(0.8,0.86,1.0) * stars(rs) * 0.3 * (1.0 - p) * wat * u_stars;
+      col += wglow * (0.16 + glint*2.5) * wat * (1.0 - p*0.6);
     }
     col += (h21(px + fract(u_time)*50.0) - 0.5)/255.0;
     gl_FragColor = vec4(col, 1.0);
@@ -265,6 +298,7 @@ const R = (() => {
     ibuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, ibuf); gl.bufferData(gl.ARRAY_BUFFER, idata.byteLength, gl.DYNAMIC_DRAW);
     sbuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, sbuf); gl.bufferData(gl.ARRAY_BUFFER, sdata.byteLength, gl.DYNAMIC_DRAW);
     smokeTex = texFromCanvas(smokeAtlas());
+    noiseTex = noiseTexture();
     ok = true;
     return true;
   }
@@ -278,6 +312,47 @@ const R = (() => {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return tex;
+  }
+
+  /* Ruido suave que se repite sin costuras (512×512), una sola vez al iniciar:
+     R = nubes y neblina (grande), G y B = olas del agua (más fino). Con mipmaps, para que en el horizonte no titile. */
+  function noiseTexture() {
+    const N = 512, data = new Uint8Array(N * N * 4);
+    const lattice = (period, seed) => {
+      const v = new Float32Array(period * period);
+      let x = seed * 9973 + 7;
+      for (let i = 0; i < v.length; i++) { x = (x * 16807) % 2147483647; v[i] = x / 2147483647; }
+      return v;
+    };
+    const fbm = (oct, base, seed) => {
+      const out = new Float32Array(N * N);
+      let amp = 0.5, tot = 0;
+      for (let o = 0; o < oct; o++) {
+        const per = base << o, lat = lattice(per, seed + o * 31), k = per / N;
+        for (let y = 0; y < N; y++) {
+          const fy = y * k, y0 = Math.floor(fy), ty = fy - y0, sy = ty * ty * (3 - 2 * ty), r0 = (y0 % per) * per, r1 = ((y0 + 1) % per) * per;
+          for (let xx = 0; xx < N; xx++) {
+            const fx = xx * k, x0 = Math.floor(fx), tx = fx - x0, sx = tx * tx * (3 - 2 * tx), c0 = x0 % per, c1 = (x0 + 1) % per;
+            const a = lat[r0 + c0] + (lat[r0 + c1] - lat[r0 + c0]) * sx, b = lat[r1 + c0] + (lat[r1 + c1] - lat[r1 + c0]) * sx;
+            out[y * N + xx] += (a + (b - a) * sy) * amp;
+          }
+        }
+        tot += amp; amp *= 0.5;
+      }
+      for (let i = 0; i < out.length; i++) out[i] /= tot;
+      return out;
+    };
+    const r = fbm(5, 4, 1), g = fbm(4, 8, 2), b = fbm(4, 8, 3);
+    for (let i = 0; i < N * N; i++) { data[i * 4] = r[i] * 255; data[i * 4 + 1] = g[i] * 255; data[i * 4 + 2] = b[i] * 255; data[i * 4 + 3] = 255; }
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.generateMipmap(gl.TEXTURE_2D);
     return tex;
   }
 
@@ -312,14 +387,17 @@ const R = (() => {
     tC = target(Math.max(2, RW >> 3), Math.max(2, RH >> 3), hdr); tD = target(tC.w, tC.h, hdr);
   }
 
-  function setBackground(colorCanvas, maskCanvas, waterY, stars = 1, mist = 0) {
+  function setBackground(colorCanvas, maskCanvas, waterY, stars = 1, mist = 0, cloud = 0) {
     if (!ok) return;
     bgTex = texFromCanvas(colorCanvas, bgTex);
     maskTex = texFromCanvas(maskCanvas, maskTex);
     water = waterY;
     starAmt = stars;
     mistAmt = mist;
+    cloudAmt = cloud;
   }
+  // La luna del escenario (en px CSS), para su camino de luz sobre el agua
+  function setMoon(m) { moon = m ? [m[0], m[1], 1] : [0, 0, 0]; }
 
   function bindQuad() {
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
@@ -390,11 +468,11 @@ const R = (() => {
     /* 3. Pantalla: cielo */
     const b = prog.bg;
     full(b, null);
-    tex(0, bgTex, b.u.u_bg); tex(1, maskTex, b.u.u_mask);
+    tex(0, bgTex, b.u.u_bg); tex(1, maskTex, b.u.u_mask); tex(2, noiseTex, b.u.u_noise);
     gl.uniform2f(b.u.u_res, RW, RH);
     gl.uniform1f(b.u.u_time, time); gl.uniform1f(b.u.u_dpr, scale);
     gl.uniform1f(b.u.u_water, water > 0 ? water * scale : -1);
-    gl.uniform1f(b.u.u_stars, starAmt); gl.uniform1f(b.u.u_mist, mistAmt);
+    gl.uniform1f(b.u.u_stars, starAmt); gl.uniform1f(b.u.u_mist, mistAmt); gl.uniform1f(b.u.u_cloud, cloudAmt); gl.uniform3f(b.u.u_moon, moon[0], moon[1], moon[2]);
     Lights.top(L4, L3, scale);
     gl.uniform4fv(b.u.u_L, L4); gl.uniform3fv(b.u.u_LC, L3);
     const fl = Lights.sky; gl.uniform3f(b.u.u_flash, fl[0], fl[1], fl[2]);
@@ -441,9 +519,9 @@ const R = (() => {
   }
 
   return {
-    init, resize, render, setBackground, clearTrails,
+    init, resize, render, setBackground, setMoon, clearTrails,
     get ok() { return ok; }, get hdr() { return hdr; }, get gl2() { return gl2; },
     get scale() { return scale; }, get size() { return [RW, RH]; },
-    lose() { ok = false; bgTex = maskTex = smokeTex = null; },
+    lose() { ok = false; bgTex = maskTex = smokeTex = noiseTex = null; },
   };
 })();
