@@ -174,13 +174,18 @@ body.idle #hud > * { pointer-events: none; }
 #floaters { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
 .fl { position: absolute; font-size: 13px; font-weight: 600; color: rgba(255, 227, 179, 0.9); text-shadow: 0 0 10px rgba(241, 194, 122, 0.5); transform: translate(-50%, -50%); animation: fl 1.3s var(--ease) forwards; font-variant-numeric: tabular-nums; }
 @keyframes fl { 0% { opacity: 0; transform: translate(-50%, -30%); } 18% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -190%); } }
-#toasts { position: fixed; left: 50%; top: calc(var(--sat) + 118px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 40; width: min(340px, calc(100% - 28px)); }
-.toast { display: flex; align-items: center; gap: 12px; padding: 10px 16px 10px 12px; border-radius: 18px; background: var(--glass-strong); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border: 1px solid var(--line-2); opacity: 0; transform: translateY(-8px); transition: opacity 0.5s ease, transform 0.6s var(--ease); max-width: 100%; }
+/* Avisos: una pastilla delgada de una línea, abajo (arriba del botón de cohetes), lejos de donde explotan los fuegos */
+#toasts { position: fixed; left: 50%; bottom: calc(var(--sab) + 70px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 40; width: min(340px, calc(100% - 40px)); }
+.toast { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 13px 0 9px; border-radius: 15px; max-width: 100%; white-space: nowrap;
+  font-size: 12.5px; color: var(--ink-2); background: rgba(13, 17, 33, 0.5); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid var(--line);
+  opacity: 0; transform: translateY(4px); transition: opacity 0.7s ease, transform 0.8s var(--ease); }
 .toast.in { opacity: 1; transform: none; }
-.toast .ti { width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; background: rgba(241, 194, 122, 0.12); color: var(--gold-2); flex: 0 0 auto; }
-.toast .ti svg { width: 20px; height: 20px; }
-.toast b { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
-.toast span { display: block; font-size: 14px; margin-top: 2px; }
+body:has(#showbar:not([hidden])) #toasts { bottom: calc(var(--sab) + 186px); }  /* en Crea tu show, arriba de su barra */
+.toast .ti { width: 16px; height: 16px; display: grid; place-items: center; color: var(--gold-2); flex: 0 0 auto; }
+.toast .ti svg { width: 15px; height: 15px; }
+.toast b { flex: 0 0 auto; font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
+.toast .sep { flex: 0 0 auto; color: var(--ink-3); }
+.toast .ts { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- Inicio ---------- */
 #home { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; padding: calc(var(--sat) + 13dvh) 22px calc(var(--sab) + 22px); pointer-events: none; --fade: 0.9s; }
@@ -786,6 +791,7 @@ const STR = {
   hComboD: ["Keep the sky lit and your Sparks multiply. No rush, ever.", "Mantén el cielo encendido y tus Sparks se multiplican. Sin prisa."],
   hFinale: ["Grand Finale", "Gran Final"],
   hFinaleD: ["Fill the bar at the top, then start the big show.", "Llena la barra de arriba y lanza el gran show."],
+  finaleTap: ["Tap the bar to start", "Toca la barra para empezar"],
   // Show Creator
   record: ["Record", "Grabar"],
   stop: ["Stop", "Detener"],
@@ -5286,27 +5292,34 @@ const UI = (() => {
     f.disabled = !ready;
     f.querySelector(".lbl").textContent = t("grandFinale");
   }
-  function finaleReady() { finaleBar(); toast(t("finaleReady"), t("hFinaleD"), "finale"); }
+  function finaleReady() { finaleBar(); toast(t("finaleReady"), t("finaleTap"), "finale"); }
   function finaleState(on) { $("#finale").classList.toggle("running", on); $("#picker").style.opacity = on ? "0.35" : ""; finaleBar(); }
 
   /* ---------- Avisos ---------- */
+  // Avisos sutiles: uno a la vez, sin repetir. Durante la Gran Final (y mientras se graba o se reproduce un show)
+  // esperan su turno para no tapar el espectáculo; salen cuando termina.
+  const quiet = () => Game.finale || Game.playing || !!Game.recording;
   function toast(title, sub, icon) {
+    if (toastQ.some((q) => q.title === title && q.sub === sub)) return;
     toastQ.push({ title, sub, icon });
     if (!toastBusy) nextToast();
   }
   function nextToast() {
-    const it = toastQ.shift();
-    if (!it) { toastBusy = false; return; }
+    if (!toastQ.length) { toastBusy = false; return; }
     toastBusy = true;
+    if (quiet()) { setTimeout(nextToast, 600); return; }
+    const it = toastQ.shift();
     const el = document.createElement("div");
     el.className = "toast";
-    el.innerHTML = `<span class="ti">${ico(it.icon)}</span><span><b></b><span></span></span>`;
+    el.innerHTML = `<span class="ti">${ico(it.icon)}</span><b></b>${it.sub ? '<span class="sep">·</span><span class="ts"></span>' : ""}`;
     el.querySelector("b").textContent = it.title;
-    el.querySelector("span > span").textContent = it.sub;
+    if (it.sub) el.querySelector(".ts").textContent = it.sub;
     $("#toasts").appendChild(el);
     requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("in")));
-    setTimeout(() => { el.classList.remove("in"); setTimeout(() => el.remove(), 600); nextToast(); }, 2600);
+    const show = toastQ.length ? 1800 : 2400;   // si hay más esperando, cada uno dura menos
+    setTimeout(() => { el.classList.remove("in"); setTimeout(() => { el.remove(); nextToast(); }, 750); }, show);
   }
+
 
   /* ---------- Hojas ---------- */
   // Cerrar una ventanilla deslizando hacia abajo, como en iOS: desde la cabecera siempre, y desde el contenido

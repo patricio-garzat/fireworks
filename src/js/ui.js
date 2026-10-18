@@ -194,27 +194,34 @@ const UI = (() => {
     f.disabled = !ready;
     f.querySelector(".lbl").textContent = t("grandFinale");
   }
-  function finaleReady() { finaleBar(); toast(t("finaleReady"), t("hFinaleD"), "finale"); }
+  function finaleReady() { finaleBar(); toast(t("finaleReady"), t("finaleTap"), "finale"); }
   function finaleState(on) { $("#finale").classList.toggle("running", on); $("#picker").style.opacity = on ? "0.35" : ""; finaleBar(); }
 
   /* ---------- Avisos ---------- */
+  // Avisos sutiles: uno a la vez, sin repetir. Durante la Gran Final (y mientras se graba o se reproduce un show)
+  // esperan su turno para no tapar el espectáculo; salen cuando termina.
+  const quiet = () => Game.finale || Game.playing || !!Game.recording;
   function toast(title, sub, icon) {
+    if (toastQ.some((q) => q.title === title && q.sub === sub)) return;
     toastQ.push({ title, sub, icon });
     if (!toastBusy) nextToast();
   }
   function nextToast() {
-    const it = toastQ.shift();
-    if (!it) { toastBusy = false; return; }
+    if (!toastQ.length) { toastBusy = false; return; }
     toastBusy = true;
+    if (quiet()) { setTimeout(nextToast, 600); return; }
+    const it = toastQ.shift();
     const el = document.createElement("div");
     el.className = "toast";
-    el.innerHTML = `<span class="ti">${ico(it.icon)}</span><span><b></b><span></span></span>`;
+    el.innerHTML = `<span class="ti">${ico(it.icon)}</span><b></b>${it.sub ? '<span class="sep">·</span><span class="ts"></span>' : ""}`;
     el.querySelector("b").textContent = it.title;
-    el.querySelector("span > span").textContent = it.sub;
+    if (it.sub) el.querySelector(".ts").textContent = it.sub;
     $("#toasts").appendChild(el);
     requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("in")));
-    setTimeout(() => { el.classList.remove("in"); setTimeout(() => el.remove(), 600); nextToast(); }, 2600);
+    const show = toastQ.length ? 1800 : 2400;   // si hay más esperando, cada uno dura menos
+    setTimeout(() => { el.classList.remove("in"); setTimeout(() => { el.remove(); nextToast(); }, 750); }, show);
   }
+
 
   /* ---------- Hojas ---------- */
   // Cerrar una ventanilla deslizando hacia abajo, como en iOS: desde la cabecera siempre, y desde el contenido

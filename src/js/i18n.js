@@ -72,6 +72,7 @@ const STR = {
   hComboD: ["Keep the sky lit and your Sparks multiply. No rush, ever.", "Mantén el cielo encendido y tus Sparks se multiplican. Sin prisa."],
   hFinale: ["Grand Finale", "Gran Final"],
   hFinaleD: ["Fill the bar at the top, then start the big show.", "Llena la barra de arriba y lanza el gran show."],
+  finaleTap: ["Tap the bar to start", "Toca la barra para empezar"],
   // Show Creator
   record: ["Record", "Grabar"],
   stop: ["Stop", "Detener"],
