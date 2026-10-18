@@ -31,6 +31,8 @@ Abre `http://localhost:8795/` (versión armada) o `http://localhost:8795/src/` (
 | `game.js` | Cohetes, Sparks, combos, Gran Final, retos y Show Creator |
 | `scenes.js` | Los 10 escenarios, pintados con Canvas 2D (color + máscara de tierra y agua) |
 | `doodle.js` | "Tu dibujo": la pantalla para dibujar y cómo la explosión reproduce la forma |
+| `special.js` | Fechas especiales: cuenta regresiva en vivo y el saludo escrito con fuegos |
+| `workshop.js` | Taller de fuegos: diseñar, probar y guardar fuegos propios |
 | `ambient.js` | Vida del escenario en su propia capa: pájaros, luces que parpadean, el faro, estrellas fugaces y nieve |
 | `photo.js` | "Tu foto": editor (zoom, mover, horizonte, noche, tierra o agua) y la foto vuelta de noche; se guarda en IndexedDB |
 | `audio.js` | Sonido procedural (Web Audio): ignición, silbido, explosiones con eco, crackles, chispas y música ambiental |

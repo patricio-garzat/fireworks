@@ -17,7 +17,7 @@ const Game = (() => {
   const owned = () => TYPE_ORDER.filter((k) => Save.unlocked.types.includes(k));
   function chooseType() {
     const s = Save.selected.type;
-    if (s !== "mix" && Save.unlocked.types.includes(s)) return s;
+    if (s !== "mix" && (Save.unlocked.types.includes(s) || (TYPES[s] && TYPES[s].custom))) return s;
     return pick(owned());
   }
   const multFor = (c) => (c >= 35 ? 3 : c >= 20 ? 2.5 : c >= 10 ? 2 : c >= 5 ? 1.5 : 1);
@@ -27,6 +27,7 @@ const Game = (() => {
   /* ---------- Lanzar ---------- */
   function launch(tx, ty, type, power = 1, opts = {}) {
     type = type || chooseType();
+    if (!TYPES[type]) type = "classic";   // p. ej. un fuego del Taller que se borró y seguía en un show grabado
     const ly = Scene.launchY;
     ty = clamp(ty, VH * 0.06, ly - 70 * U);
     tx = clamp(tx, 12, VW - 12);
@@ -37,7 +38,7 @@ const Game = (() => {
     // espiral cerrada y rápida: muchas vueltas chiquitas
     const turns = spiral ? rand(8.5, 10.5) * (opts.chain ? 0.6 : 1) : 0;
     // Cada cohete trae su propia cola, como los de verdad: chispas doradas, brillos plateados, crepitante o casi invisible
-    const tr = Math.random(), tail = spiral ? "spiral" : opts.chain ? "gold" : tr < 0.5 ? "gold" : tr < 0.7 ? "glitter" : tr < 0.85 ? "crackle" : "dim";
+    const tr = Math.random(), tail = spiral ? "spiral" : T.tail ? T.tail : opts.chain ? "gold" : tr < 0.5 ? "gold" : tr < 0.7 ? "glitter" : tr < 0.85 ? "crackle" : "dim";
     const r = {
       x0, y0: ly, tx, ty, x: x0, y: ly, t: 0, dur, type, power, opts, acc: 0, smoke: 0, seed: rand(100), tail, pop: 0,
       arc: spiral ? 0 : rand(-1, 1) * 12 * U * (opts.chain ? 0.3 : 1),
@@ -159,8 +160,8 @@ const Game = (() => {
   }
 
   function explode(r) {
-    const T = TYPES[r.type], pan = panOf(r.tx);
-    const o = { power: r.power, pal: r.pal, flair: 0, colors: r.opts.colors, chain: !!r.opts.chain, pan };
+    const T = TYPES[r.type] || TYPES.classic, pan = panOf(r.tx);
+    const o = { power: r.power, pal: r.pal, flair: 0, colors: r.opts.colors, chain: !!r.opts.chain, pan, text: r.opts.text };
     if (scoring() && !r.opts.auto && !r.opts.finale && !r.opts.replay) o.flair = onBurst(r);
     const res = T.burst(r.tx, r.ty, o, pan);
     flash(r.tx, r.ty, res.light, r.power);
@@ -477,7 +478,7 @@ const Goals = (() => {
     },
     charged: {
       make() { const n = randi(2, 4); return { n, reward: 45 + n * 10 }; },
-      text: (g) => (LANG ? `Lanza ${g.n} cohetes a toda potencia` : `Launch ${g.n} full-power rockets`),
+      text: (g) => (LANG ? `Lanza ${g.n} cohetes a toda potencia` : `Launch ${g.n} full-power fireworks`),
       on: (g, ev) => ev === "charged" && 1,
       icon: () => "ring",
     },

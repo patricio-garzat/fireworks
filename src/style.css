@@ -372,3 +372,54 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
 .dd-row { width: 100%; display: flex; gap: 8px; justify-content: space-between; }
 .dd-row .sbtn { flex: 1; }
 .dd-row .ph-btn { flex: 1; }
+
+.row-sub { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-3); }
+
+/* ---------- Fechas especiales ---------- */
+.special-pill { align-self: center; height: 34px; padding: 0 14px 0 11px; border-radius: 17px; display: flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 500; color: var(--gold-2); background: rgba(241, 194, 122, 0.1); border: 1px solid rgba(241, 194, 122, 0.25); font-variant-numeric: tabular-nums; }
+.special-pill svg { width: 16px; height: 16px; }
+.special-pill.live { color: #1a1206; background: var(--gold); border-color: transparent; }
+.countdown { position: fixed; left: 0; right: 0; top: calc(var(--sat) + 74px); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; z-index: 30; text-align: center; }
+.cd-name { font-size: 11px; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase; color: var(--gold); }
+.cd-time { font-size: 44px; font-weight: 200; letter-spacing: 0.06em; color: var(--ink); font-variant-numeric: tabular-nums; text-shadow: 0 0 24px rgba(255, 227, 179, 0.25); }
+.countdown.final .cd-time { font-size: 120px; line-height: 1; margin-top: 18vh; color: var(--gold-2); text-shadow: 0 0 40px rgba(255, 210, 140, 0.45); }
+.cd-time.tick { animation: cdTick 1s var(--ease); }
+@keyframes cdTick { 0% { opacity: 0; transform: scale(1.12); } 25% { opacity: 1; } 100% { opacity: 0.85; transform: scale(1); } }
+.countdown.done .cd-time { font-size: 22px; font-weight: 300; letter-spacing: 0.12em; color: var(--gold-2); }
+@media (prefers-reduced-motion: reduce) { .cd-time.tick { animation: none; } }
+
+/* ---------- Taller de fuegos ---------- */
+#sheet-workshop { max-height: min(64dvh, 620px); }   /* más bajito: arriba se ven los fuegos que se prueban */
+#sheet-workshop .sheet-head h2 { text-align: left; }
+.ws-banner { width: 100%; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; text-align: left;
+  background: rgba(241, 194, 122, 0.08); border: 1px solid rgba(241, 194, 122, 0.25); color: var(--ink); }
+.ws-banner > svg:first-child { width: 26px; height: 26px; color: var(--gold-2); flex: 0 0 auto; }
+.ws-banner span { flex: 1; }
+.ws-banner b { display: block; font-size: 15px; font-weight: 600; }
+.ws-banner small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--ink-2); }
+.ws-banner .chev { width: 18px; height: 18px; opacity: 0.45; }
+.ws-hint { margin: 0 2px 12px; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
+.ws-item, .ws-new { text-align: left; min-height: 120px; }
+.ws-new { border-style: dashed; color: var(--ink-2); }
+.ws-new .ci { color: var(--gold-2); }
+.ws-lbl { display: block; margin: 14px 2px 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+.ws-name { width: 100%; height: 42px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); color: var(--ink);
+  font: inherit; font-size: 15px; -webkit-user-select: text; user-select: text; }
+.ws-name:focus { outline: none; border-color: rgba(241, 194, 122, 0.45); }
+.ws-shapes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.ws-shapes button { min-height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 13px; font-size: 10.5px; line-height: 1.15; color: var(--ink-2); text-align: center; padding: 6px 2px; }
+.ws-shapes button svg { width: 22px; height: 22px; }
+.ws-shapes button.on { color: var(--ink); background: rgba(241, 194, 122, 0.12); box-shadow: inset 0 0 0 1px rgba(241, 194, 122, 0.4); }
+.ws-shapes button.on svg { color: var(--gold-2); }
+.ws-shapes button:disabled { opacity: 0.28; }
+.ws-sw { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; padding: 2px; }
+.ws-sw button { aspect-ratio: 1; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); opacity: 0.85; transition: transform 0.2s var(--ease), box-shadow 0.2s ease; }
+.ws-sw button.on { opacity: 1; transform: scale(1.12); box-shadow: 0 0 0 2px #04060f, 0 0 0 3.5px var(--c), 0 0 14px var(--c); }
+.ws-seg button { font-size: 12px; }
+.ws-row { display: flex; align-items: center; justify-content: space-between; margin: 14px 2px 0; font-size: 14px; }
+.ws-actions { display: flex; gap: 8px; margin: 18px 0 4px; }
+.ws-actions .sbtn { flex: 1; }
+.ws-actions .ph-btn { flex: 1; height: 40px; border-radius: 13px; }
+.pick-head { grid-column: 1 / -1; margin: 8px 6px 2px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+.pick-it[style] svg { color: var(--c); }

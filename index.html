@@ -401,6 +401,57 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
 .dd-row { width: 100%; display: flex; gap: 8px; justify-content: space-between; }
 .dd-row .sbtn { flex: 1; }
 .dd-row .ph-btn { flex: 1; }
+
+.row-sub { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-3); }
+
+/* ---------- Fechas especiales ---------- */
+.special-pill { align-self: center; height: 34px; padding: 0 14px 0 11px; border-radius: 17px; display: flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 500; color: var(--gold-2); background: rgba(241, 194, 122, 0.1); border: 1px solid rgba(241, 194, 122, 0.25); font-variant-numeric: tabular-nums; }
+.special-pill svg { width: 16px; height: 16px; }
+.special-pill.live { color: #1a1206; background: var(--gold); border-color: transparent; }
+.countdown { position: fixed; left: 0; right: 0; top: calc(var(--sat) + 74px); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; z-index: 30; text-align: center; }
+.cd-name { font-size: 11px; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase; color: var(--gold); }
+.cd-time { font-size: 44px; font-weight: 200; letter-spacing: 0.06em; color: var(--ink); font-variant-numeric: tabular-nums; text-shadow: 0 0 24px rgba(255, 227, 179, 0.25); }
+.countdown.final .cd-time { font-size: 120px; line-height: 1; margin-top: 18vh; color: var(--gold-2); text-shadow: 0 0 40px rgba(255, 210, 140, 0.45); }
+.cd-time.tick { animation: cdTick 1s var(--ease); }
+@keyframes cdTick { 0% { opacity: 0; transform: scale(1.12); } 25% { opacity: 1; } 100% { opacity: 0.85; transform: scale(1); } }
+.countdown.done .cd-time { font-size: 22px; font-weight: 300; letter-spacing: 0.12em; color: var(--gold-2); }
+@media (prefers-reduced-motion: reduce) { .cd-time.tick { animation: none; } }
+
+/* ---------- Taller de fuegos ---------- */
+#sheet-workshop { max-height: min(64dvh, 620px); }   /* más bajito: arriba se ven los fuegos que se prueban */
+#sheet-workshop .sheet-head h2 { text-align: left; }
+.ws-banner { width: 100%; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; text-align: left;
+  background: rgba(241, 194, 122, 0.08); border: 1px solid rgba(241, 194, 122, 0.25); color: var(--ink); }
+.ws-banner > svg:first-child { width: 26px; height: 26px; color: var(--gold-2); flex: 0 0 auto; }
+.ws-banner span { flex: 1; }
+.ws-banner b { display: block; font-size: 15px; font-weight: 600; }
+.ws-banner small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--ink-2); }
+.ws-banner .chev { width: 18px; height: 18px; opacity: 0.45; }
+.ws-hint { margin: 0 2px 12px; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
+.ws-item, .ws-new { text-align: left; min-height: 120px; }
+.ws-new { border-style: dashed; color: var(--ink-2); }
+.ws-new .ci { color: var(--gold-2); }
+.ws-lbl { display: block; margin: 14px 2px 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+.ws-name { width: 100%; height: 42px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); color: var(--ink);
+  font: inherit; font-size: 15px; -webkit-user-select: text; user-select: text; }
+.ws-name:focus { outline: none; border-color: rgba(241, 194, 122, 0.45); }
+.ws-shapes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.ws-shapes button { min-height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 13px; font-size: 10.5px; line-height: 1.15; color: var(--ink-2); text-align: center; padding: 6px 2px; }
+.ws-shapes button svg { width: 22px; height: 22px; }
+.ws-shapes button.on { color: var(--ink); background: rgba(241, 194, 122, 0.12); box-shadow: inset 0 0 0 1px rgba(241, 194, 122, 0.4); }
+.ws-shapes button.on svg { color: var(--gold-2); }
+.ws-shapes button:disabled { opacity: 0.28; }
+.ws-sw { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; padding: 2px; }
+.ws-sw button { aspect-ratio: 1; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); opacity: 0.85; transition: transform 0.2s var(--ease), box-shadow 0.2s ease; }
+.ws-sw button.on { opacity: 1; transform: scale(1.12); box-shadow: 0 0 0 2px #04060f, 0 0 0 3.5px var(--c), 0 0 14px var(--c); }
+.ws-seg button { font-size: 12px; }
+.ws-row { display: flex; align-items: center; justify-content: space-between; margin: 14px 2px 0; font-size: 14px; }
+.ws-actions { display: flex; gap: 8px; margin: 18px 0 4px; }
+.ws-actions .sbtn { flex: 1; }
+.ws-actions .ph-btn { flex: 1; height: 40px; border-radius: 13px; }
+.pick-head { grid-column: 1 / -1; margin: 8px 6px 2px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+.pick-it[style] svg { color: var(--c); }
 </style>
 </head>
 <body>
@@ -455,7 +506,8 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
   <!-- Selector de cohete: un botón chico abajo al centro; al tocarlo se abre una cuadrícula con todos -->
   <nav id="picker" class="picker" aria-label="Fireworks">
     <div id="pick-pop" class="pick-pop" role="menu" hidden><div class="pick-grid"></div>
-      <button id="pick-draw" class="pick-draw" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17c2-5 4-6 5.5-3s3 3.5 5-1 3.5-5.5 5.5-4"/><path d="M15.5 4.5l3 3M17 3l3 3-1.5 1.5-3-3z"/></svg><span data-i18n="ddMine">Draw my rocket</span></button>
+      <button id="pick-draw" class="pick-draw" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17c2-5 4-6 5.5-3s3 3.5 5-1 3.5-5.5 5.5-4"/><path d="M15.5 4.5l3 3M17 3l3 3-1.5 1.5-3-3z"/></svg><span data-i18n="ddMine">Draw my firework</span></button>
+      <button id="pick-ws" class="pick-draw" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5l4 4M4 20l5.2-1.2L19.6 8.4a1.8 1.8 0 0 0 0-2.6l-1.4-1.4a1.8 1.8 0 0 0-2.6 0L5.2 14.8z"/><path d="M5 4.5v2M4 5.5h2M19 15.5v2M18 16.5h2"/></svg><span data-i18n="wsOpen">Workshop</span></button>
     </div>
     <button id="pick-btn" class="pick-btn glass" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="pick-pop">
       <span class="ci"></span><span class="nm"></span>
@@ -464,6 +516,7 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
   </nav>
 </div>
 
+<div id="countdown" class="countdown" aria-live="polite" hidden><span id="cd-name" class="cd-name"></span><b id="cd-time" class="cd-time"></b><span id="cd-sub" class="cd-sub"></span></div>
 <div id="floaters" aria-hidden="true"></div>
 <div id="toasts" aria-live="polite"></div>
 
@@ -474,6 +527,7 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
     <p class="tag" data-i18n="tagline">Paint the night sky</p>
   </div>
   <div class="menu">
+    <button id="special" class="special-pill" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 2M9.5 3h5"/></svg><span></span></button>
     <div class="home-sparks" id="home-sparks">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l1.9 6.2 6.3 1.9-6.3 2-1.9 6.3-1.9-6.3-6.3-2 6.3-1.9z" fill="currentColor"/></svg>
       <b id="home-sparks-n">0</b>
@@ -531,6 +585,16 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
   <div class="sheet-body" id="col-body"></div>
 </section>
 
+<!-- Taller de fuegos: más bajito que las demás ventanillas, para ver arriba los fuegos que se prueban -->
+<section class="sheet" id="sheet-workshop" role="dialog" aria-modal="true" aria-labelledby="ws-h">
+  <div class="sheet-head">
+    <button class="x" id="ws-back" type="button" data-i18n-aria="back" aria-label="Back" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg></button>
+    <h2 id="ws-h" data-i18n="wsTitle">Firework Workshop</h2>
+    <button class="x" type="button" data-close data-i18n-aria="close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
+  </div>
+  <div class="sheet-body" id="ws-body"></div>
+</section>
+
 <section class="sheet" id="sheet-settings" role="dialog" aria-modal="true" aria-labelledby="set-h">
   <div class="sheet-head">
     <h2 id="set-h" data-i18n="settings">Settings</h2>
@@ -543,6 +607,9 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
       <div class="row"><span data-i18n="vibration">Vibration</span><span id="vib-na" class="muted" data-i18n="vibrationNA" hidden>iPhone app only</span><button id="set-vib" class="switch" type="button" role="switch" aria-checked="true"><i></i></button></div>
     </div>
     <div class="group">
+      <div class="row"><span><span data-i18n="realMoon">Real moon</span><small class="row-sub" data-i18n="realMoonD">The moon follows its real cycle</small></span><button id="set-moon" class="switch" type="button" role="switch" aria-checked="true"><i></i></button></div>
+    </div>
+    <div class="group">
       <div class="row col"><span data-i18n="quality">Graphics</span>
         <div class="seg" id="set-q"><button data-v="auto" data-i18n="qAuto">Auto</button><button data-v="high" data-i18n="qHigh">High</button><button data-v="med" data-i18n="qMed">Balanced</button><button data-v="low" data-i18n="qLow">Battery</button></div>
       </div>
@@ -550,6 +617,8 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
         <div class="seg" id="set-lang"><button data-v="0">English</button><button data-v="1">Español</button></div>
       </div>
     </div>
+    <h3 class="sub" data-i18n="specialDates">Special dates</h3>
+    <div class="group" id="set-dates"></div>
     <div class="group">
       <button class="row danger" id="set-reset" type="button"><span data-i18n="reset">Erase progress</span></button>
     </div>
@@ -603,7 +672,7 @@ html.native #studio { background: #FFFFFF; box-shadow: 0 50vh 0 0 #FFFFFF; trans
 <section id="doodle" class="doodle" role="dialog" aria-modal="true" aria-labelledby="dd-h" hidden>
   <div class="dd-card">
     <h3 id="dd-h" data-i18n="ddTitle">Draw your firework</h3>
-    <p class="dd-hint" data-i18n="ddHint">Draw a shape with your finger. Your rocket will burst into it.</p>
+    <p class="dd-hint" data-i18n="ddHint">Draw a shape with your finger. Your firework will burst into it.</p>
     <div class="dd-pad"><canvas id="dd-cv" aria-label="Drawing pad"></canvas><span id="dd-empty" class="dd-empty" data-i18n="ddEmpty">Draw here</span></div>
     <div class="dd-row">
       <button class="sbtn" id="dd-undo" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7L4.5 11.5 9 16"/><path d="M5 11.5h9a5 5 0 0 1 0 10h-2"/></svg><span data-i18n="ddUndo">Undo</span></button>
@@ -770,23 +839,23 @@ const STR = {
   website: ["Website", "Sitio web"],
   support: ["Support", "Soporte"],
   // Récords
-  rLaunches: ["Rockets launched", "Cohetes lanzados"],
+  rLaunches: ["Fireworks launched", "Cohetes lanzados"],
   rBestCombo: ["Best combo", "Mejor combo"],
   rFinales: ["Grand Finales", "Grandes Finales"],
   rSparks: ["Sparks earned", "Sparks ganados"],
   rFavorite: ["Favorite firework", "Fuego favorito"],
   rDiscovered: ["Fireworks discovered", "Fuegos descubiertos"],
   rGoals: ["Goals completed", "Retos cumplidos"],
-  rCharged: ["Full-power rockets", "Cohetes a toda potencia"],
+  rCharged: ["Full-power fireworks", "Cohetes a toda potencia"],
   // Cómo jugar
   hTap: ["Tap the sky", "Toca el cielo"],
-  hTapD: ["A rocket rises and bursts right where you tapped.", "Un cohete sube y explota justo donde tocaste."],
+  hTapD: ["A firework rises and bursts right where you tapped.", "Un cohete sube y explota justo donde tocaste."],
   hHold: ["Hold to charge", "Mantén para cargar"],
   hHoldD: ["Keep your finger down for a bigger, brighter burst.", "Deja el dedo para una explosión más grande y brillante."],
   hSwipe: ["Swipe a path", "Desliza un camino"],
   hSwipeD: ["Draw across the sky and a chain of bursts follows it.", "Dibuja en el cielo y una cadena de explosiones lo sigue."],
   hMulti: ["Use many fingers", "Usa varios dedos"],
-  hMultiD: ["Every finger launches its own rocket.", "Cada dedo lanza su propio cohete."],
+  hMultiD: ["Every finger launches its own firework.", "Cada dedo lanza su propio cohete."],
   hCombo: ["Combos", "Combos"],
   hComboD: ["Keep the sky lit and your Sparks multiply. No rush, ever.", "Mantén el cielo encendido y tus Sparks se multiplican. Sin prisa."],
   hFinale: ["Grand Finale", "Gran Final"],
@@ -809,19 +878,46 @@ const STR = {
   phEdit: ["Edit", "Editar"],
   phDone: ["Done", "Listo"],
   phHorizon: ["Horizon", "Horizonte"],
-  phHint: ["Pinch to zoom, drag to move. Rockets launch from the horizon.", "Pellizca para zoom y arrastra para mover. Los cohetes salen del horizonte."],
+  phHint: ["Pinch to zoom, drag to move. Fireworks launch from the horizon.", "Pellizca para zoom y arrastra para mover. Los cohetes salen del horizonte."],
   phNight: ["Night", "Noche"],
   phLand: ["Land", "Tierra"],
   phWater: ["Water", "Agua"],
   phChange: ["Choose another photo", "Elegir otra foto"],
   phReady: ["Your sky is ready", "Tu cielo está listo"],
   ddTitle: ["Draw your firework", "Dibuja tu cohete"],
-  ddHint: ["Draw a shape with your finger. Your rocket will burst into it.", "Dibuja una forma con el dedo. Tu cohete explotará con esa forma."],
+  ddHint: ["Draw a shape with your finger. Your firework will burst into it.", "Dibuja una forma con el dedo. Tu cohete explotará con esa forma."],
   ddEmpty: ["Draw here", "Dibuja aquí"],
   ddUndo: ["Undo", "Deshacer"],
   ddClear: ["Clear", "Borrar"],
   ddDraw: ["Draw", "Dibujar"],
-  ddMine: ["Draw my rocket", "Dibujar mi cohete"],
+  ddMine: ["Draw my firework", "Dibujar mi cohete"],
+  realMoon: ["Real moon", "Luna real"],
+  specialDates: ["Special dates", "Fechas especiales"],
+  demo: ["Preview", "Ver demo"],
+  back: ["Back", "Atrás"],
+  wsTitle: ["Firework Workshop", "Taller de fuegos"],
+  wsOpen: ["Workshop", "Taller"],
+  wsBanner: ["Design your own fireworks", "Diseña tus propios fuegos"],
+  wsHint: ["Design your own fireworks. They appear in the firework picker, under My fireworks.", "Diseña tus propios fuegos. Aparecen en el selector, en Mis fuegos."],
+  wsNew: ["New firework", "Nuevo fuego"],
+  wsUpTo: ["Up to 6", "Hasta 6"],
+  wsMine: ["My fireworks", "Mis fuegos"],
+  wsDefaultName: ["My firework", "Mi fuego"],
+  wsName: ["Name", "Nombre"],
+  wsShape: ["Shape", "Forma"],
+  wsColor1: ["Main color", "Color principal"],
+  wsColor2: ["Second color", "Segundo color"],
+  wsEnd: ["Ending", "Final"],
+  wsE_none: ["Plain", "Simple"], wsE_crackle: ["Crackle", "Crepita"], wsE_glitter: ["Sparkle", "Brillos"], wsE_split: ["Split", "Se divide"], wsE_shift: ["Color change", "Cambia"],
+  wsTail: ["Tail", "Cola"],
+  wsT_gold: ["Gold", "Dorada"], wsT_glitter: ["Silver", "Plateada"], wsT_crackle: ["Crackle", "Crepita"], wsT_dim: ["Faint", "Tenue"], wsT_spiral: ["Spiral", "Espiral"],
+  wsWhistle: ["Whistle", "Silbido"],
+  wsSize: ["Size", "Tamaño"],
+  wsS_s: ["Small", "Chico"], wsS_m: ["Medium", "Mediano"], wsS_l: ["Large", "Grande"],
+  wsTry: ["Try", "Probar"],
+  wsSave: ["Save", "Guardar"],
+  wsDelete: ["Delete", "Borrar"],
+  realMoonD: ["The moon follows its real cycle", "La luna sigue su ciclo real"],
 };
 
 let LANG = 0; // 0 = inglés, 1 = español
@@ -850,12 +946,13 @@ function freshSave() {
     finale: 0,
     goals: null,
     shows: [null, null, null],
+    customs: [],
     showSlot: 0,
   };
 }
 
 function freshSettings() {
-  return { sfx: 0.85, music: 0.5, haptics: true, quality: "auto", lang: (navigator.language || "en").toLowerCase().startsWith("es") ? 1 : 0 };
+  return { sfx: 0.85, music: 0.5, haptics: true, realMoon: true, quality: "auto", lang: (navigator.language || "en").toLowerCase().startsWith("es") ? 1 : 0 };
 }
 
 function loadJSON(key, fresh) {
@@ -1666,7 +1763,7 @@ const P = (() => {
 
   return {
     add, addSure, evict, room, setTrail, update, write, extra, clear,
-    x, y, vx, vy, drag, grav, size, r2, g2, b2, tchg, heat, bright, spin, kind, flags, ev, seed, wig, wf,
+    x, y, vx, vy, drag, grav, size, life, r2, g2, b2, tchg, heat, bright, spin, kind, flags, ev, seed, wig, wf,
     get n() { return n; },
     get cap() { return cap; }, set cap(v) { cap = Math.min(MAX, v); },
     MAX,
@@ -2181,7 +2278,7 @@ const R = (() => {
     cloudAmt = cloud;
   }
   // La luna del escenario (en px CSS), para su camino de luz sobre el agua
-  function setMoon(m) { moon = m ? [m[0], m[1], 1] : [0, 0, 0]; }
+  function setMoon(m) { moon = m ? [m[0], m[1], m[2] === undefined ? 1 : m[2]] : [0, 0, 0]; }   // [x, y, cuánta luna]
 
   function bindQuad() {
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
@@ -2375,8 +2472,16 @@ const SCENES = {
 };
 const SCENE_ORDER = ["alpine", "lake", "country", "desert", "city", "canyon", "bay", "snow", "bridge"];
 
+/* Luna real: en qué parte de su ciclo va hoy (0 = nueva, 0.5 = llena). Mes sinódico desde la luna nueva del 6 ene 2000. */
+function moonPhase(date = new Date()) {
+  const syn = 29.530588853, ref = Date.UTC(2000, 0, 6, 18, 14) / 864e5, d = date.getTime() / 864e5 - ref;
+  return (((d % syn) + syn) % syn) / syn;
+}
+// Dónde va la luna en cada escenario (fracción de la pantalla)
+const MOON_AT = { alpine: [0.76, 0.15], lake: [0.24, 0.17], country: [0.78, 0.17], desert: [0.25, 0.18], city: [0.72, 0.14], canyon: [0.6, 0.13], bay: [0.78, 0.2], snow: [0.3, 0.14], bridge: [0.82, 0.13] };
+
 const Scene = (() => {
-  let id = "alpine";
+  let id = "alpine", cur = "alpine";
   // Lo que cada escenario deja para la capa de vida (ambient.js): luces que parpadean y el faro (en fracción de pantalla)
   let lights = { blink: [], beam: null, moon: null, wins: [], deck: null }, pw = 1, ph = 1;
   const blink = (x, y, period = 1.6) => lights.blink.push({ x: x / pw, y: y / ph, period, ph: rand(TAU) });
@@ -2483,6 +2588,38 @@ const Scene = (() => {
     gr.addColorStop(0, cols[0]); gr.addColorStop(0.35, cols[1]); gr.addColorStop(0.68, cols[2]); gr.addColorStop(0.9, cols[3]);
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
   }
+  /* La luna: con "Luna real" sigue su fase de hoy (creciente, cuarto, llena, menguante, nueva) en todos los escenarios;
+     si se apaga, solo la bahía tiene su luna llena, como antes. Se pinta justo después de la vía láctea (detrás de todo). */
+  function moon(g, w, h, s) {
+    const at = MOON_AT[cur];
+    if (!at) return;
+    const real = Settings.realMoon !== false;
+    if (!real && cur !== "bay") return;
+    const f = real ? moonPhase() : 0.5, k = (1 - Math.cos(f * TAU)) / 2;   // k: cuánto está iluminada (0..1)
+    const x = at[0] * w, y = at[1] * h, r = (cur === "bay" ? 11 : 10) * s;
+    lights.moon = { x: x / pw, y: y / ph, k };
+    if (k > 0.03) {
+      const halo = g.createRadialGradient(x, y, 0, x, y, r * 9);
+      halo.addColorStop(0, `rgba(215,228,255,${(0.16 * k).toFixed(3)})`); halo.addColorStop(1, "rgba(215,228,255,0)");
+      g.fillStyle = halo; g.fillRect(x - r * 9, y - r * 9, r * 18, r * 18);
+    }
+    // la parte oscura apenas se adivina (luz cenicienta)
+    g.fillStyle = "rgba(110,125,165,0.10)"; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+    if (k < 0.02) return;
+    // la parte iluminada: medio disco del lado de la luz + media elipse hasta el terminador
+    const c = Math.cos(f * TAU), rx = r * Math.abs(c), waxing = f < 0.5;
+    g.save();
+    g.beginPath();
+    if (waxing) { g.arc(x, y, r, -Math.PI / 2, Math.PI / 2, false); g.ellipse(x, y, rx, r, 0, Math.PI / 2, -Math.PI / 2, c > 0); }
+    else { g.arc(x, y, r, Math.PI / 2, (3 * Math.PI) / 2, false); g.ellipse(x, y, rx, r, 0, (3 * Math.PI) / 2, Math.PI / 2, c > 0); }
+    g.closePath();
+    g.fillStyle = "rgba(236,240,252,0.92)"; g.fill();
+    g.clip();
+    g.fillStyle = "rgba(170,180,205,0.25)";
+    for (const [ox, oy, rr] of [[-0.3, -0.2, 0.32], [0.25, 0.1, 0.25], [-0.05, 0.35, 0.18]]) { g.beginPath(); g.arc(x + ox * r, y + oy * r, rr * r, 0, TAU); g.fill(); }
+    g.restore();
+  }
+
   // Vía láctea: una banda diagonal de polvo de estrellas muy tenue
   function milkyWay(g, w, h, rng, s) {
     g.save();
@@ -2510,6 +2647,7 @@ const Scene = (() => {
       g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
     }
     g.restore();
+    moon(g, w, h, s);
   }
   function pines(g, m, rng, pts, s, color, count) {
     for (let k = 0; k < count; k++) {
@@ -2689,15 +2827,7 @@ const Scene = (() => {
     const S = SCENES.bay, wy = h * S.water;
     sky(g, w, wy + 2, S.sky);
     milkyWay(g, w, wy, rng, s);
-    // luna llena baja, con su halo
-    const mx = w * 0.78, my = h * 0.2, mr = 11 * s;
-    lights.moon = { x: mx / pw, y: my / ph };
-    const halo = g.createRadialGradient(mx, my, 0, mx, my, mr * 9);
-    halo.addColorStop(0, "rgba(215,228,255,0.16)"); halo.addColorStop(1, "rgba(215,228,255,0)");
-    g.fillStyle = halo; g.fillRect(mx - mr * 9, my - mr * 9, mr * 18, mr * 18);
-    g.fillStyle = "rgba(236,240,252,0.92)"; g.beginPath(); g.arc(mx, my, mr, 0, TAU); g.fill();
-    g.fillStyle = "rgba(170,180,205,0.25)";
-    for (const [ox, oy, rr] of [[-0.3, -0.2, 0.32], [0.25, 0.1, 0.25], [-0.05, 0.35, 0.18]]) { g.beginPath(); g.arc(mx + ox * mr, my + oy * mr, rr * mr, 0, TAU); g.fill(); }
+    // (la luna la pinta moon(), con su fase real)
     // colinas al otro lado de la bahía
     const far = ridge(rng, w, 64, wy - h * 0.022, h * 0.018, 0.5);
     haze(g, wy - h * 0.01, h * 0.06, w, "80,110,160", 0.12);
@@ -2935,6 +3065,7 @@ const Scene = (() => {
       }
       sceneId = "alpine";
     }
+    cur = sceneId;
     const seed = { alpine: 7, lake: 21, city: 33, desert: 45, bay: 58, snow: 64, country: 71, canyon: 83, bridge: 105 }[sceneId] || 7;
     PAINT[sceneId](g, m, w, h, s, mulberry(seed * 977 + 13));
   }
@@ -2947,7 +3078,7 @@ const Scene = (() => {
     const S = SCENES[id];
     R.setBackground(cColor, cMask, S.water ? VH * S.water : -1, 1, S.mist || 0, S.cloud || 0);
     Ambient.setScene({ ...(S.life || {}), ...lights });
-    R.setMoon(lights.moon ? [lights.moon.x * VW, lights.moon.y * VH] : null);
+    R.setMoon(lights.moon ? [lights.moon.x * VW, lights.moon.y * VH, lights.moon.k] : null);
     // en "Tu foto" las chispas se apagan al llegar al horizonte (caen detrás de la tierra)
     KILL_Y = S.water ? VH * S.water : S.photo ? VH * S.launch : VH + 30;
   }
@@ -3746,7 +3877,7 @@ function avg(a, b) { return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2])
    Regresa opciones para star() y el sonido extra que corresponde. */
 function variant(o, a, b, life) {
   const r = Math.random();
-  if (o.chain) return { opt: {}, sound() {} };
+  if (o.chain || o.tip) return { opt: {}, sound() {} };   // en el Taller el final lo elige la persona
   if (r < 0.34) return { opt: {}, sound() {} };
   if (r < 0.52) return { opt: { flags: F_CRACKLE }, sound(pan) { Sound.crackle(0.9, pan, life * 0.95); } };
   if (r < 0.66) return { opt: { split: life * rand(0.78, 0.86) }, sound(pan) { Sound.crackle(0.4, pan, life * 0.8); } };
@@ -4370,6 +4501,24 @@ const TYPES = {
     sound(p, pan) { Sound.boom(p, pan, { low: 86, body: 1250, crack: 0.6 }); Sound.sizzle(1.8, pan, 0.4, 0.7); },
   },
 
+  // Saludo de las fechas especiales: escribe un texto en el cielo con fuegos (special.js). Los colores van en franjas
+  // de izquierda a derecha (con verde, blanco y rojo queda la bandera de México).
+  word: {
+    cost: -1, name: ["Greeting", "Saludo"], desc: ["", ""],
+    rise: { air: 0.06, whistle: 0.04, f0: 700, f1: 1100 },
+    burst(x, y, o) {
+      // unos 80 puntos por letra para que se lea (un texto largo necesita más), y estrellas más finas si hay muchas
+      const text = o.text || "2027", chars = text.replace(/\s/g, "").length, n = clamp(chars * 80, 260, 760);
+      const pts = TextShape.sample(text, Math.round(n * P.room(0.85))), drag = 2.0, span = VW * 0.44, cols = o.pal.colors, sz = chars > 6 ? 1.8 : 2.3;
+      for (const [px, py] of pts) {
+        const c = cols[Math.min(cols.length - 1, Math.floor(((px + 1) / 2) * cols.length))];
+        star(x, y, px * span * drag, py * span * drag, rand(2.6, 3.1), sz * U, c, { drag, grav: 6, heat: 0.6 });
+      }
+      return { light: o.pal.metal, R: span };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { low: 80, body: 1300, crack: 0.8 }); Sound.sizzle(2.5, pan, 0.55, 0.6); },
+  },
+
   // El gran cierre de la Gran Final (no se elige: es la recompensa)
   grand: {
     cost: -1, name: ["Grand Shell", "Gran carcasa"], desc: ["", ""],
@@ -4454,7 +4603,7 @@ const Game = (() => {
   const owned = () => TYPE_ORDER.filter((k) => Save.unlocked.types.includes(k));
   function chooseType() {
     const s = Save.selected.type;
-    if (s !== "mix" && Save.unlocked.types.includes(s)) return s;
+    if (s !== "mix" && (Save.unlocked.types.includes(s) || (TYPES[s] && TYPES[s].custom))) return s;
     return pick(owned());
   }
   const multFor = (c) => (c >= 35 ? 3 : c >= 20 ? 2.5 : c >= 10 ? 2 : c >= 5 ? 1.5 : 1);
@@ -4464,6 +4613,7 @@ const Game = (() => {
   /* ---------- Lanzar ---------- */
   function launch(tx, ty, type, power = 1, opts = {}) {
     type = type || chooseType();
+    if (!TYPES[type]) type = "classic";   // p. ej. un fuego del Taller que se borró y seguía en un show grabado
     const ly = Scene.launchY;
     ty = clamp(ty, VH * 0.06, ly - 70 * U);
     tx = clamp(tx, 12, VW - 12);
@@ -4474,7 +4624,7 @@ const Game = (() => {
     // espiral cerrada y rápida: muchas vueltas chiquitas
     const turns = spiral ? rand(8.5, 10.5) * (opts.chain ? 0.6 : 1) : 0;
     // Cada cohete trae su propia cola, como los de verdad: chispas doradas, brillos plateados, crepitante o casi invisible
-    const tr = Math.random(), tail = spiral ? "spiral" : opts.chain ? "gold" : tr < 0.5 ? "gold" : tr < 0.7 ? "glitter" : tr < 0.85 ? "crackle" : "dim";
+    const tr = Math.random(), tail = spiral ? "spiral" : T.tail ? T.tail : opts.chain ? "gold" : tr < 0.5 ? "gold" : tr < 0.7 ? "glitter" : tr < 0.85 ? "crackle" : "dim";
     const r = {
       x0, y0: ly, tx, ty, x: x0, y: ly, t: 0, dur, type, power, opts, acc: 0, smoke: 0, seed: rand(100), tail, pop: 0,
       arc: spiral ? 0 : rand(-1, 1) * 12 * U * (opts.chain ? 0.3 : 1),
@@ -4596,8 +4746,8 @@ const Game = (() => {
   }
 
   function explode(r) {
-    const T = TYPES[r.type], pan = panOf(r.tx);
-    const o = { power: r.power, pal: r.pal, flair: 0, colors: r.opts.colors, chain: !!r.opts.chain, pan };
+    const T = TYPES[r.type] || TYPES.classic, pan = panOf(r.tx);
+    const o = { power: r.power, pal: r.pal, flair: 0, colors: r.opts.colors, chain: !!r.opts.chain, pan, text: r.opts.text };
     if (scoring() && !r.opts.auto && !r.opts.finale && !r.opts.replay) o.flair = onBurst(r);
     const res = T.burst(r.tx, r.ty, o, pan);
     flash(r.tx, r.ty, res.light, r.power);
@@ -4914,7 +5064,7 @@ const Goals = (() => {
     },
     charged: {
       make() { const n = randi(2, 4); return { n, reward: 45 + n * 10 }; },
-      text: (g) => (LANG ? `Lanza ${g.n} cohetes a toda potencia` : `Launch ${g.n} full-power rockets`),
+      text: (g) => (LANG ? `Lanza ${g.n} cohetes a toda potencia` : `Launch ${g.n} full-power fireworks`),
       on: (g, ev) => ev === "charged" && 1,
       icon: () => "ring",
     },
@@ -4971,6 +5121,378 @@ const Goals = (() => {
     UI.goals();
   }
   return { ensure, event, text: (g) => KINDS[g.k].text(g), icon: (g) => KINDS[g.k].icon(g) };
+})();
+
+/* ---------- js/special.js ---------- */
+"use strict";
+/* special.js: Fechas especiales con cuenta regresiva en vivo.
+   - Seis fechas (hora local): Año Nuevo, Año Nuevo Lunar, Independencia de México (El Grito, 15 sep a las 23:00),
+     4 de julio, Diwali y Navidad (medianoche del 24). Las que cambian de día cada año van en tablas.
+   - En el Inicio: la semana antes, un aviso discreto ("Diwali en 6 días"); el mismo día, la cuenta regresiva en vivo.
+     Al tocarlo se entra al modo de cuenta regresiva: números grandes y delgados en el cielo, fuegos del tema de vez en
+     cuando y la persona puede lanzar los suyos. El último minuto se calma; los últimos 10 s, dígitos grandes con un
+     "tic" suave y vibración ligera. En cero: un show especial con los colores de la fecha y el saludo escrito con fuegos.
+   - Ajustes → Fechas especiales: la lista con sus fechas y "Ver demo" (una cuenta de 15 s para verlo hoy).
+   - TextShape: convierte un texto en puntos (el contorno de las letras) para escribirlo en el cielo. */
+
+const TextShape = (() => {
+  const cache = new Map();
+  // Puntos del contorno de un texto (una o más líneas), normalizados: x de -1 a 1, y proporcional (centrado)
+  function points(text) {
+    if (cache.has(text)) return cache.get(text);
+    const lines = text.split("\n"), F = 120, lh = F * 1.05;
+    const c = document.createElement("canvas"), g = c.getContext("2d", { willReadFrequently: true });
+    const font = `800 ${F}px -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif`;
+    g.font = font;
+    const W = Math.ceil(Math.max(...lines.map((l) => g.measureText(l).width))) + 20, H = Math.ceil(lh * lines.length) + 20;
+    c.width = W; c.height = H;
+    g.font = font; g.textAlign = "center"; g.textBaseline = "middle";
+    g.strokeStyle = "#fff"; g.lineWidth = 3; g.lineJoin = "round";
+    lines.forEach((l, i) => g.strokeText(l, W / 2, 10 + lh * (i + 0.5)));
+    const d = g.getImageData(0, 0, W, H).data, pts = [];
+    for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) if (d[(y * W + x) * 4 + 3] > 128) pts.push([x, y, Math.min(lines.length - 1, Math.floor((y - 10) / lh))]);
+    const s = 2 / W, out = pts.map(([x, y, li]) => [(x - W / 2) * s, (y - H / 2) * s, li]);
+    cache.set(text, out);
+    return out;
+  }
+  // n puntos repartidos por todo el contorno
+  function sample(text, n) {
+    const all = points(text);
+    if (all.length <= n) return all;
+    const out = [], step = all.length / n;
+    for (let i = 0; i < n; i++) out.push(all[Math.floor(i * step + Math.random() * step * 0.6)]);
+    return out;
+  }
+  return { sample };
+})();
+
+const Special = (() => {
+  const LUNAR = { 2027: [1, 6], 2028: [0, 26], 2029: [1, 13], 2030: [1, 3], 2031: [0, 23], 2032: [1, 11] };   // [mes (0-11), día]
+  const DIWALI = { 2026: [10, 8], 2027: [9, 29], 2028: [9, 17], 2029: [10, 5], 2030: [9, 26], 2031: [10, 14], 2032: [10, 2] };
+  const EVENTS = [
+    { id: "newyear", name: ["New Year", "Año Nuevo"], at: (y) => new Date(y, 0, 1, 0, 0, 0), greet: (y) => [String(y), String(y)], hello: ["Happy New Year", "Feliz Año Nuevo"],
+      colors: [C.gold, C.warm, C.silver, C.white, C.pearl], metal: C.gold },
+    { id: "lunar", name: ["Lunar New Year", "Año Nuevo Lunar"], at: (y) => (LUNAR[y] ? new Date(y, LUNAR[y][0], LUNAR[y][1], 0, 0, 0) : null), greet: () => ["新年快乐", "新年快乐"], hello: ["Happy Lunar New Year", "Feliz Año Nuevo Lunar"],
+      colors: [C.red, C.gold, C.amber, C.coral], metal: C.gold },
+    { id: "mexico", name: ["Mexican Independence", "Independencia de México"], at: (y) => new Date(y, 8, 15, 23, 0, 0), greet: () => ["¡VIVA\nMÉXICO!", "¡VIVA\nMÉXICO!"], hello: ["¡Viva México!", "¡Viva México!"],
+      colors: [C.green, C.white, C.red], metal: C.silver },
+    { id: "july4", name: ["Independence Day", "4 de julio"], at: (y) => new Date(y, 6, 4, 21, 30, 0), greet: () => ["JULY 4TH", "4 DE JULIO"], hello: ["Happy 4th of July", "Feliz 4 de julio"],
+      colors: [C.red, C.white, C.blue], metal: C.silver },
+    { id: "diwali", name: ["Diwali", "Diwali"], at: (y) => (DIWALI[y] ? new Date(y, DIWALI[y][0], DIWALI[y][1], 20, 0, 0) : null), greet: () => ["DIWALI", "DIWALI"], hello: ["Happy Diwali", "Feliz Diwali"],
+      colors: [C.gold, C.amber, C.magenta, C.orange, C.warm], metal: C.gold },
+    { id: "xmas", name: ["Christmas", "Navidad"], at: (y) => new Date(y, 11, 25, 0, 0, 0), greet: () => ["MERRY\nCHRISTMAS", "FELIZ\nNAVIDAD"], hello: ["Merry Christmas", "Feliz Navidad"],
+      colors: [C.red, C.green, C.gold, C.white], metal: C.gold },
+  ];
+  const AFTER = 2 * 3600e3;   // después de la hora, el saludo se queda 2 horas
+
+  let demo = null;            // { ev, at } durante la vista previa
+  let active = null;          // { ev, at, state: "wait" | "show" | "after", nextAuto, lastSec }
+  const el = (id) => document.getElementById(id);
+
+  // La próxima fecha (o la que acaba de pasar hace menos de 2 h)
+  function upcoming(now = Date.now()) {
+    if (demo) return demo;
+    let best = null;
+    const y = new Date(now).getFullYear();
+    for (const ev of EVENTS) for (const yy of [y, y + 1]) {
+      const d = ev.at(yy);
+      if (!d) continue;
+      const at = d.getTime();
+      if (at + AFTER < now) continue;
+      if (!best || at < best.at) best = { ev, at, year: yy };
+      break;
+    }
+    return best;
+  }
+  const pal = (ev) => ({ colors: ev.colors, metal: ev.metal, heart: ev.colors[0] });
+  const two = (n) => String(n).padStart(2, "0");
+  function clock(ms) {
+    const s = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h ? `${two(h)}:${two(m)}:${two(s % 60)}` : `${two(m)}:${two(s % 60)}`;
+  }
+
+  /* ---------- Aviso en el Inicio ---------- */
+  function pill() {
+    const b = el("special"), u = upcoming(), now = Date.now();
+    if (!u) { b.hidden = true; return; }
+    const left = u.at - now, days = Math.ceil((new Date(u.at).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / 864e5);
+    let text = "";
+    if (left <= 0) text = u.ev.hello[LANG];
+    else if (left < 24 * 3600e3) text = `${u.ev.name[LANG]} · ${clock(left)}`;
+    else if (days <= 7) text = LANG ? `${u.ev.name[1]} en ${days} ${days === 1 ? "día" : "días"}` : `${u.ev.name[0]} in ${days} ${days === 1 ? "day" : "days"}`;
+    b.hidden = !text;
+    b.querySelector("span").textContent = text;
+    b.classList.toggle("live", left < 24 * 3600e3);
+  }
+
+  /* ---------- Modo cuenta regresiva ---------- */
+  function start() {
+    const u = upcoming();
+    if (!u) return;
+    if (u.at - Date.now() > 24 * 3600e3) return;   // antes del día solo se avisa
+    active = { ev: u.ev, at: u.at, year: u.year, state: u.at <= Date.now() ? "after" : "wait", nextAuto: 1.2, lastSec: -1 };
+    UI.enter("special");
+    el("countdown").hidden = false;
+    el("cd-name").textContent = u.ev.name[LANG];
+    if (active.state === "after") celebrate();
+    render();
+  }
+  function stop() {
+    active = null; demo = null;
+    el("countdown").hidden = true;
+    el("countdown").classList.remove("final", "done");
+  }
+  function render() {
+    if (!active) return;
+    const left = active.at - Date.now(), box = el("countdown");
+    if (active.state === "wait") {
+      const sec = Math.ceil(left / 1000), final = sec <= 10;
+      box.classList.toggle("final", final);
+      el("cd-time").textContent = final ? String(Math.max(sec, 0)) : clock(left);
+      el("cd-sub").textContent = "";
+      if (final && sec !== active.lastSec && sec > 0) {
+        active.lastSec = sec;
+        // cada segundo: el número entra de nuevo, un "tic" suave y vibración ligera
+        const t = el("cd-time"); t.classList.remove("tick"); void t.offsetWidth; t.classList.add("tick");
+        Sound.tap(); Haptics.tap();
+      }
+    } else {
+      box.classList.remove("final"); box.classList.add("done");
+      el("cd-time").textContent = active.ev.hello[LANG];
+      el("cd-sub").textContent = "";
+    }
+  }
+
+  // El show de la fecha: un arranque con los colores del tema, el saludo escrito con fuegos y un cierre dorado
+  function celebrate() {
+    const ev = active.ev, p = pal(ev), y = active.year;
+    const words = ev.greet(y)[LANG];
+    const L = (at, x, yy, type, power, extra = {}) => Timers.after(at, () => { if (active && active.ev === ev) Game.launch(VW * x, VH * yy, type, power, { auto: true, pal: p, ...extra }); });
+    // 1. arranque: una fila de fuegos del tema, abajo
+    for (let i = 0; i < 8; i++) L(0.1 + i * 0.12, 0.1 + 0.8 * (i / 7), rand(0.4, 0.5), pick(["classic", "chrysanthemum", "dahlia", "ring"]), 0.75);
+    // 2. el saludo escrito con fuegos, arriba y con el cielo libre para que se lea
+    L(1.4, 0.5, 0.24, "word", 1.4, { text: words });
+    // 3. cuando ya se leyó: sauces a los lados, un crescendo con todo, y el gran cierre dorado
+    L(4.4, 0.18, 0.4, "willow", 1.2); L(4.55, 0.82, 0.4, "willow", 1.2);
+    for (let i = 0; i < 10; i++) L(6 + i * 0.35, rand(0.12, 0.88), rand(0.18, 0.42), pick(["crackle", "strobe", "palm", "saturn", "flowers", "curtain"]), rand(0.8, 1.1));
+    L(10.2, 0.5, 0.26, "grand", 2.4); L(10.3, 0.18, 0.34, "willow", 1.5); L(10.4, 0.82, 0.34, "willow", 1.5);
+    // 4. el saludo otra vez, cuando el cielo ya se calmó
+    L(14.5, 0.5, 0.26, "word", 1.3, { text: words });
+    Timers.after(2.7, () => Haptics.success());
+  }
+
+  // Se llama cada cuadro desde Main
+  let acc = 0;
+  function update(dt) {
+    acc += dt;
+    if (acc >= 0.25) {
+      acc = 0;
+      if (Game.mode === "home") pill();
+      render();
+    }
+    if (!active) return;
+    if (Game.mode !== "special") { stop(); return; }
+    const left = active.at - Date.now();
+    if (active.state === "wait") {
+      if (left <= 0) { active.state = "show"; render(); celebrate(); Timers.after(19, () => { if (active) active.state = "after"; }); return; }
+      // mientras se espera, fuegos del tema de vez en cuando (en el último minuto se calman: suspenso)
+      if (left > 60e3) {
+        active.nextAuto -= dt;
+        if (active.nextAuto <= 0) {
+          active.nextAuto = rand(4.5, 8);
+          Game.launch(VW * rand(0.15, 0.85), VH * rand(0.2, 0.42), pick(["classic", "chrysanthemum", "ring", "willow", "palm", "ghost"]), rand(0.75, 1.05), { auto: true, pal: pal(active.ev) });
+        }
+      }
+    } else if (active.state === "after") {
+      active.nextAuto -= dt;
+      if (active.nextAuto <= 0) {
+        active.nextAuto = rand(5, 9);
+        Game.launch(VW * rand(0.15, 0.85), VH * rand(0.2, 0.42), pick(["classic", "willow", "dahlia", "flowers", "lanterns"]), rand(0.8, 1.1), { auto: true, pal: pal(active.ev) });
+      }
+    }
+  }
+
+  // Vista previa: una cuenta de 15 s para ver hoy cómo será
+  function preview(id) {
+    const ev = EVENTS.find((e) => e.id === id) || EVENTS[0];
+    demo = { ev, at: Date.now() + 15000, year: new Date().getFullYear() + (ev.id === "newyear" ? 1 : 0) };
+    start();
+  }
+  // La lista para Ajustes: cada fecha con su próximo día
+  function list() {
+    const now = Date.now(), y = new Date(now).getFullYear();
+    return EVENTS.map((ev) => {
+      let d = ev.at(y);
+      if (!d || d.getTime() + AFTER < now) d = ev.at(y + 1);
+      return { id: ev.id, name: ev.name[LANG], at: d ? d.getTime() : Infinity, date: d ? d.toLocaleDateString(LANG ? "es" : "en", { day: "numeric", month: "long" }) : "" };
+    }).sort((a, b) => a.at - b.at);   // la más cercana primero
+  }
+
+  function init() {
+    el("special").addEventListener("click", () => { Sound.tap(); Haptics.tap(); start(); });
+    pill();
+  }
+
+  return { init, update, preview, list, stop, get active() { return !!active; }, pal };
+})();
+
+/* ---------- js/workshop.js ---------- */
+"use strict";
+/* workshop.js: el Taller de fuegos. La persona diseña los suyos (hasta 6): forma (de las que ya desbloqueó),
+   dos colores, el final (simple, crepitante, brillos, se divide o cambia de color), la cola (dorada, plateada,
+   crepitante, tenue o en espiral), silbido y tamaño, con su nombre. "Probar" lo lanza en el cielo mientras se diseña.
+   Cada creación se registra como un tipo más (TYPES["c…"]) y aparece en el selector, en "Mis fuegos".
+   Se guardan en Save.customs. */
+
+const Workshop = (() => {
+  const MAX = 6;
+  const SHAPES = ["classic", "ring", "willow", "palm", "chrysanthemum", "dahlia", "ghost", "spiral", "crossette", "horsetail", "strobe", "fish", "flowers", "heart", "star", "saturn", "jelly"];
+  const COLORS = ["red", "coral", "orange", "amber", "gold", "yellow", "lime", "green", "mint", "teal", "cyan", "ice", "blue", "violet", "purple", "magenta", "pink", "rosegold", "warm", "silver", "white"];
+  const ENDS = ["none", "crackle", "glitter", "split", "shift"];
+  const TAILS = ["gold", "glitter", "crackle", "dim", "spiral"];
+  const SIZES = { s: 0.8, m: 1, l: 1.25 };
+  const css = (c) => `rgb(${c.map((v) => Math.round(Math.min(1, v) * 255)).join(",")})`;
+
+  /* ---------- Del diseño a un tipo de fuego ---------- */
+  // El final elegido se aplica a las estrellas que acaba de crear la forma (las nuevas quedan al final del pool)
+  function applyEnd(n0, end, c2, pan) {
+    let L = 0, k = 0;
+    for (let i = n0; i < P.n; i++) {
+      if (P.kind[i] !== K_STAR) continue;
+      const life = P.life[i];
+      L += life; k++;
+      if (end === "crackle") P.flags[i] |= F_CRACKLE;
+      else if (end === "split") { P.flags[i] |= F_SPLIT; P.ev[i] = life * 0.82; }
+      else if (end === "shift") { P.r2[i] = c2[0]; P.g2[i] = c2[1]; P.b2[i] = c2[2]; P.tchg[i] = 0.5; P.flags[i] |= F_SHIFT; }
+      else if (end === "glitter") { P.flags[i] |= F_GLITTRAIL; P.setTrail(i, 12, 0.95, 0.95, 1, 0.9, 18); }
+    }
+    const avgLife = k ? L / k : 1.8;
+    if (end === "crackle") Sound.crackle(1.2, pan, avgLife * 0.95);
+    else if (end === "split") Sound.crackle(0.45, pan, avgLife * 0.8);
+    else if (end === "glitter") Sound.sizzle(2.4, pan, 0.55, 0.3);
+  }
+  function makeType(spec) {
+    const base = TYPES[spec.shape] || TYPES.classic, c1 = C[spec.c1] || C.gold, c2 = C[spec.c2] || C.silver, size = SIZES[spec.size] || 1;
+    const pal = { colors: [c1, c2], metal: c1, heart: c1 };
+    return {
+      custom: true, cost: -2, name: [spec.name, spec.name], desc: ["", ""], shape: spec.shape,
+      flight: spec.tail === "spiral" ? "spiral" : undefined,
+      tail: spec.tail === "spiral" ? undefined : spec.tail,
+      rise: spec.whistle ? { air: 0.035, whistle: 0.04, f0: 760, f1: 1200, tone: spec.tail === "spiral" } : { air: 0.05, whistle: 0 },
+      burst(x, y, o, pan) {
+        const n0 = P.n;
+        const res = base.burst(x, y, { ...o, power: o.power * size, colors: [c1, c2], pal, tip: spec.end }, pan);
+        applyEnd(n0, spec.end, c2, pan);
+        return res;
+      },
+      sound(p, pan) { base.sound(p * size, pan); },
+    };
+  }
+  // Registra (o vuelve a registrar) todas las creaciones guardadas como tipos
+  function register() {
+    for (const k of Object.keys(TYPES)) if (TYPES[k].custom) { delete TYPES[k]; delete ICON[k]; }
+    (Save.customs || []).forEach((spec) => { TYPES[spec.id] = makeType(spec); ICON[spec.id] = ICON[spec.shape] || ICON.classic; });
+  }
+  const ids = () => (Save.customs || []).map((s) => s.id);
+  const color = (k) => { const s = (Save.customs || []).find((x) => x.id === k); return s ? css(C[s.c1] || C.gold) : ""; };
+
+  /* ---------- El panel del Taller ---------- */
+  let edit = null;   // el diseño que se está editando (copia), o null en la lista
+  const el = (id) => document.getElementById(id);
+
+  function fresh() {
+    const owned = SHAPES.filter((k) => Save.unlocked.types.includes(k));
+    return { id: "", name: t("wsDefaultName"), shape: owned[0] || "classic", c1: "gold", c2: "silver", end: "none", tail: "gold", whistle: false, size: "m" };
+  }
+  function render() {
+    const body = el("ws-body");
+    if (!edit) {
+      const list = Save.customs || [];
+      body.innerHTML = `<p class="ws-hint">${t("wsHint")}</p><div class="grid">${list.map((s) => `
+        <button class="card ws-item" data-id="${s.id}" type="button">
+          <span class="ci" style="color:${css(C[s.c1] || C.gold)}">${iconSVG(s.shape)}</span><h4></h4>
+          <span class="swatches"><i style="background:${css(C[s.c1] || C.gold)}"></i><i style="background:${css(C[s.c2] || C.silver)}"></i></span>
+        </button>`).join("")}
+        ${list.length < MAX ? `<button class="card ws-new" type="button"><span class="ci">${PLUS}</span><h4>${t("wsNew")}</h4><p>${t("wsUpTo")}</p></button>` : ""}
+      </div>`;
+      body.querySelectorAll(".ws-item").forEach((b, i) => {
+        b.querySelector("h4").textContent = list[i].name;
+        b.addEventListener("click", () => { tap(); edit = { ...list[i] }; render(); });
+      });
+      body.querySelector(".ws-new")?.addEventListener("click", () => { tap(); edit = fresh(); render(); });
+      return;
+    }
+    const e = edit, owned = (k) => Save.unlocked.types.includes(k);
+    const seg = (key, opts, lbl) => `<div class="seg ws-seg" data-key="${key}">${opts.map((v) => `<button type="button" data-v="${v}" class="${e[key] === v ? "on" : ""}">${t(lbl + v)}</button>`).join("")}</div>`;
+    const sw = (key) => `<div class="ws-sw" data-key="${key}">${COLORS.map((c) => `<button type="button" data-v="${c}" class="${e[key] === c ? "on" : ""}" style="--c:${css(C[c])}" aria-label="${c}"></button>`).join("")}</div>`;
+    body.innerHTML = `
+      <label class="ws-lbl">${t("wsName")}</label>
+      <input id="ws-name" class="ws-name" type="text" maxlength="18" autocomplete="off" spellcheck="false">
+      <label class="ws-lbl">${t("wsShape")}</label>
+      <div class="ws-shapes">${SHAPES.map((k) => `<button type="button" data-v="${k}" class="${e.shape === k ? "on" : ""}" ${owned(k) ? "" : "disabled"}>${iconSVG(k)}<span>${TYPES[k].name[LANG]}</span></button>`).join("")}</div>
+      <label class="ws-lbl">${t("wsColor1")}</label>${sw("c1")}
+      <label class="ws-lbl">${t("wsColor2")}</label>${sw("c2")}
+      <label class="ws-lbl">${t("wsEnd")}</label>${seg("end", ENDS, "wsE_")}
+      <label class="ws-lbl">${t("wsTail")}</label>${seg("tail", TAILS, "wsT_")}
+      <div class="ws-row"><span>${t("wsWhistle")}</span><button id="ws-whistle" class="switch" type="button" role="switch" aria-checked="${e.whistle}"><i></i></button></div>
+      <label class="ws-lbl">${t("wsSize")}</label>${seg("size", ["s", "m", "l"], "wsS_")}
+      <div class="ws-actions">
+        ${e.id ? `<button class="sbtn icon-only" id="ws-del" type="button" aria-label="${t("wsDelete")}">${TRASH}</button>` : ""}
+        <button class="sbtn" id="ws-try" type="button">${SPARKLE}<span>${t("wsTry")}</span></button>
+        <button class="ph-btn gold" id="ws-save" type="button">${t("wsSave")}</button>
+      </div>`;
+    const name = el("ws-name");
+    name.value = e.name;
+    name.addEventListener("input", () => { e.name = name.value; });
+    body.querySelectorAll(".ws-shapes button").forEach((b) => b.addEventListener("click", () => { tap(); e.shape = b.dataset.v; mark(b); tryIt(); }));
+    body.querySelectorAll(".ws-sw").forEach((row) => row.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { tap(); e[row.dataset.key] = b.dataset.v; mark(b); })));
+    body.querySelectorAll(".ws-seg").forEach((row) => row.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { tap(); e[row.dataset.key] = b.dataset.v; mark(b); })));
+    el("ws-whistle").addEventListener("click", () => { tap(); e.whistle = !e.whistle; el("ws-whistle").setAttribute("aria-checked", String(e.whistle)); });
+    el("ws-try").addEventListener("click", () => { tap(); tryIt(); });
+    el("ws-save").addEventListener("click", () => { tap(); save(); });
+    el("ws-del")?.addEventListener("click", () => { tap(); remove(); });
+  }
+  function mark(b) { b.parentElement.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); }
+  const tap = () => { Sound.tap(); Haptics.tap(); };
+
+  // Probar: se lanza arriba, donde se ve encima del panel
+  function tryIt() {
+    if (!edit) return;
+    TYPES.c_try = makeType({ ...edit, name: edit.name || "" });
+    ICON.c_try = ICON[edit.shape];
+    Game.launch(VW * rand(0.4, 0.6), VH * 0.17, "c_try", 1.05, { auto: true });
+  }
+  function save() {
+    const e = edit;
+    e.name = (e.name || "").trim() || t("wsDefaultName");
+    Save.customs = Save.customs || [];
+    if (!e.id) { e.id = "c" + Date.now().toString(36); Save.customs.push(e); }
+    else Save.customs = Save.customs.map((s) => (s.id === e.id ? e : s));
+    Save.selected.type = e.id;
+    persist();
+    register();
+    edit = null;
+    render();
+    UI.refreshPicker();
+    Haptics.success();
+  }
+  function remove() {
+    Save.customs = (Save.customs || []).filter((s) => s.id !== edit.id);
+    if (Save.selected.type === edit.id) Save.selected.type = "mix";
+    persist();
+    register();
+    edit = null;
+    render();
+    UI.refreshPicker();
+  }
+  // El botón de atrás del panel: de editar a la lista; de la lista, cierra
+  function back() { if (edit) { edit = null; render(); return true; } return false; }
+
+  const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg>';
+  const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l.8 12h8.4L17 7"/></svg>';
+  const SPARKLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l1.9 6.2 6.3 1.9-6.3 2-1.9 6.3-1.9-6.3-6.3-2 6.3-1.9z" fill="currentColor"/></svg>';
+
+  return { register, render, back, ids, color, open() { edit = null; render(); }, get editing() { return !!edit; } };
 })();
 
 /* ---------- js/input.js ---------- */
@@ -5128,6 +5650,9 @@ const UI = (() => {
     $("#sparks").addEventListener("click", () => { press(); colTab = "fw"; open("collection"); });
     $("#pick-btn").addEventListener("click", () => { press(); togglePicker(); });
     $("#pick-draw").addEventListener("click", () => { press(); togglePicker(false); Doodle.show(() => buildPicker()); });
+    $("#pick-ws").addEventListener("click", () => { press(); togglePicker(false); open("workshop"); });
+    $("#ws-back").addEventListener("click", () => { press(); Workshop.back(); });
+    $("#ws-body").addEventListener("click", () => { $("#ws-back").hidden = !Workshop.editing; });
     document.addEventListener("pointerdown", (e) => { if (pickOpen && !e.target.closest("#picker")) togglePicker(false); }, true);
     document.addEventListener("keydown", (e) => { if (pickOpen && e.key === "Escape") togglePicker(false); });
     $("#finale").addEventListener("click", () => { if (Game.startFinale()) { Haptics.success(); finaleBar(); } });
@@ -5147,6 +5672,7 @@ const UI = (() => {
     sfx.addEventListener("change", () => Sound.boom(0.6, 0));
     mus.addEventListener("input", () => { Settings.music = +mus.value; fill(mus); Sound.applyVolumes(); persist(); });
     $("#set-vib").addEventListener("click", () => { Settings.haptics = !Settings.haptics; syncSettings(); persist(); Haptics.tap(); });
+    $("#set-moon").addEventListener("click", () => { Settings.realMoon = Settings.realMoon === false; syncSettings(); persist(); Haptics.tap(); Scene.apply(Scene.id); for (const k in thumbs) delete thumbs[k]; });
     $$("#set-q button").forEach((b) => b.addEventListener("click", () => { press(); Settings.quality = b.dataset.v; Main.applyQuality(); syncSettings(); persist(); }));
     $$("#set-lang button").forEach((b) => b.addEventListener("click", () => { press(); Settings.lang = LANG = +b.dataset.v; persist(); refreshTexts(); }));
     $("#set-reset").addEventListener("click", () => { press(); $("#confirm").hidden = false; });
@@ -5195,10 +5721,10 @@ const UI = (() => {
     Game.setMode(mode);
     $("#home").classList.add("hide");
     $("#hud").classList.remove("off");
-    const zen = mode === "zen", show = mode === "show";
-    $("#sparks").hidden = zen || show;
-    $("#finale").hidden = zen || show;
-    $("#combo").hidden = zen || show;
+    const zen = mode === "zen", show = mode === "show", calm = zen || show || mode === "special";
+    $("#sparks").hidden = calm;
+    $("#finale").hidden = calm;
+    $("#combo").hidden = calm;
     $("#b-col").hidden = false;
     $("#mode-chip").hidden = !zen;
     $("#showbar").hidden = !show;
@@ -5224,16 +5750,18 @@ const UI = (() => {
   // Selector de cohete: el botón muestra el elegido; la cuadrícula se abre encima y se cierra al elegir o al tocar fuera
   let pickOpen = false;
   function buildPicker() {
-    const owned = TYPE_ORDER.filter((k) => Save.unlocked.types.includes(k));
-    const items = owned.length > 1 ? ["mix", ...owned] : owned;
-    if (!items.includes(Save.selected.type)) Save.selected.type = owned[0];
+    const owned = TYPE_ORDER.filter((k) => Save.unlocked.types.includes(k)), mine = Workshop.ids();
+    const items = [...(owned.length > 1 ? ["mix", ...owned] : owned), ...mine];
+    if (!items.includes(Save.selected.type)) Save.selected.type = owned.length > 1 ? "mix" : owned[0];
     const cur = Save.selected.type, name = (k) => (k === "mix" ? t("mix") : TYPES[k].name[LANG]);
     const btn = $("#pick-btn");
     btn.querySelector(".ci").innerHTML = iconSVG(cur);
     btn.querySelector(".nm").textContent = name(cur);
     $("#picker").classList.toggle("solo", items.length < 2);
     const grid = $("#pick-pop .pick-grid");
-    grid.innerHTML = items.map((k) => `<button class="pick-it${k === cur ? " on" : ""}" data-k="${k}" type="button" role="menuitemradio" aria-checked="${k === cur}">${iconSVG(k)}<span>${name(k)}</span></button>`).join("");
+    const item = (k) => `<button class="pick-it${k === cur ? " on" : ""}" data-k="${k}" type="button" role="menuitemradio" aria-checked="${k === cur}"${TYPES[k] && TYPES[k].custom ? ` style="--c:${Workshop.color(k)}"` : ""}>${iconSVG(k)}<span></span></button>`;
+    grid.innerHTML = items.filter((k) => !mine.includes(k)).map(item).join("") + (mine.length ? `<div class="pick-head">${t("wsMine")}</div>` + mine.map(item).join("") : "");
+    grid.querySelectorAll(".pick-it").forEach((b) => { b.querySelector("span").textContent = name(b.dataset.k); });
     $("#pick-draw").hidden = !owned.includes("doodle");
     grid.querySelectorAll(".pick-it").forEach((b) => b.addEventListener("click", () => {
       Save.selected.type = b.dataset.k; persist();
@@ -5381,6 +5909,7 @@ const UI = (() => {
     if (name === "records") renderRecords();
     if (name === "howto") renderHowto();
     if (name === "settings") syncSettings();
+    if (name === "workshop") { Workshop.open(); $("#ws-back").hidden = true; }
     $("#scrim").classList.add("on");
     $(`#sheet-${name}`).classList.add("open");
     body.classList.remove("idle");
@@ -5400,7 +5929,7 @@ const UI = (() => {
     const el = $("#col-body"), S = Save.sparks;
     const buyBtn = (cost) => `<button class="card-btn buy" data-buy ${S < cost ? "disabled" : ""} type="button">${SPARK}${fmt(cost)}</button>`;
     if (colTab === "fw") {
-      el.innerHTML = `<div class="grid">${TYPE_ORDER.map((k) => {
+      el.innerHTML = `<button class="ws-banner" id="col-ws" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5l4 4M4 20l5.2-1.2L19.6 8.4a1.8 1.8 0 0 0 0-2.6l-1.4-1.4a1.8 1.8 0 0 0-2.6 0L5.2 14.8z"/><path d="M5 4.5v2M4 5.5h2M19 15.5v2M18 16.5h2"/></svg><span><b>${t("wsTitle")}</b><small>${t("wsBanner")}</small></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button><div class="grid">${TYPE_ORDER.map((k) => {
         const T = TYPES[k], own = Save.unlocked.types.includes(k), sel = Save.selected.type === k, n = Save.stats.byType[k] || 0;
         return `<div class="card${own ? "" : " locked"}${sel ? " sel" : ""}" data-k="${k}">
           ${own ? "" : LOCK}<span class="ci">${iconSVG(k)}</span><h4>${T.name[LANG]}</h4><p>${T.desc[LANG]}</p>
@@ -5418,6 +5947,7 @@ const UI = (() => {
         }));
         c.querySelector("[data-draw]")?.addEventListener("click", () => { press(); Doodle.show(() => { buildPicker(); renderCollection(); }); });
       });
+      $("#col-ws").addEventListener("click", () => { press(); open("workshop"); });
     } else if (colTab === "pal") {
       el.innerHTML = `<div class="grid">${PALETTE_ORDER.map((k) => {
         const p = PALETTES[k], own = Save.unlocked.palettes.includes(k), sel = Save.selected.palette === k;
@@ -5498,6 +6028,11 @@ const UI = (() => {
     const v = $("#set-vib"), na = !Haptics.available();
     v.hidden = na; $("#vib-na").hidden = !na;
     v.setAttribute("aria-checked", String(!!Settings.haptics));
+    $("#set-moon").setAttribute("aria-checked", String(Settings.realMoon !== false));
+    // Fechas especiales: cada una con su próximo día y "Ver demo"
+    const sd = $("#set-dates");
+    sd.innerHTML = Special.list().map((e) => `<div class="row"><span>${e.name}<small class="row-sub">${e.date}</small></span><button class="card-btn" data-demo="${e.id}" type="button">${t("demo")}</button></div>`).join("");
+    sd.querySelectorAll("[data-demo]").forEach((b) => b.addEventListener("click", () => { press(); close(); Special.preview(b.dataset.demo); }));
     $$("#set-q button").forEach((b) => b.classList.toggle("on", b.dataset.v === Settings.quality));
     $$("#set-lang button").forEach((b) => b.classList.toggle("on", +b.dataset.v === LANG));
   }
@@ -5527,10 +6062,11 @@ const UI = (() => {
   }
 
   // Al terminar el editor de "Tu foto": cerrar la Colección para ver el cielo nuevo
+  function refreshPicker() { buildPicker(); }
   function photoSaved() { close(); toast(t("phReady"), "", "classic"); }
 
   return {
-    photoSaved,
+    photoSaved, refreshPicker,
     init, showHome, revealTitle, revealMenu, enter, goHome, activity, tick,
     sparks, floater, combo, comboStep, finaleBar, finaleReady, finaleState, toast, goals, showState,
     get sheet() { return sheet; },
@@ -5592,6 +6128,7 @@ const Main = (() => {
     Lights.update(dt);
     R.render(dt, time);
     Ambient.update(dt);
+    Special.update(dt);
     UI.tick(dt);
     autoQuality(dt);
   }
@@ -5602,9 +6139,11 @@ const Main = (() => {
     if (started) return;
     started = true;
     if (!R.init(cv)) { $("#nogl").hidden = false; $("#home").hidden = true; return; }
+    Workshop.register();
     UI.init();
     Photo.init();
     Doodle.init();
+    Special.init();
     // "Tu foto" vive en IndexedDB: se carga sin bloquear el arranque y, si es el escenario elegido, se pinta
     Photo.load().then((ok) => { if (ok && Save.selected.scene === "photo") { Scene.apply("photo"); R.clearTrails(); } });
     Input.init($("#surface"), ov);

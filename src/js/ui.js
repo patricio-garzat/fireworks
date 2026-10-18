@@ -30,6 +30,9 @@ const UI = (() => {
     $("#sparks").addEventListener("click", () => { press(); colTab = "fw"; open("collection"); });
     $("#pick-btn").addEventListener("click", () => { press(); togglePicker(); });
     $("#pick-draw").addEventListener("click", () => { press(); togglePicker(false); Doodle.show(() => buildPicker()); });
+    $("#pick-ws").addEventListener("click", () => { press(); togglePicker(false); open("workshop"); });
+    $("#ws-back").addEventListener("click", () => { press(); Workshop.back(); });
+    $("#ws-body").addEventListener("click", () => { $("#ws-back").hidden = !Workshop.editing; });
     document.addEventListener("pointerdown", (e) => { if (pickOpen && !e.target.closest("#picker")) togglePicker(false); }, true);
     document.addEventListener("keydown", (e) => { if (pickOpen && e.key === "Escape") togglePicker(false); });
     $("#finale").addEventListener("click", () => { if (Game.startFinale()) { Haptics.success(); finaleBar(); } });
@@ -49,6 +52,7 @@ const UI = (() => {
     sfx.addEventListener("change", () => Sound.boom(0.6, 0));
     mus.addEventListener("input", () => { Settings.music = +mus.value; fill(mus); Sound.applyVolumes(); persist(); });
     $("#set-vib").addEventListener("click", () => { Settings.haptics = !Settings.haptics; syncSettings(); persist(); Haptics.tap(); });
+    $("#set-moon").addEventListener("click", () => { Settings.realMoon = Settings.realMoon === false; syncSettings(); persist(); Haptics.tap(); Scene.apply(Scene.id); for (const k in thumbs) delete thumbs[k]; });
     $$("#set-q button").forEach((b) => b.addEventListener("click", () => { press(); Settings.quality = b.dataset.v; Main.applyQuality(); syncSettings(); persist(); }));
     $$("#set-lang button").forEach((b) => b.addEventListener("click", () => { press(); Settings.lang = LANG = +b.dataset.v; persist(); refreshTexts(); }));
     $("#set-reset").addEventListener("click", () => { press(); $("#confirm").hidden = false; });
@@ -97,10 +101,10 @@ const UI = (() => {
     Game.setMode(mode);
     $("#home").classList.add("hide");
     $("#hud").classList.remove("off");
-    const zen = mode === "zen", show = mode === "show";
-    $("#sparks").hidden = zen || show;
-    $("#finale").hidden = zen || show;
-    $("#combo").hidden = zen || show;
+    const zen = mode === "zen", show = mode === "show", calm = zen || show || mode === "special";
+    $("#sparks").hidden = calm;
+    $("#finale").hidden = calm;
+    $("#combo").hidden = calm;
     $("#b-col").hidden = false;
     $("#mode-chip").hidden = !zen;
     $("#showbar").hidden = !show;
@@ -126,16 +130,18 @@ const UI = (() => {
   // Selector de cohete: el botón muestra el elegido; la cuadrícula se abre encima y se cierra al elegir o al tocar fuera
   let pickOpen = false;
   function buildPicker() {
-    const owned = TYPE_ORDER.filter((k) => Save.unlocked.types.includes(k));
-    const items = owned.length > 1 ? ["mix", ...owned] : owned;
-    if (!items.includes(Save.selected.type)) Save.selected.type = owned[0];
+    const owned = TYPE_ORDER.filter((k) => Save.unlocked.types.includes(k)), mine = Workshop.ids();
+    const items = [...(owned.length > 1 ? ["mix", ...owned] : owned), ...mine];
+    if (!items.includes(Save.selected.type)) Save.selected.type = owned.length > 1 ? "mix" : owned[0];
     const cur = Save.selected.type, name = (k) => (k === "mix" ? t("mix") : TYPES[k].name[LANG]);
     const btn = $("#pick-btn");
     btn.querySelector(".ci").innerHTML = iconSVG(cur);
     btn.querySelector(".nm").textContent = name(cur);
     $("#picker").classList.toggle("solo", items.length < 2);
     const grid = $("#pick-pop .pick-grid");
-    grid.innerHTML = items.map((k) => `<button class="pick-it${k === cur ? " on" : ""}" data-k="${k}" type="button" role="menuitemradio" aria-checked="${k === cur}">${iconSVG(k)}<span>${name(k)}</span></button>`).join("");
+    const item = (k) => `<button class="pick-it${k === cur ? " on" : ""}" data-k="${k}" type="button" role="menuitemradio" aria-checked="${k === cur}"${TYPES[k] && TYPES[k].custom ? ` style="--c:${Workshop.color(k)}"` : ""}>${iconSVG(k)}<span></span></button>`;
+    grid.innerHTML = items.filter((k) => !mine.includes(k)).map(item).join("") + (mine.length ? `<div class="pick-head">${t("wsMine")}</div>` + mine.map(item).join("") : "");
+    grid.querySelectorAll(".pick-it").forEach((b) => { b.querySelector("span").textContent = name(b.dataset.k); });
     $("#pick-draw").hidden = !owned.includes("doodle");
     grid.querySelectorAll(".pick-it").forEach((b) => b.addEventListener("click", () => {
       Save.selected.type = b.dataset.k; persist();
@@ -283,6 +289,7 @@ const UI = (() => {
     if (name === "records") renderRecords();
     if (name === "howto") renderHowto();
     if (name === "settings") syncSettings();
+    if (name === "workshop") { Workshop.open(); $("#ws-back").hidden = true; }
     $("#scrim").classList.add("on");
     $(`#sheet-${name}`).classList.add("open");
     body.classList.remove("idle");
@@ -302,7 +309,7 @@ const UI = (() => {
     const el = $("#col-body"), S = Save.sparks;
     const buyBtn = (cost) => `<button class="card-btn buy" data-buy ${S < cost ? "disabled" : ""} type="button">${SPARK}${fmt(cost)}</button>`;
     if (colTab === "fw") {
-      el.innerHTML = `<div class="grid">${TYPE_ORDER.map((k) => {
+      el.innerHTML = `<button class="ws-banner" id="col-ws" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5l4 4M4 20l5.2-1.2L19.6 8.4a1.8 1.8 0 0 0 0-2.6l-1.4-1.4a1.8 1.8 0 0 0-2.6 0L5.2 14.8z"/><path d="M5 4.5v2M4 5.5h2M19 15.5v2M18 16.5h2"/></svg><span><b>${t("wsTitle")}</b><small>${t("wsBanner")}</small></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button><div class="grid">${TYPE_ORDER.map((k) => {
         const T = TYPES[k], own = Save.unlocked.types.includes(k), sel = Save.selected.type === k, n = Save.stats.byType[k] || 0;
         return `<div class="card${own ? "" : " locked"}${sel ? " sel" : ""}" data-k="${k}">
           ${own ? "" : LOCK}<span class="ci">${iconSVG(k)}</span><h4>${T.name[LANG]}</h4><p>${T.desc[LANG]}</p>
@@ -320,6 +327,7 @@ const UI = (() => {
         }));
         c.querySelector("[data-draw]")?.addEventListener("click", () => { press(); Doodle.show(() => { buildPicker(); renderCollection(); }); });
       });
+      $("#col-ws").addEventListener("click", () => { press(); open("workshop"); });
     } else if (colTab === "pal") {
       el.innerHTML = `<div class="grid">${PALETTE_ORDER.map((k) => {
         const p = PALETTES[k], own = Save.unlocked.palettes.includes(k), sel = Save.selected.palette === k;
@@ -400,6 +408,11 @@ const UI = (() => {
     const v = $("#set-vib"), na = !Haptics.available();
     v.hidden = na; $("#vib-na").hidden = !na;
     v.setAttribute("aria-checked", String(!!Settings.haptics));
+    $("#set-moon").setAttribute("aria-checked", String(Settings.realMoon !== false));
+    // Fechas especiales: cada una con su próximo día y "Ver demo"
+    const sd = $("#set-dates");
+    sd.innerHTML = Special.list().map((e) => `<div class="row"><span>${e.name}<small class="row-sub">${e.date}</small></span><button class="card-btn" data-demo="${e.id}" type="button">${t("demo")}</button></div>`).join("");
+    sd.querySelectorAll("[data-demo]").forEach((b) => b.addEventListener("click", () => { press(); close(); Special.preview(b.dataset.demo); }));
     $$("#set-q button").forEach((b) => b.classList.toggle("on", b.dataset.v === Settings.quality));
     $$("#set-lang button").forEach((b) => b.classList.toggle("on", +b.dataset.v === LANG));
   }
@@ -429,10 +442,11 @@ const UI = (() => {
   }
 
   // Al terminar el editor de "Tu foto": cerrar la Colección para ver el cielo nuevo
+  function refreshPicker() { buildPicker(); }
   function photoSaved() { close(); toast(t("phReady"), "", "classic"); }
 
   return {
-    photoSaved,
+    photoSaved, refreshPicker,
     init, showHome, revealTitle, revealMenu, enter, goHome, activity, tick,
     sparks, floater, combo, comboStep, finaleBar, finaleReady, finaleState, toast, goals, showState,
     get sheet() { return sheet; },

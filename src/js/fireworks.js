@@ -70,7 +70,7 @@ function avg(a, b) { return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2])
    Regresa opciones para star() y el sonido extra que corresponde. */
 function variant(o, a, b, life) {
   const r = Math.random();
-  if (o.chain) return { opt: {}, sound() {} };
+  if (o.chain || o.tip) return { opt: {}, sound() {} };   // en el Taller el final lo elige la persona
   if (r < 0.34) return { opt: {}, sound() {} };
   if (r < 0.52) return { opt: { flags: F_CRACKLE }, sound(pan) { Sound.crackle(0.9, pan, life * 0.95); } };
   if (r < 0.66) return { opt: { split: life * rand(0.78, 0.86) }, sound(pan) { Sound.crackle(0.4, pan, life * 0.8); } };
@@ -692,6 +692,24 @@ const TYPES = {
       return { light: avg(a, b), R };
     },
     sound(p, pan) { Sound.boom(p, pan, { low: 86, body: 1250, crack: 0.6 }); Sound.sizzle(1.8, pan, 0.4, 0.7); },
+  },
+
+  // Saludo de las fechas especiales: escribe un texto en el cielo con fuegos (special.js). Los colores van en franjas
+  // de izquierda a derecha (con verde, blanco y rojo queda la bandera de México).
+  word: {
+    cost: -1, name: ["Greeting", "Saludo"], desc: ["", ""],
+    rise: { air: 0.06, whistle: 0.04, f0: 700, f1: 1100 },
+    burst(x, y, o) {
+      // unos 80 puntos por letra para que se lea (un texto largo necesita más), y estrellas más finas si hay muchas
+      const text = o.text || "2027", chars = text.replace(/\s/g, "").length, n = clamp(chars * 80, 260, 760);
+      const pts = TextShape.sample(text, Math.round(n * P.room(0.85))), drag = 2.0, span = VW * 0.44, cols = o.pal.colors, sz = chars > 6 ? 1.8 : 2.3;
+      for (const [px, py] of pts) {
+        const c = cols[Math.min(cols.length - 1, Math.floor(((px + 1) / 2) * cols.length))];
+        star(x, y, px * span * drag, py * span * drag, rand(2.6, 3.1), sz * U, c, { drag, grav: 6, heat: 0.6 });
+      }
+      return { light: o.pal.metal, R: span };
+    },
+    sound(p, pan) { Sound.boom(p, pan, { low: 80, body: 1300, crack: 0.8 }); Sound.sizzle(2.5, pan, 0.55, 0.6); },
   },
 
   // El gran cierre de la Gran Final (no se elige: es la recompensa)

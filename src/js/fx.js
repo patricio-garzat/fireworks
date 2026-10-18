@@ -207,7 +207,7 @@ const P = (() => {
 
   return {
     add, addSure, evict, room, setTrail, update, write, extra, clear,
-    x, y, vx, vy, drag, grav, size, r2, g2, b2, tchg, heat, bright, spin, kind, flags, ev, seed, wig, wf,
+    x, y, vx, vy, drag, grav, size, life, r2, g2, b2, tchg, heat, bright, spin, kind, flags, ev, seed, wig, wf,
     get n() { return n; },
     get cap() { return cap; }, set cap(v) { cap = Math.min(MAX, v); },
     MAX,

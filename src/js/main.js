@@ -52,6 +52,7 @@ const Main = (() => {
     Lights.update(dt);
     R.render(dt, time);
     Ambient.update(dt);
+    Special.update(dt);
     UI.tick(dt);
     autoQuality(dt);
   }
@@ -62,9 +63,11 @@ const Main = (() => {
     if (started) return;
     started = true;
     if (!R.init(cv)) { $("#nogl").hidden = false; $("#home").hidden = true; return; }
+    Workshop.register();
     UI.init();
     Photo.init();
     Doodle.init();
+    Special.init();
     // "Tu foto" vive en IndexedDB: se carga sin bloquear el arranque y, si es el escenario elegido, se pinta
     Photo.load().then((ok) => { if (ok && Save.selected.scene === "photo") { Scene.apply("photo"); R.clearTrails(); } });
     Input.init($("#surface"), ov);

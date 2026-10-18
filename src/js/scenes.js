@@ -62,8 +62,16 @@ const SCENES = {
 };
 const SCENE_ORDER = ["alpine", "lake", "country", "desert", "city", "canyon", "bay", "snow", "bridge"];
 
+/* Luna real: en qué parte de su ciclo va hoy (0 = nueva, 0.5 = llena). Mes sinódico desde la luna nueva del 6 ene 2000. */
+function moonPhase(date = new Date()) {
+  const syn = 29.530588853, ref = Date.UTC(2000, 0, 6, 18, 14) / 864e5, d = date.getTime() / 864e5 - ref;
+  return (((d % syn) + syn) % syn) / syn;
+}
+// Dónde va la luna en cada escenario (fracción de la pantalla)
+const MOON_AT = { alpine: [0.76, 0.15], lake: [0.24, 0.17], country: [0.78, 0.17], desert: [0.25, 0.18], city: [0.72, 0.14], canyon: [0.6, 0.13], bay: [0.78, 0.2], snow: [0.3, 0.14], bridge: [0.82, 0.13] };
+
 const Scene = (() => {
-  let id = "alpine";
+  let id = "alpine", cur = "alpine";
   // Lo que cada escenario deja para la capa de vida (ambient.js): luces que parpadean y el faro (en fracción de pantalla)
   let lights = { blink: [], beam: null, moon: null, wins: [], deck: null }, pw = 1, ph = 1;
   const blink = (x, y, period = 1.6) => lights.blink.push({ x: x / pw, y: y / ph, period, ph: rand(TAU) });
@@ -170,6 +178,38 @@ const Scene = (() => {
     gr.addColorStop(0, cols[0]); gr.addColorStop(0.35, cols[1]); gr.addColorStop(0.68, cols[2]); gr.addColorStop(0.9, cols[3]);
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
   }
+  /* La luna: con "Luna real" sigue su fase de hoy (creciente, cuarto, llena, menguante, nueva) en todos los escenarios;
+     si se apaga, solo la bahía tiene su luna llena, como antes. Se pinta justo después de la vía láctea (detrás de todo). */
+  function moon(g, w, h, s) {
+    const at = MOON_AT[cur];
+    if (!at) return;
+    const real = Settings.realMoon !== false;
+    if (!real && cur !== "bay") return;
+    const f = real ? moonPhase() : 0.5, k = (1 - Math.cos(f * TAU)) / 2;   // k: cuánto está iluminada (0..1)
+    const x = at[0] * w, y = at[1] * h, r = (cur === "bay" ? 11 : 10) * s;
+    lights.moon = { x: x / pw, y: y / ph, k };
+    if (k > 0.03) {
+      const halo = g.createRadialGradient(x, y, 0, x, y, r * 9);
+      halo.addColorStop(0, `rgba(215,228,255,${(0.16 * k).toFixed(3)})`); halo.addColorStop(1, "rgba(215,228,255,0)");
+      g.fillStyle = halo; g.fillRect(x - r * 9, y - r * 9, r * 18, r * 18);
+    }
+    // la parte oscura apenas se adivina (luz cenicienta)
+    g.fillStyle = "rgba(110,125,165,0.10)"; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+    if (k < 0.02) return;
+    // la parte iluminada: medio disco del lado de la luz + media elipse hasta el terminador
+    const c = Math.cos(f * TAU), rx = r * Math.abs(c), waxing = f < 0.5;
+    g.save();
+    g.beginPath();
+    if (waxing) { g.arc(x, y, r, -Math.PI / 2, Math.PI / 2, false); g.ellipse(x, y, rx, r, 0, Math.PI / 2, -Math.PI / 2, c > 0); }
+    else { g.arc(x, y, r, Math.PI / 2, (3 * Math.PI) / 2, false); g.ellipse(x, y, rx, r, 0, (3 * Math.PI) / 2, Math.PI / 2, c > 0); }
+    g.closePath();
+    g.fillStyle = "rgba(236,240,252,0.92)"; g.fill();
+    g.clip();
+    g.fillStyle = "rgba(170,180,205,0.25)";
+    for (const [ox, oy, rr] of [[-0.3, -0.2, 0.32], [0.25, 0.1, 0.25], [-0.05, 0.35, 0.18]]) { g.beginPath(); g.arc(x + ox * r, y + oy * r, rr * r, 0, TAU); g.fill(); }
+    g.restore();
+  }
+
   // Vía láctea: una banda diagonal de polvo de estrellas muy tenue
   function milkyWay(g, w, h, rng, s) {
     g.save();
@@ -197,6 +237,7 @@ const Scene = (() => {
       g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
     }
     g.restore();
+    moon(g, w, h, s);
   }
   function pines(g, m, rng, pts, s, color, count) {
     for (let k = 0; k < count; k++) {
@@ -376,15 +417,7 @@ const Scene = (() => {
     const S = SCENES.bay, wy = h * S.water;
     sky(g, w, wy + 2, S.sky);
     milkyWay(g, w, wy, rng, s);
-    // luna llena baja, con su halo
-    const mx = w * 0.78, my = h * 0.2, mr = 11 * s;
-    lights.moon = { x: mx / pw, y: my / ph };
-    const halo = g.createRadialGradient(mx, my, 0, mx, my, mr * 9);
-    halo.addColorStop(0, "rgba(215,228,255,0.16)"); halo.addColorStop(1, "rgba(215,228,255,0)");
-    g.fillStyle = halo; g.fillRect(mx - mr * 9, my - mr * 9, mr * 18, mr * 18);
-    g.fillStyle = "rgba(236,240,252,0.92)"; g.beginPath(); g.arc(mx, my, mr, 0, TAU); g.fill();
-    g.fillStyle = "rgba(170,180,205,0.25)";
-    for (const [ox, oy, rr] of [[-0.3, -0.2, 0.32], [0.25, 0.1, 0.25], [-0.05, 0.35, 0.18]]) { g.beginPath(); g.arc(mx + ox * mr, my + oy * mr, rr * mr, 0, TAU); g.fill(); }
+    // (la luna la pinta moon(), con su fase real)
     // colinas al otro lado de la bahía
     const far = ridge(rng, w, 64, wy - h * 0.022, h * 0.018, 0.5);
     haze(g, wy - h * 0.01, h * 0.06, w, "80,110,160", 0.12);
@@ -622,6 +655,7 @@ const Scene = (() => {
       }
       sceneId = "alpine";
     }
+    cur = sceneId;
     const seed = { alpine: 7, lake: 21, city: 33, desert: 45, bay: 58, snow: 64, country: 71, canyon: 83, bridge: 105 }[sceneId] || 7;
     PAINT[sceneId](g, m, w, h, s, mulberry(seed * 977 + 13));
   }
@@ -634,7 +668,7 @@ const Scene = (() => {
     const S = SCENES[id];
     R.setBackground(cColor, cMask, S.water ? VH * S.water : -1, 1, S.mist || 0, S.cloud || 0);
     Ambient.setScene({ ...(S.life || {}), ...lights });
-    R.setMoon(lights.moon ? [lights.moon.x * VW, lights.moon.y * VH] : null);
+    R.setMoon(lights.moon ? [lights.moon.x * VW, lights.moon.y * VH, lights.moon.k] : null);
     // en "Tu foto" las chispas se apagan al llegar al horizonte (caen detrás de la tierra)
     KILL_Y = S.water ? VH * S.water : S.photo ? VH * S.launch : VH + 30;
   }

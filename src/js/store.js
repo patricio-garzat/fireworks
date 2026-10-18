@@ -14,12 +14,13 @@ function freshSave() {
     finale: 0,
     goals: null,
     shows: [null, null, null],
+    customs: [],
     showSlot: 0,
   };
 }
 
 function freshSettings() {
-  return { sfx: 0.85, music: 0.5, haptics: true, quality: "auto", lang: (navigator.language || "en").toLowerCase().startsWith("es") ? 1 : 0 };
+  return { sfx: 0.85, music: 0.5, haptics: true, realMoon: true, quality: "auto", lang: (navigator.language || "en").toLowerCase().startsWith("es") ? 1 : 0 };
 }
 
 function loadJSON(key, fresh) {

@@ -80,7 +80,8 @@
   <!-- Selector de cohete: un botón chico abajo al centro; al tocarlo se abre una cuadrícula con todos -->
   <nav id="picker" class="picker" aria-label="Fireworks">
     <div id="pick-pop" class="pick-pop" role="menu" hidden><div class="pick-grid"></div>
-      <button id="pick-draw" class="pick-draw" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17c2-5 4-6 5.5-3s3 3.5 5-1 3.5-5.5 5.5-4"/><path d="M15.5 4.5l3 3M17 3l3 3-1.5 1.5-3-3z"/></svg><span data-i18n="ddMine">Draw my rocket</span></button>
+      <button id="pick-draw" class="pick-draw" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17c2-5 4-6 5.5-3s3 3.5 5-1 3.5-5.5 5.5-4"/><path d="M15.5 4.5l3 3M17 3l3 3-1.5 1.5-3-3z"/></svg><span data-i18n="ddMine">Draw my firework</span></button>
+      <button id="pick-ws" class="pick-draw" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5l4 4M4 20l5.2-1.2L19.6 8.4a1.8 1.8 0 0 0 0-2.6l-1.4-1.4a1.8 1.8 0 0 0-2.6 0L5.2 14.8z"/><path d="M5 4.5v2M4 5.5h2M19 15.5v2M18 16.5h2"/></svg><span data-i18n="wsOpen">Workshop</span></button>
     </div>
     <button id="pick-btn" class="pick-btn glass" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="pick-pop">
       <span class="ci"></span><span class="nm"></span>
@@ -89,6 +90,7 @@
   </nav>
 </div>
 
+<div id="countdown" class="countdown" aria-live="polite" hidden><span id="cd-name" class="cd-name"></span><b id="cd-time" class="cd-time"></b><span id="cd-sub" class="cd-sub"></span></div>
 <div id="floaters" aria-hidden="true"></div>
 <div id="toasts" aria-live="polite"></div>
 
@@ -99,6 +101,7 @@
     <p class="tag" data-i18n="tagline">Paint the night sky</p>
   </div>
   <div class="menu">
+    <button id="special" class="special-pill" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 2M9.5 3h5"/></svg><span></span></button>
     <div class="home-sparks" id="home-sparks">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l1.9 6.2 6.3 1.9-6.3 2-1.9 6.3-1.9-6.3-6.3-2 6.3-1.9z" fill="currentColor"/></svg>
       <b id="home-sparks-n">0</b>
@@ -156,6 +159,16 @@
   <div class="sheet-body" id="col-body"></div>
 </section>
 
+<!-- Taller de fuegos: más bajito que las demás ventanillas, para ver arriba los fuegos que se prueban -->
+<section class="sheet" id="sheet-workshop" role="dialog" aria-modal="true" aria-labelledby="ws-h">
+  <div class="sheet-head">
+    <button class="x" id="ws-back" type="button" data-i18n-aria="back" aria-label="Back" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg></button>
+    <h2 id="ws-h" data-i18n="wsTitle">Firework Workshop</h2>
+    <button class="x" type="button" data-close data-i18n-aria="close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
+  </div>
+  <div class="sheet-body" id="ws-body"></div>
+</section>
+
 <section class="sheet" id="sheet-settings" role="dialog" aria-modal="true" aria-labelledby="set-h">
   <div class="sheet-head">
     <h2 id="set-h" data-i18n="settings">Settings</h2>
@@ -168,6 +181,9 @@
       <div class="row"><span data-i18n="vibration">Vibration</span><span id="vib-na" class="muted" data-i18n="vibrationNA" hidden>iPhone app only</span><button id="set-vib" class="switch" type="button" role="switch" aria-checked="true"><i></i></button></div>
     </div>
     <div class="group">
+      <div class="row"><span><span data-i18n="realMoon">Real moon</span><small class="row-sub" data-i18n="realMoonD">The moon follows its real cycle</small></span><button id="set-moon" class="switch" type="button" role="switch" aria-checked="true"><i></i></button></div>
+    </div>
+    <div class="group">
       <div class="row col"><span data-i18n="quality">Graphics</span>
         <div class="seg" id="set-q"><button data-v="auto" data-i18n="qAuto">Auto</button><button data-v="high" data-i18n="qHigh">High</button><button data-v="med" data-i18n="qMed">Balanced</button><button data-v="low" data-i18n="qLow">Battery</button></div>
       </div>
@@ -175,6 +191,8 @@
         <div class="seg" id="set-lang"><button data-v="0">English</button><button data-v="1">Español</button></div>
       </div>
     </div>
+    <h3 class="sub" data-i18n="specialDates">Special dates</h3>
+    <div class="group" id="set-dates"></div>
     <div class="group">
       <button class="row danger" id="set-reset" type="button"><span data-i18n="reset">Erase progress</span></button>
     </div>
@@ -228,7 +246,7 @@
 <section id="doodle" class="doodle" role="dialog" aria-modal="true" aria-labelledby="dd-h" hidden>
   <div class="dd-card">
     <h3 id="dd-h" data-i18n="ddTitle">Draw your firework</h3>
-    <p class="dd-hint" data-i18n="ddHint">Draw a shape with your finger. Your rocket will burst into it.</p>
+    <p class="dd-hint" data-i18n="ddHint">Draw a shape with your finger. Your firework will burst into it.</p>
     <div class="dd-pad"><canvas id="dd-cv" aria-label="Drawing pad"></canvas><span id="dd-empty" class="dd-empty" data-i18n="ddEmpty">Draw here</span></div>
     <div class="dd-row">
       <button class="sbtn" id="dd-undo" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7L4.5 11.5 9 16"/><path d="M5 11.5h9a5 5 0 0 1 0 10h-2"/></svg><span data-i18n="ddUndo">Undo</span></button>
@@ -309,6 +327,8 @@
 <script src="js/doodle.js"></script>
 <script src="js/fireworks.js"></script>
 <script src="js/game.js"></script>
+<script src="js/special.js"></script>
+<script src="js/workshop.js"></script>
 <script src="js/input.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>

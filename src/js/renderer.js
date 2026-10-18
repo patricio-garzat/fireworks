@@ -397,7 +397,7 @@ const R = (() => {
     cloudAmt = cloud;
   }
   // La luna del escenario (en px CSS), para su camino de luz sobre el agua
-  function setMoon(m) { moon = m ? [m[0], m[1], 1] : [0, 0, 0]; }
+  function setMoon(m) { moon = m ? [m[0], m[1], m[2] === undefined ? 1 : m[2]] : [0, 0, 0]; }   // [x, y, cuánta luna]
 
   function bindQuad() {
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
