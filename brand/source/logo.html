@@ -1,0 +1,47 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Fireworks · logo</title>
+<!-- El logo de Fireworks: el ícono (el sauce dorado, icon-1024.png) con el nombre en la misma letra del título del juego
+     (la del sistema, peso 200, espaciado 0.36em, con un halo cálido). Se elige con el hash:
+       #vertical · #horizontal · #wordmark      y opcionalmente -clear (fondo transparente), p. ej. #vertical-clear
+     Las PNG de brand/logo/ salen de aquí con make-logo.py (Chrome sin ventana, ×2). Nada de emojis ni rombos de Cube Swipe. -->
+<style>
+  :root { --sky: #04060F; --gold: #F1C27A; --gold-2: #FFE3B3; --ink: #F5F1E8; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { display: grid; place-items: center; font-family: -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif;
+    background: radial-gradient(60% 55% at 50% 42%, #101a36 0%, #070b19 55%, var(--sky) 100%); }
+  body.clear { background: transparent; }
+  .lock { display: flex; align-items: center; }
+  .vertical { flex-direction: column; }
+  .icon { border-radius: 22.37%; box-shadow: 0 0 0 1px rgba(255, 227, 179, 0.10), 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 90px rgba(241, 194, 122, 0.16); }
+  .name { font-weight: 200; letter-spacing: 0.36em; margin-right: -0.36em; line-height: 1; color: var(--ink); white-space: nowrap;
+    text-shadow: 0 0 34px rgba(255, 220, 170, 0.32), 0 0 2px rgba(255, 255, 255, 0.5); }
+  .rule { height: 2px; background: linear-gradient(90deg, rgba(241, 194, 122, 0), rgba(241, 194, 122, 0.85), rgba(241, 194, 122, 0)); }
+  .by { font-weight: 400; letter-spacing: 0.22em; margin-right: -0.22em; color: rgba(237, 239, 247, 0.66); }
+
+  .vertical .icon { width: 440px; height: 440px; }
+  .vertical .name { font-size: 112px; margin-top: 86px; }
+  .vertical .rule { width: 300px; margin-top: 44px; }
+  .vertical .by { font-size: 28px; margin-top: 32px; }
+
+  .horizontal .icon { width: 300px; height: 300px; }
+  .horizontal .text { margin-left: 84px; display: flex; flex-direction: column; align-items: flex-start; }
+  .horizontal .name { font-size: 118px; }
+  .horizontal .rule { width: 260px; margin-top: 36px; background: linear-gradient(90deg, rgba(241, 194, 122, 0.85), rgba(241, 194, 122, 0)); }
+  .horizontal .by { font-size: 28px; margin-top: 26px; }
+
+  .wordmark .name { font-size: 150px; }
+</style>
+<body>
+<script>
+  const [kind, clear] = (location.hash.slice(1) || "vertical").split("-");
+  if (clear) document.body.classList.add("clear");
+  const icon = '<img class="icon" src="icon-1024.png" alt="">', name = '<div class="name">FIREWORKS</div>', by = '<div class="by">by BluBer Games</div>';
+  document.body.innerHTML = {
+    vertical: `<div class="lock vertical">${icon}${name}<div class="rule"></div>${by}</div>`,
+    horizontal: `<div class="lock horizontal">${icon}<div class="text">${name}<div class="rule"></div>${by}</div></div>`,
+    wordmark: `<div class="lock wordmark">${name}</div>`,
+  }[kind];
+  if (clear) document.body.classList.add("clear");
+</script>
+</body>

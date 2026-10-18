@@ -46,6 +46,7 @@ assert n == 1, "no encontré window.APP_VERSION"
 
 shutil.rmtree(WWW, ignore_errors=True)
 os.makedirs(WWW)
-shutil.copytree(os.path.join(ROOT, "brand"), os.path.join(WWW, "brand"))
+# brand/: solo lo que usa la página (favicons); los originales y el logo (source/, logo/) no viajan en la app
+shutil.copytree(os.path.join(ROOT, "brand"), os.path.join(WWW, "brand"), ignore=shutil.ignore_patterns("source", "logo"))
 open(os.path.join(WWW, "index.html"), "w", encoding="utf-8").write(html)
 print("www/ listo:", len(html) // 1024, "KB · app", version, f"({build}) · juego {game}")

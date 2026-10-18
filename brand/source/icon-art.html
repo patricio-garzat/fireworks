@@ -1,0 +1,186 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Fireworks · icon art</title>
+<!-- El arte del ícono de Fireworks, dibujado con código (Canvas 2D, mezcla aditiva y bloom), a 1024×1024.
+     Cada propuesta se elige con el hash: icon-art.html#willow, #bloom o #mark. Se toma la captura con Chrome sin ventana.
+     Paleta del juego: medianoche #04060F, oro #F1C27A y #FFE3B3. Sin los rombos de Cube Swipe. -->
+<style>
+  html, body { margin: 0; background: #04060F; }
+  canvas { display: block; width: 1024px; height: 1024px; }
+</style>
+<canvas id="c" width="1024" height="1024"></canvas>
+<script>
+"use strict";
+const W = 1024, TAU = Math.PI * 2;
+const cv = document.getElementById("c"), G = cv.getContext("2d");
+const layer = () => { const c = document.createElement("canvas"); c.width = c.height = W; return c; };
+const lerp = (a, b, t) => a + (b - a) * t;
+const mix = (a, b, t) => a.map((v, i) => Math.round(lerp(v, b[i], t)));
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
+function rng(seed) { return () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+const GOLD = [241, 194, 122], GOLD2 = [255, 227, 179], AMBER = [212, 132, 58], HOT = [255, 247, 232], ICE = [186, 218, 255];
+
+// Cielo de medianoche: degradado, un resplandor cálido detrás del fuego y estrellas muy tenues
+function sky(g, glow, r) {
+  const lg = g.createLinearGradient(0, 0, 0, W);
+  lg.addColorStop(0, "#02040B"); lg.addColorStop(0.55, "#070C1E"); lg.addColorStop(1, "#0E1834");
+  g.fillStyle = lg; g.fillRect(0, 0, W, W);
+  if (glow) {
+    const rg = g.createRadialGradient(glow[0], glow[1], 0, glow[0], glow[1], glow[2]);
+    rg.addColorStop(0, `rgba(255,196,128,${glow[3]})`); rg.addColorStop(0.5, `rgba(180,110,70,${glow[3] * 0.35})`); rg.addColorStop(1, "rgba(60,40,60,0)");
+    g.fillStyle = rg; g.fillRect(0, 0, W, W);
+  }
+  for (let i = 0; i < 70; i++) {
+    const x = r() * W, y = r() * W * 0.75, s = 0.8 + r() * 1.6;
+    g.fillStyle = `rgba(220,230,255,${(0.12 + r() * 0.35).toFixed(2)})`;
+    g.beginPath(); g.arc(x, y, s, 0, TAU); g.fill();
+  }
+}
+// Bloom: copias difuminadas de la capa de luz, sumadas
+function bloom(g, src, passes) {
+  g.save(); g.globalCompositeOperation = "lighter";
+  for (const [blur, a] of passes) { g.filter = `blur(${blur}px)`; g.globalAlpha = a; g.drawImage(src, 0, 0); }
+  g.filter = "none"; g.globalAlpha = 1; g.drawImage(src, 0, 0);
+  g.restore();
+}
+// Una hebra que se dibuja como estela: más brillante y gruesa en la punta (lo más reciente)
+// (prof: opcional, da el brillo 0–1 a lo largo de la hebra; sin él, crece hacia la punta)
+function strand(g, pts, c0, c1, w0, w1, a0, a1, head, prof) {
+  g.lineCap = "round";
+  for (let j = 1; j < pts.length; j++) {
+    const u = j / (pts.length - 1), k = prof ? prof(u) : Math.pow(u, 1.4);
+    g.strokeStyle = rgba(mix(c0, c1, prof ? k : u), lerp(a0, a1, k));
+    g.lineWidth = lerp(w0, w1, prof ? k : u);
+    g.beginPath(); g.moveTo(pts[j - 1][0], pts[j - 1][1]); g.lineTo(pts[j][0], pts[j][1]); g.stroke();
+  }
+  if (head) { const [x, y] = pts[pts.length - 1]; g.fillStyle = rgba(HOT, head[1]); g.beginPath(); g.arc(x, y, head[0], 0, TAU); g.fill(); }
+}
+// Física de una estrella: sale rápido, frena con el aire y cae
+function fly(cx, cy, vx, vy, drag, grav, T, dt = 1 / 160) {
+  const pts = [[cx, cy]]; let x = cx, y = cy;
+  for (let t = 0; t < T; t += dt) { vx *= 1 - drag * dt; vy = vy * (1 - drag * dt) + grav * dt; x += vx * dt; y += vy * dt; pts.push([x, y]); }
+  return pts;
+}
+
+/* ---------- 1. Sauce dorado sobre el lago ---------- */
+function willow() {
+  const r = rng(7);
+  sky(G, [512, 360, 600, 0.30], r);
+  const L = layer(), g = L.getContext("2d");
+  g.globalCompositeOperation = "lighter";
+  const cx = 512, cy = 330, N = 120;
+  // brillo a lo largo de la hebra: tenue al salir, pleno en la curva, y se apaga en la punta que cuelga
+  const prof = (u) => Math.pow(Math.sin(Math.PI * Math.pow(u, 0.62)), 1.3);
+  for (let i = 0; i < N; i++) {
+    // direcciones repartidas en una esfera y vistas de frente: unas hebras largas (de lado), otras cortas (hacia ti)
+    const z = 1 - 2 * ((i + 0.5) / N), rr = Math.sqrt(1 - z * z), th = i * 2.39996;
+    const s = 960 * rr * (0.94 + r() * 0.06), front = 0.55 + 0.45 * rr;
+    const pts = fly(cx, cy, Math.cos(th) * s, Math.sin(th) * s * 0.92 - 110, 2.6, 470, 1.7 + r() * 0.25);
+    strand(g, pts.slice(8), [120, 62, 22], mix(GOLD, GOLD2, 0.4), 0.6, 3.2 * front, 0.0, 0.6 * front, null, prof);
+    // brillitos que caen de las puntas
+    for (let k = 0; k < 7; k++) {
+      const p = pts[Math.floor(pts.length * (0.55 + r() * 0.44))];
+      g.fillStyle = rgba(GOLD2, 0.15 + r() * 0.35); g.beginPath(); g.arc(p[0] + (r() - 0.5) * 6, p[1] + r() * 16, 1.2 + r() * 1.4, 0, TAU); g.fill();
+    }
+  }
+  const core = g.createRadialGradient(cx, cy, 0, cx, cy, 60);
+  core.addColorStop(0, "rgba(255,225,180,0.25)"); core.addColorStop(1, "rgba(255,200,140,0)");
+  g.fillStyle = core; g.fillRect(cx - 60, cy - 60, 120, 120);
+  // horizonte y lago
+  const HZ = 846;
+  const R = layer(), rg = R.getContext("2d");
+  rg.save(); rg.beginPath(); rg.rect(0, HZ, W, W - HZ); rg.clip();
+  for (let y = HZ; y < W; y += 3) {
+    const src = HZ - (y - HZ) / 0.32, off = Math.sin(y * 0.09) * 2.5;
+    rg.globalAlpha = 0.5 * (1 - (y - HZ) / (W - HZ)) ** 0.8;
+    rg.drawImage(L, 0, src, W, 3 / 0.32, off, y, W, 3);
+  }
+  rg.restore();
+  bloom(G, L, [[60, 0.45], [22, 0.5], [7, 0.55]]);
+  G.save(); G.globalCompositeOperation = "lighter"; G.filter = "blur(2.5px)"; G.drawImage(R, 0, 0); G.filter = "none"; G.restore();
+  // colinas oscuras que cortan el horizonte
+  G.fillStyle = "#03050C";
+  G.beginPath(); G.moveTo(0, HZ - 26);
+  G.bezierCurveTo(170, HZ - 70, 300, HZ - 20, 430, HZ - 12); G.bezierCurveTo(560, HZ - 4, 690, HZ - 54, 830, HZ - 40); G.bezierCurveTo(920, HZ - 32, 980, HZ - 14, W, HZ - 18);
+  G.lineTo(W, HZ + 2); G.lineTo(0, HZ + 2); G.closePath(); G.fill();
+  const wg = G.createLinearGradient(0, HZ, 0, W);
+  wg.addColorStop(0, "rgba(4,7,18,0.35)"); wg.addColorStop(1, "rgba(2,3,9,0.55)");
+  G.fillStyle = wg; G.fillRect(0, HZ + 2, W, W - HZ);
+  G.fillStyle = "rgba(255,220,170,0.10)"; G.fillRect(0, HZ + 1, W, 1.5);
+}
+
+/* ---------- 2. Crisantemo (peonía) con centro helado ---------- */
+function bloomArt() {
+  const r = rng(11);
+  sky(G, [512, 470, 600, 0.26], r);
+  const L = layer(), g = L.getContext("2d");
+  g.globalCompositeOperation = "lighter";
+  const cx = 512, cy = 470;
+  // estela del lanzamiento, tenue
+  for (let y = 1000; y > cy + 40; y -= 7) {
+    const u = (1000 - y) / (1000 - cy);
+    g.fillStyle = rgba(GOLD, 0.05 + 0.25 * u * r()); g.beginPath(); g.arc(cx + Math.sin(y * 0.05) * 2 + (r() - 0.5) * 4, y, 1.4 + r() * 1.3, 0, TAU); g.fill();
+  }
+  // estrellas repartidas en una esfera y proyectadas: más densas hacia la orilla, como de verdad
+  const shell = (n, R0, c0, c1, w, head, droop, seedOff) => {
+    for (let i = 0; i < n; i++) {
+      const z = 1 - 2 * ((i + 0.5) / n), rr = Math.sqrt(1 - z * z), th = i * 2.39996 + seedOff;
+      const dx = Math.cos(th) * rr, dy = Math.sin(th) * rr, len = R0 * (0.94 + r() * 0.06);
+      const pts = [];
+      for (let k = 0; k <= 40; k++) {
+        const u = 0.18 + 0.82 * (k / 40), e = 1 - Math.pow(1 - u, 1.6);
+        pts.push([cx + dx * len * e, cy + dy * len * e + droop * Math.pow(u, 2.4)]);
+      }
+      strand(g, pts, c0, c1, w * 0.3, w, 0.0, 0.8, [w * 0.9, 0.9]);
+    }
+  };
+  shell(150, 372, [150, 80, 30], GOLD, 3.8, true, 30, 0);
+  shell(64, 150, [40, 70, 140], ICE, 3.0, true, 8, 1.3);
+  const core = g.createRadialGradient(cx, cy, 0, cx, cy, 90);
+  core.addColorStop(0, "rgba(220,235,255,0.22)"); core.addColorStop(1, "rgba(160,200,255,0)");
+  g.fillStyle = core; g.fillRect(cx - 90, cy - 90, 180, 180);
+  // chispas sueltas alrededor
+  for (let i = 0; i < 90; i++) {
+    const a = r() * TAU, d = 380 + r() * 90;
+    g.fillStyle = rgba(GOLD2, 0.15 + r() * 0.4); g.beginPath(); g.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d + 20, 1 + r() * 1.6, 0, TAU); g.fill();
+  }
+  bloom(G, L, [[70, 0.42], [24, 0.5], [7, 0.55]]);
+}
+
+/* ---------- 3. Marca de línea: la estela sube y se abre en un estallido ---------- */
+function mark() {
+  const r = rng(5);
+  sky(G, [590, 400, 520, 0.28], r);
+  const L = layer(), g = L.getContext("2d");
+  g.globalCompositeOperation = "lighter";
+  const bx = 590, by = 392;
+  // la estela: curva suave, delgada y tenue abajo, más gruesa y clara arriba
+  const P = (t) => { const a = [318, 948], c = [372, 600], b = [bx - 70, by + 96]; return [lerp(lerp(a[0], c[0], t), lerp(c[0], b[0], t), t), lerp(lerp(a[1], c[1], t), lerp(c[1], b[1], t), t)]; };
+  const pts = []; for (let k = 0; k <= 90; k++) pts.push(P(k / 90));
+  strand(g, pts, AMBER, GOLD2, 5, 17, 0.08, 1, null);
+  // rayos alternados largos y cortos, con un punto al final de los largos
+  const n = 12;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU - Math.PI / 2, long = i % 2 === 0, r0 = 78, r1 = long ? 232 : 168;
+    const gr = g.createLinearGradient(bx + Math.cos(a) * r0, by + Math.sin(a) * r0, bx + Math.cos(a) * r1, by + Math.sin(a) * r1);
+    gr.addColorStop(0, rgba(GOLD, 0.65)); gr.addColorStop(1, rgba(GOLD2, 1));
+    g.strokeStyle = gr; g.lineWidth = long ? 25 : 21; g.lineCap = "round";
+    g.beginPath(); g.moveTo(bx + Math.cos(a) * r0, by + Math.sin(a) * r0); g.lineTo(bx + Math.cos(a) * r1, by + Math.sin(a) * r1); g.stroke();
+    if (long) { g.fillStyle = rgba(HOT, 1); g.beginPath(); g.arc(bx + Math.cos(a) * 282, by + Math.sin(a) * 282, 14, 0, TAU); g.fill(); }
+  }
+  g.fillStyle = rgba(HOT, 1); g.beginPath(); g.arc(bx, by, 26, 0, TAU); g.fill();
+  // destellos de cuatro puntas
+  const spark = (x, y, s, a) => {
+    g.fillStyle = rgba(GOLD2, a); g.beginPath();
+    g.moveTo(x, y - s); g.quadraticCurveTo(x + s * 0.14, y - s * 0.14, x + s, y); g.quadraticCurveTo(x + s * 0.14, y + s * 0.14, x, y + s);
+    g.quadraticCurveTo(x - s * 0.14, y + s * 0.14, x - s, y); g.quadraticCurveTo(x - s * 0.14, y - s * 0.14, x, y - s); g.fill();
+  };
+  spark(262, 300, 46, 0.95); spark(846, 690, 36, 0.85); spark(830, 150, 24, 0.7);
+  bloom(G, L, [[60, 0.45], [20, 0.6], [6, 0.6]]);
+}
+
+const which = (location.hash || "#willow").slice(1);
+({ willow, bloom: bloomArt, mark })[which]();
+document.title = "ready";
+</script>

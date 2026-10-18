@@ -17,7 +17,7 @@ Abre `http://localhost:8795/` (versión armada) o `http://localhost:8795/src/` (
 | `src/js/` | El código, en archivos separados (ver abajo) |
 | `tools/build.py` | Arma `index.html`: `python3 tools/build.py [versión]` |
 | `tools/sound-lab.html` | Laboratorio de sonido: reproduce cada sonido del juego por separado y mide su volumen y sus agudos |
-| `brand/` | Ícono |
+| `brand/` | Favicons; `source/` (arte del ícono y del logo, con sus generadores) y `logo/` (el logo exportado) |
 | `app/` | App de iOS (Capacitor 7): ver abajo |
 | `VERSION` | La versión que se ve en Ajustes |
 
@@ -51,7 +51,7 @@ cd app && npm install && npm run build
 | `app/build-www.py` | Arma `www/` a partir de `index.html` y `brand/` |
 | `app/dev-install.sh` | Instala "Fireworks Dev" en el iPhone conectado (app aparte, ícono DEV) |
 | `app/release.sh [versión]` | Sube el número de build, hace el archive y lo sube a App Store Connect |
-| `app/tools/make-icons.py` | Genera los íconos de la app (normal y DEV) a partir de `brand/favicon.svg` |
+| `app/tools/make-icons.py` | Genera los íconos de la app (normal y DEV) y los favicons a partir de `brand/source/icon-art.html` |
 
 ## Enlaces
 - **Estudio:** https://blubergames.com
